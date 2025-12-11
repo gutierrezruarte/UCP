@@ -7,7 +7,6 @@ const readerId = "reader";
 let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-// Referencia al botón rectangular fijo
 const sendButtonRect = document.getElementById('sendButtonRect'); 
 
 
@@ -42,7 +41,6 @@ function playBeep() {
 
         oscillator.type = 'sine'; 
         oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
-        // VOLUMEN MÁXIMO
         gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); 
         
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
