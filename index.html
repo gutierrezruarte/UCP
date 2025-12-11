@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Registro de Ingresos Local</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Registro de Ingresos</h1>
+
+        <div class="mode-selector">
+            <button id="mode-agente" class="active">Modo Agente (Código de Barras)</button>
+            <button id="mode-persona">Modo Público (DNI QR)</button>
+        </div>
+
+        <div id="scanner-container">
+            <div id="reader"></div>
+        </div>
+
+        <div class="results-area">
+            <h2>Datos del Ingreso</h2>
+            
+            <div id="results-agente" class="active">
+                <p><strong>CÓDIGO/AFILIADO:</strong> <span id="data-agente">---</span></p>
+                <button id="register-agente-btn" class="register-button" disabled>Registrar Agente</button>
+            </div>
+
+            <div id="results-persona" class="hidden">
+                <p><strong>Modo:</strong> DNI QR - (Datos separados por "@")</p>
+                <p><strong>NOMBRE:</strong> <span id="nombre-persona">---</span></p>
+                <p><strong>APELLIDO:</strong> <span id="apellido-persona">---</span></p>
+                <p><strong>DNI:</strong> <span id="dni-persona">---</span></p>
+                <p class="raw-data">Dato Crudo: <span id="raw-data-persona">---</span></p>
+                <button id="register-persona-btn" class="register-button" disabled>Registrar Persona</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
