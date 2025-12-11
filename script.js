@@ -10,7 +10,7 @@ const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal')
 const sendButton = document.getElementById('sendButton');
 
 
-// --- Funciones de Utilidad (showAlert) ---
+// --- Funciones de Utilidad (showAlert y Sonido) ---
 
 function showAlert(message, type = 'success') {
     const alertContainer = document.getElementById('alert-container');
@@ -29,6 +29,35 @@ function showAlert(message, type = 'success') {
         }
     }, 5000);
 }
+
+/**
+ * Genera un sonido simple de "pitido" usando el Web Audio API.
+ * Esto es la forma más compatible de generar un sonido sin archivos externos.
+ */
+function playBeep() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Configuración del sonido (un pitido corto)
+        oscillator.type = 'sine'; // Tipo de onda
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // Frecuencia de 440 Hz (A4)
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); // Volumen
+        
+        // El pitido dura 100ms
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+        console.warn("Web Audio API no soportada o falló al iniciar el sonido.");
+    }
+}
+
 
 // --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
 
@@ -132,7 +161,6 @@ function processCodeAndDisplayResult(code) {
         
         scanResultEl.style.color = 'yellow';
         
-        // DNI: Reemplazar @ por <br>
         const formattedDNI = code.replace(/@/g, '<br>');
         scanResultEl.innerHTML = `⚠️ DNI QR:<br><small>${formattedDNI}</small><br>Registro como Externo.`;
     }
@@ -201,7 +229,7 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (Generación de Tablas y Filtrado) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -226,7 +254,6 @@ function generateReportTableHTML(data, title) {
         return `<p class="text-secondary">No hay ${title} registrados.</p>`;
     }
 
-    // Encabezados dinámicos para el DNI (solo para la tabla local)
     const isOtros = title === 'Otros';
     let headers = `
         <th>Hora</th>
@@ -265,7 +292,6 @@ function generateReportTableHTML(data, title) {
         
         let rowContent;
         if (isOtros && item.DNI_DATA_1) {
-            // Fila para DNI separado
             rowContent = `
                 <td>${item.HORA}</td>
                 <td>${item.NOMBRE_PROCESADO}</td>
@@ -277,7 +303,6 @@ function generateReportTableHTML(data, title) {
                 <td>${item.OBSERVACIONES || '-'}</td>
             `;
         } else {
-            // Fila para Agentes o Otros no DNI
             rowContent = `
                 <td>${item.HORA}</td>
                 <td>${displayCode}</td>
@@ -328,7 +353,7 @@ function filterReporteListado() {
     document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros');
 }
 
-// --- FUNCIONES DE EXPORTACIÓN (ESTILO BLANCO/NEGRO Y DNI EN COLUMNAS) ---
+// --- FUNCIONES DE EXPORTACIÓN (omito cuerpos para brevedad) ---
 
 function prepareExportData(tableTitle) {
     const dataToExport = tableTitle === 'Agentes' 
@@ -338,7 +363,6 @@ function prepareExportData(tableTitle) {
     let header = ["FECHA", "HORA", "PERFIL", "CÓDIGO/DNI", "NOMBRE_PROCESADO", "DOMINIO", "OBSERVACIONES"];
     
     if (tableTitle === 'Otros') {
-        // Encabezados para DNI en columnas separadas
         header = ["FECHA", "HORA", "PERFIL", "NOMBRE_PROCESADO", "DNI_DATO_1", "DNI_DATO_2", "DNI_DATO_3", "DOMINIO", "OBSERVACIONES"];
     }
 
@@ -353,25 +377,22 @@ function prepareExportData(tableTitle) {
         ];
         
         if (tableTitle === 'Otros' && item['CREDENCIAL / DNI'].includes('@')) {
-            // Si es DNI QR en la tabla 'Otros'
             const dniParts = item['CREDENCIAL / DNI'].split('@');
             row = [
                 item.FECHA,
                 item.HORA,
                 item.PERFIL,
                 item.NOMBRE_PROCESADO,
-                dniParts[0] || '', // DNI Dato 1
-                dniParts[1] || '', // DNI Dato 2
-                dniParts[2] || '', // DNI Dato 3
+                dniParts[0] || '', 
+                dniParts[1] || '', 
+                dniParts[2] || '', 
                 item.DOMINIO || '',
                 item.OBSERVACIONES || ''
             ];
         } else if (tableTitle === 'Agentes') {
-             // Si es Agente (usamos el código/dni completo)
-            row.splice(3, 0, item['CREDENCIAL / DNI']); // Insertar Código/DNI en posición 3
+            row.splice(3, 0, item['CREDENCIAL / DNI']); 
         } else {
-             // Si es Otros, pero no DNI (ej: manual)
-             row.splice(3, 0, item['CREDENCIAL / DNI']); // Insertar Código/DNI en posición 3
+             row.splice(3, 0, item['CREDENCIAL / DNI']); 
         }
 
         return row;
@@ -382,38 +403,30 @@ function prepareExportData(tableTitle) {
 
 function exportarAExcel(tableTitle) {
     const { header, body } = prepareExportData(tableTitle);
-
     const data = [header, ...body];
-
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, tableTitle);
-    
     const filename = `${tableTitle}_Reporte_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(wb, filename);
-
     showAlert(`Exportando ${tableTitle} a Excel...`, 'info');
 }
 
 function exportarAPDF(tableTitle) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('landscape');
-
     const { header, body } = prepareExportData(tableTitle);
     const searchTerm = document.getElementById('reporteSearch').value.trim();
 
-    // Membrete con fondo blanco y letras negras
     doc.setFillColor(255, 255, 255); 
     doc.setTextColor(0, 0, 0); 
     doc.setFontSize(14);
     doc.text(`REPORTE DE INGRESOS - ${tableTitle.toUpperCase()}`, 14, 15);
     
-    // Dato de filtro
     doc.setFontSize(10);
     const filterText = searchTerm ? `Filtro aplicado: "${searchTerm}"` : `Fecha de Exportación: ${new Date().toLocaleString('es-AR')}`;
     doc.text(filterText, 14, 20);
 
-    // Generación de la tabla
     doc.autoTable({
         head: [header],
         body: body,
@@ -425,12 +438,11 @@ function exportarAPDF(tableTitle) {
 
     const filename = `${tableTitle}_Reporte_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`;
     doc.save(filename);
-
     showAlert(`Exportando ${tableTitle} a PDF...`, 'info');
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL Y SONIDO) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -453,7 +465,6 @@ function submitForm(event) {
     const agentName = barcodeInput.getAttribute('data-processed-name') || 'N/A';
     const isAgentFlag = barcodeInput.getAttribute('data-is-agent') || 'false';
 
-    // Manejo de datos DNI para el almacenamiento interno
     let dniDataFields = {};
     if (barcodeValue.includes('@')) {
         const dniParts = barcodeValue.split('@');
@@ -481,10 +492,13 @@ function submitForm(event) {
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    // 1. Feedback Visual: Botón verde por 2 segundos
+    // 1. Reproducir sonido de confirmación
+    playBeep();
+
+    // 2. Feedback Visual: Botón verde por 2 segundos
     sendButton.classList.add('success-flash');
     
-    // 2. Feedback de texto abajo del botón flotante
+    // 3. Feedback de texto abajo del botón flotante
     const feedbackContainer = document.getElementById('send-feedback-container');
     feedbackContainer.innerHTML = `<div class="alert alert-success mt-2 text-center" role="alert">
         ✅ Ingreso de <strong>${agentName}</strong> registrado.
@@ -496,12 +510,35 @@ function submitForm(event) {
         // Quitar el mensaje de feedback
         feedbackContainer.innerHTML = '';
         
-        // 3. Resetear la interfaz
+        // 4. Resetear la interfaz
         document.getElementById('control-form').reset();
         document.getElementById('barcode_id').value = '';
         document.getElementById('list_id').value = ''; 
         processCodeAndDisplayResult('');
     }, 2000);
+}
+
+// --- FUNCIÓN DE SONIDO ---
+function playBeep() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.type = 'sine'; 
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); 
+        
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+        console.warn("Web Audio API no soportada o falló al iniciar el sonido.");
+    }
 }
 
 
@@ -516,7 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
 
-    // Eventos del Modal de Escáner
     const modalElement = document.getElementById('scannerModal');
     modalElement.addEventListener('shown.bs.modal', () => {
         startScanner();
@@ -525,7 +561,6 @@ document.addEventListener('DOMContentLoaded', () => {
         stopScanner();
     });
 
-    // Evento del Modal de Reporte
     const reporteModalElement = document.getElementById('reporteModal');
     reporteModalElement.addEventListener('shown.bs.modal', () => {
         renderReporteListado();
