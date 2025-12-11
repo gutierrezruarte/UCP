@@ -6,6 +6,12 @@ body {
     font-size: 1.1rem; /* Aumentar tamaño base de la fuente */
 }
 
+/* Forzar que el contenedor principal ocupe todo el ancho disponible */
+.container {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
 .required-badge {
     color: red;
     font-weight: bold;
@@ -16,10 +22,9 @@ h1 {
     font-size: 1.6rem; 
 }
 .card-header {
-    /* Mantener estilo oscuro */
     background-color: #3c3c3c; 
     border-bottom: 1px solid #ffc107 !important; 
-    padding: 1rem; /* Mayor padding */
+    padding: 1rem; 
     font-size: 1.2rem; /* Título de la tarjeta más grande */
 }
 
@@ -36,16 +41,22 @@ h1 {
     color: #fff !important;
     border: 1px solid #ffc107 !important;
     font-size: 1.2rem; /* Letras grandes dentro de los campos */
-    padding: 0.75rem 0.5rem; /* Más espacio */
+    padding: 0.75rem 0.5rem; 
+    /* Eliminar el margen de focus que puede reducir el campo visualmente */
+    box-shadow: none !important; 
 }
 
 .custom-input::placeholder {
     color: #ccc;
 }
 
+.custom-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+}
+
 /* Estilo para el resultado del escaneo */
 #scan-result {
-    font-size: 1.4rem; /* Resultados muy grandes */
+    font-size: 1.4rem; 
     min-height: 40px;
     display: flex;
     align-items: center;
@@ -53,13 +64,14 @@ h1 {
     color: #ffc107; 
 }
 
+
 /* --- Botón de Envío Flotante (Circular) --- */
 .floating-send-btn {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 65px; /* Más grande */
-    height: 65px; /* Más grande */
+    width: 65px; 
+    height: 65px; 
     border-radius: 50%;
     background-color: #ffc107; 
     color: #333; 
@@ -72,14 +84,7 @@ h1 {
     z-index: 1050; 
 }
 
-/* Estilos para el Listado Diario */
-.reporte-item {
-    background-color: #555 !important;
-    border-color: #444 !important;
-    color: #f8f9fa;
-    margin-bottom: 5px;
-    border-radius: 5px;
-}
-.reporte-item strong {
-    color: #ffc107;
+/* Modal de Escáner en Pantalla Completa */
+#reader {
+    width: 100% !important; 
 }
