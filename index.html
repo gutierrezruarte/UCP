@@ -114,13 +114,13 @@
             <div class="modal-content bg-dark">
                 <div class="modal-header border-0">
                     <h5 class="modal-title text-white" id="scannerModalLabel">ESCANEAR CÓDIGO</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopScannerAndResume()"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopScanner()"></button>
                 </div>
                 <div class="modal-body p-1 d-flex justify-content-center align-items-center">
                     <div id="reader" style="width: 100%; max-width: 500px; max-height: 80vh;"></div>
                 </div>
                 <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScannerAndResume()">Cerrar y Reintentar</button>
+                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScanner()">Cerrar y Cancelar Escaneo</button>
                 </div>
             </div>
         </div>
@@ -135,6 +135,13 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="d-grid gap-2 mb-3">
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#reporteModal" onclick="renderReporteListado()">
+                            <i class="bi bi-list-columns"></i> VER LISTADO DIARIO
+                        </button>
+                    </div>
+                    <hr class="border-secondary">
+                    
                     <div class="mb-3">
                         <label class="form-label">Carga y Actualización de Dotación</label>
                         <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
@@ -149,6 +156,28 @@
                         <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
                     </div>
                     <div id="pases-status" class="mt-2 text-warning"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reporteModal" tabindex="-1" aria-labelledby="reporteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header bg-dark border-warning">
+                    <h5 class="modal-title" id="reporteModalLabel">📋 Listado Diario de Ingresos</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="reporteSearch" class="form-label">Buscar por Fecha, Código, Dominio, etc.</label>
+                        <input type="text" class="form-control custom-input" id="reporteSearch" placeholder="Escriba aquí para filtrar..." oninput="filterReporteListado()">
+                    </div>
+                    <div id="reporteListContainer" class="list-group">
+                        </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>
