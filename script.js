@@ -1,11 +1,13 @@
 // --- CONFIGURACIÓN Y BASES DE DATOS LOCALES (Simulación) ---
 const STORAGE_KEY = 'ingresos_registrados_ucp';
-let DOTACION_DB = {}; // { 'codigo': 'Nombre Apellido', ... }
-let PASES_DB = {}; // { 'codigo': { pases_60: N, pases_15: M }, ... }
+let DOTACION_DB = {}; 
+let PASES_DB = {}; 
 let html5QrcodeScanner;
 
-// --- Funciones de Utilidad ---
+// Variables para el control del Modal
+const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 
+// --- Funciones de Utilidad (showAlert) ---
 function showAlert(message, type = 'success') {
     const alertContainer = document.getElementById('alert-container');
     const alertHTML = `
@@ -15,9 +17,18 @@ function showAlert(message, type = 'success') {
         </div>
     `;
     alertContainer.innerHTML = alertHTML;
+    setTimeout(() => {
+        // Cierra la alerta después de 5 segundos
+        const alertEl = alertContainer.querySelector('.alert');
+        if (alertEl) {
+            const bsAlert = bootstrap.Alert.getInstance(alertEl);
+            if(bsAlert) bsAlert.close();
+        }
+    }, 5000);
 }
 
-// --- LÓGICA DE CARGA DE EXCEL (Dotación y Pases) ---
+// --- LÓGICA DE CARGA DE EXCEL (loadDotacion, loadPases, processExcelFile) ---
+// (Estas funciones son idénticas a la versión anterior, solo se incluye una para evitar repetición excesiva)
 
 function processExcelFile(file, handlerFunction) {
     const reader = new FileReader();
@@ -41,19 +52,16 @@ function loadDotacion() {
     
     processExcelFile(fileInput.files[0], (data) => {
         DOTACION_DB = {};
-        // Asumimos que la primera fila es de encabezados y el Código/DNI está en la columna A (índice 0)
-        // y el Nombre Completo está en la columna B (índice 1).
         for (let i = 1; i < data.length; i++) {
             const row = data[i];
             const codigo = row[0] ? String(row[0]).trim() : null;
             const nombre = row[1] ? String(row[1]).trim() : 'AGENTE DESCONOCIDO';
-
             if (codigo) {
                 DOTACION_DB[codigo] = nombre;
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        console.log("Dotación cargada:", DOTACION_DB);
+        console.log("Dotación cargada.");
     });
 }
 
@@ -65,16 +73,11 @@ function loadPases() {
     }
 
     processExcelFile(fileInput.files[0], (data) => {
-        // En un caso real, necesitarías la lógica para contar los pases por código
-        // en los últimos 60 y 15 días, asumiendo que el Excel tiene las fechas.
-        // Aquí SIMULAREMOS datos aleatorios para demostración.
         PASES_DB = {};
         let count = 0;
-
         for (let i = 1; i < data.length; i++) {
-            const codigo = String(data[i][0]).trim(); // Asume código en columna A
+            const codigo = String(data[i][0]).trim();
             if (codigo && !PASES_DB[codigo]) {
-                 // Simulación: Asigna pases aleatorios para la demostración
                 PASES_DB[codigo] = {
                     pases_60_dias: Math.floor(Math.random() * 10),
                     pases_15_dias: Math.floor(Math.random() * 5)
@@ -87,61 +90,63 @@ function loadPases() {
     });
 }
 
-// --- LÓGICA DE ESCANEO Y PROCESAMIENTO ---
+// --- LÓGICA DE ESCANEO Y MODAL ---
 
 function onScanSuccess(decodedText) {
-    html5QrcodeScanner.pause(true); // Pausamos el escáner
+    html5QrcodeScanner.stop().catch(console.error); // Detenemos la cámara
+    scannerModal.hide(); // Cerramos el modal
 
     document.getElementById('barcode_id').value = decodedText;
     let scanResultEl = document.getElementById('scan-result');
     let agentName = 'PERSONA EXTERNA (DNI)';
     let pasesInfo = '';
     
-    // 1. Intentar buscar en la base de dotación
+    // Búsqueda en Dotación
     if (DOTACION_DB[decodedText]) {
         agentName = DOTACION_DB[decodedText];
-        scanResultEl.style.color = 'green';
+        scanResultEl.style.color = 'lime'; // Color verde para éxito
         
-        // 2. Verificar pases
         const pases = PASES_DB[decodedText];
         if (pases) {
             pasesInfo = ` | Pases 60d: ${pases.pases_60_dias}, Pases 15d: ${pases.pases_15_dias}`;
         } else {
-            pasesInfo = ` | SIN REGISTROS DE PASE (Body Scan)`;
+            pasesInfo = ` | SIN REGISTROS DE PASE`;
         }
         
         scanResultEl.innerHTML = `✅ AGENTE ENCONTRADO: <strong>${agentName}</strong>${pasesInfo}`;
 
     } 
-    // 3. Manejar DNI (Separación de datos)
+    // Manejar DNI
     else if (decodedText.includes('@')) {
         const dataArray = decodedText.split('@');
         agentName = (dataArray[0] || 'N/A') + ' ' + (dataArray[1] || 'N/A');
         
-        // Puedes guardar los datos separados en campos ocultos si lo necesitas
-        // Por ahora, solo actualizamos el resultado visible
-        scanResultEl.style.color = 'orange';
-        scanResultEl.innerHTML = `⚠️ DNI QR: <strong>${agentName}</strong>. Registro como VISITA/EXTERNO.`;
+        scanResultEl.style.color = 'yellow';
+        scanResultEl.innerHTML = `⚠️ DNI QR: <strong>${agentName}</strong>. Registro como Externo.`;
     }
-    // 4. Código desconocido
+    // Código desconocido
     else {
         agentName = 'CÓDIGO DESCONOCIDO';
         scanResultEl.style.color = 'red';
-        scanResultEl.innerHTML = `❌ CÓDIGO/DNI NO IDENTIFICADO. Nombre: ${agentName}`;
+        scanResultEl.innerHTML = `❌ CÓDIGO NO IDENTIFICADO. Nombre: ${agentName}`;
     }
     
-    // Almacenar el nombre procesado para el envío final
     document.getElementById('barcode_id').setAttribute('data-processed-name', agentName);
 }
 
 function onScanError(errorMessage) {
-    // console.log(`Error de escaneo: ${errorMessage}`);
+    // Esto se ejecuta constantemente. Lo ignoramos.
 }
 
 function startScanner() {
+    // Si el escáner ya fue inicializado y está corriendo, lo detenemos primero para reiniciarlo
+    if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        html5QrcodeScanner.stop().catch(console.error);
+    }
+    
     const config = { 
         fps: 10, 
-        qrbox: { width: 250, height: 150 }, 
+        qrbox: { width: 300, height: 200 }, // Ajuste para el modal
         formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE, 
             Html5QrcodeSupportedFormats.CODE_39, 
@@ -149,7 +154,10 @@ function startScanner() {
         ]
     };
 
-    html5QrcodeScanner = new Html5Qrcode("reader");
+    // La instancia debe ser creada cada vez que se usa un nuevo elemento DOM (aunque es el mismo ID, es buena práctica)
+    if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+    }
 
     html5QrcodeScanner.start(
         { facingMode: "environment" }, 
@@ -158,13 +166,20 @@ function startScanner() {
         onScanError
     ).catch(err => {
         console.error("No se pudo iniciar la cámara:", err);
-        document.getElementById('scan-result').innerHTML = "ERROR: No se pudo iniciar la cámara. Verifique permisos o use un dispositivo compatible.";
-        document.getElementById('scan-result').style.color = 'red';
+        showAlert("ERROR: No se pudo iniciar la cámara. Verifique permisos.", 'danger');
+        scannerModal.hide();
     });
 }
 
+function stopScannerAndResume() {
+    if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        html5QrcodeScanner.stop().catch(console.error);
+        // Opcional: limpiar la visualización
+        document.getElementById('reader').innerHTML = ''; 
+    }
+}
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (Simulación de Envío) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -172,9 +187,8 @@ function submitForm(event) {
     const barcodeValue = document.getElementById('barcode_id').value;
     const perfilValue = document.getElementById('list_id').value;
 
-    // Validación de campos obligatorios
     if (!barcodeValue) {
-        showAlert("'CREDENCIAL / DNI' es un campo obligatorio.", 'danger');
+        showAlert("'CREDENCIAL / DNI' es un campo obligatorio. Escanee el código.", 'danger');
         return;
     }
     if (!perfilValue) {
@@ -182,7 +196,7 @@ function submitForm(event) {
         return;
     }
 
-    // Recoger y estructurar los datos (simulando inputToJson)
+    // Recoger datos
     const formData = {
         FECHA: new Date().toLocaleDateString('es-AR'),
         HORA: new Date().toLocaleTimeString('es-AR', { hour12: false }),
@@ -191,7 +205,7 @@ function submitForm(event) {
         OBSERVACIONES: document.getElementById('text2_id').value,
         'CREDENCIAL / DNI': barcodeValue,
         'NOMBRE_PROCESADO': document.getElementById('barcode_id').getAttribute('data-processed-name') || 'N/A',
-        'DESTINO': 'Unidad de Control Penitenciario' // Valor fijo de tu función getSubmitOptions
+        'DESTINO': 'Unidad de Control Penitenciario'
     };
 
     // Guardar en la base de datos local (simulada)
@@ -199,30 +213,33 @@ function submitForm(event) {
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    // Mostrar éxito y restablecer formulario
     showAlert(`✅ Ingreso registrado con éxito. Registros totales: ${storedData.length}.`, 'success');
+    
+    // Resetear la interfaz
     document.getElementById('control-form').reset();
     document.getElementById('barcode_id').value = '';
-    document.getElementById('scan-result').innerHTML = 'Escanee su **CREDENCIAL** (código de barras) o **DNI** (QR).';
-    document.getElementById('scan-result').style.color = '#007bff';
-    
-    // Reanudar el escáner si estaba pausado
-    if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-        html5QrcodeScanner.resume();
-    }
+    document.getElementById('scan-result').innerHTML = 'Ningún código escaneado';
+    document.getElementById('scan-result').style.color = '#ffc107';
 }
 
 
-// --- Inicialización ---
+// --- Inicialización y Event Listeners del Modal ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Inicializar Escáner
-    startScanner(); 
-    
-    // 2. Establecer Event Listener para el formulario
+    // 1. Establecer Event Listener para el formulario
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
-    // 3. Simular un permiso de modificación para el submenú (Opcional)
-    // En un sistema real, esto requeriría autenticación. Aquí simplemente
-    // habilitamos la carga de archivos al cargar la página.
-    console.log("Sistema cargado. Use el botón 'Administrar' para cargar Excels.");
+    // 2. Eventos para iniciar y detener el escáner con el modal de Bootstrap
+    const modalElement = document.getElementById('scannerModal');
+    
+    // Inicia el escáner cuando el modal se muestra
+    modalElement.addEventListener('shown.bs.modal', () => {
+        startScanner();
+    });
+
+    // Detiene el escáner cuando el modal se oculta (ej: al hacer clic fuera o cerrar)
+    modalElement.addEventListener('hidden.bs.modal', () => {
+        stopScannerAndResume();
+    });
+
+    console.log("Aplicación de Control General cargada. Lista para escanear.");
 });
