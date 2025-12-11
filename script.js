@@ -7,7 +7,7 @@ const readerId = "reader";
 let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-// REFERENCIA CORREGIDA AL NUEVO BOTÓN RECTANGULAR
+// Referencia al botón rectangular fijo
 const sendButtonRect = document.getElementById('sendButtonRect'); 
 
 
@@ -42,7 +42,8 @@ function playBeep() {
 
         oscillator.type = 'sine'; 
         oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); 
+        // CORRECCIÓN: Volumen máximo (1.0)
+        gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); 
         
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
         
@@ -156,7 +157,6 @@ function processCodeAndDisplayResult(code) {
         
         scanResultEl.style.color = 'yellow';
         
-        // DNI: Reemplazar @ por <br>
         const formattedDNI = code.replace(/@/g, '<br>');
         scanResultEl.innerHTML = `⚠️ DNI QR:<br><small>${formattedDNI}</small><br>Registro como Externo.`;
     }
@@ -438,7 +438,7 @@ function exportarAPDF(tableTitle) {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL Y SONIDO) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -456,13 +456,11 @@ function submitForm(event) {
         return;
     }
     
-    // 1. Procesar el código antes de guardar para obtener nombre y tipo de agente
     processCodeAndDisplayResult(barcodeValue); 
 
     const agentName = barcodeInput.getAttribute('data-processed-name') || 'N/A';
     const isAgentFlag = barcodeInput.getAttribute('data-is-agent') || 'false';
 
-    // 2. Manejo de datos DNI para el almacenamiento interno (para la exportación)
     let dniDataFields = {};
     if (barcodeValue.includes('@')) {
         const dniParts = barcodeValue.split('@');
@@ -490,25 +488,24 @@ function submitForm(event) {
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    // 3. Reproducir sonido de confirmación
+    // 1. Reproducir sonido de confirmación (Volumen Máximo)
     playBeep();
 
-    // 4. Feedback Visual: Botón verde por 2 segundos
+    // 2. Feedback Visual: Botón verde por 2 segundos
     sendButtonRect.classList.add('success-flash');
     
-    // 5. Feedback de texto debajo del formulario
+    // 3. Feedback de texto debajo del formulario
     const feedbackContainer = document.getElementById('send-feedback-container');
     feedbackContainer.innerHTML = `<div class="alert alert-success mt-2 text-center" role="alert">
         ✅ Registro de <strong>${agentName}</strong> enviado con éxito.
     </div>`;
 
     setTimeout(() => {
-        // Quitar el color verde
+        // 4. Quitar el color verde y el mensaje
         sendButtonRect.classList.remove('success-flash');
-        // Quitar el mensaje de feedback
         feedbackContainer.innerHTML = '';
         
-        // 6. Resetear la interfaz para el siguiente ingreso
+        // 5. Resetear la interfaz para el siguiente ingreso
         document.getElementById('control-form').reset();
         document.getElementById('barcode_id').value = '';
         document.getElementById('list_id').value = ''; 
@@ -520,7 +517,6 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Corregido: El evento submit del formulario apunta al botón rectangular
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
