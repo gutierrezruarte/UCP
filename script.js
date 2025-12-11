@@ -42,7 +42,7 @@ function playBeep() {
 
         oscillator.type = 'sine'; 
         oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
-        // CORRECCIÓN: Volumen máximo (1.0)
+        // VOLUMEN MÁXIMO
         gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); 
         
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
@@ -438,7 +438,7 @@ function exportarAPDF(tableTitle) {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL Y SONIDO) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -488,7 +488,7 @@ function submitForm(event) {
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    // 1. Reproducir sonido de confirmación (Volumen Máximo)
+    // 1. Reproducir sonido de confirmación
     playBeep();
 
     // 2. Feedback Visual: Botón verde por 2 segundos
