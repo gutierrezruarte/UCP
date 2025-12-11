@@ -2,13 +2,13 @@
 const STORAGE_KEY = 'ingresos_registrados_ucp';
 let DOTACION_DB = {}; 
 let PASES_DB = {}; 
-let html5QrcodeScanner;
+let html5QrcodeScanner = null; 
+const readerId = "reader"; 
 
 // Variables para el control del Modal
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 
 // --- Funciones de Utilidad (showAlert) ---
-
 function showAlert(message, type = 'success') {
     const alertContainer = document.getElementById('alert-container');
     const alertHTML = `
@@ -73,12 +73,14 @@ function loadPases() {
     processExcelFile(fileInput.files[0], (data) => {
         PASES_DB = {};
         let count = 0;
+        // La simulación de conteo de pases es aleatoria, pero la lógica de búsqueda es correcta
         for (let i = 1; i < data.length; i++) {
             const codigo = String(data[i][0]).trim();
             if (codigo && !PASES_DB[codigo]) {
+                // Simulación de que el sistema ya calculó los pases
                 PASES_DB[codigo] = {
-                    pases_60_dias: Math.floor(Math.random() * 10),
-                    pases_15_dias: Math.floor(Math.random() * 5)
+                    pases_60_dias: Math.floor(Math.random() * 10) + 1, // Al menos 1
+                    pases_15_dias: Math.floor(Math.random() * 5) + 1  // Al menos 1
                 };
                 count++;
             }
@@ -88,39 +90,38 @@ function loadPases() {
     });
 }
 
-/**
- * Función central para buscar y mostrar el resultado del código.
- * Se llama después del escaneo O después de ingresar un código manualmente.
- * @param {string} code El código de credencial, afiliado o DNI.
- */
+// --- LÓGICA DE ESCANEO Y PROCESAMIENTO ---
+
 function processCodeAndDisplayResult(code) {
-    if (!code) return;
+    if (!code) {
+        document.getElementById('scan-result').innerHTML = 'Ningún código escaneado';
+        document.getElementById('scan-result').style.color = '#ffc107';
+        document.getElementById('barcode_id').setAttribute('data-processed-name', '');
+        return;
+    }
 
     let scanResultEl = document.getElementById('scan-result');
     let agentName = 'PERSONA EXTERNA (DNI)';
     let pasesInfo = '';
 
-    // 1. Limpiar resultado previo
     scanResultEl.style.color = '#ffc107'; 
     scanResultEl.innerHTML = 'Procesando código...';
     
-    // 2. Búsqueda en Dotación
     if (DOTACION_DB[code]) {
         agentName = DOTACION_DB[code];
-        scanResultEl.style.color = 'lime'; // Color verde para éxito
+        scanResultEl.style.color = 'lime'; 
         
-        // 3. Verificar pases
         const pases = PASES_DB[code];
         if (pases) {
-            pasesInfo = ` | Pases 60d: ${pases.pases_60_dias}, Pases 15d: ${pases.pases_15_dias}`;
+            // Se muestra la información de pases
+            pasesInfo = `<br>Body Scan: ${pases.pases_60_dias} (60 días) / ${pases.pases_15_dias} (15 días)`;
         } else {
-            pasesInfo = ` | SIN REGISTROS DE PASE`;
+            pasesInfo = `<br>Body Scan: SIN REGISTROS (Requiere Carga)`;
         }
         
-        scanResultEl.innerHTML = `✅ AGENTE ENCONTRADO: <strong>${agentName}</strong>${pasesInfo}`;
+        scanResultEl.innerHTML = `✅ AGENTE: <strong>${agentName}</strong>${pasesInfo}`;
 
     } 
-    // 4. Manejar DNI
     else if (code.includes('@')) {
         const dataArray = code.split('@');
         agentName = (dataArray[0] || 'N/A') + ' ' + (dataArray[1] || 'N/A');
@@ -128,7 +129,6 @@ function processCodeAndDisplayResult(code) {
         scanResultEl.style.color = 'yellow';
         scanResultEl.innerHTML = `⚠️ DNI QR: <strong>${agentName}</strong>. Registro como Externo.`;
     }
-    // 5. Código desconocido
     else {
         agentName = 'CÓDIGO DESCONOCIDO';
         scanResultEl.style.color = 'red';
@@ -139,27 +139,21 @@ function processCodeAndDisplayResult(code) {
 }
 
 
-// --- LÓGICA DE ESCANEO Y MODAL ---
-
 function onScanSuccess(decodedText) {
-    stopScannerAndResume(); // Detenemos la cámara y cerramos el modal
+    stopScanner(); 
     scannerModal.hide(); 
 
-    // 1. Colocar el valor escaneado en el campo manual
     document.getElementById('barcode_id').value = decodedText;
-    
-    // 2. Procesar el código (busca nombre y pases)
     processCodeAndDisplayResult(decodedText);
 }
 
-function onScanError(errorMessage) {
-    // Ignorado para no saturar la consola
-}
-
 function startScanner() {
-    // Si el escáner ya fue inicializado y está corriendo, lo detenemos primero para reiniciar
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
+    }
+    
+    if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode(readerId);
     }
     
     const config = { 
@@ -168,13 +162,10 @@ function startScanner() {
         formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE, 
             Html5QrcodeSupportedFormats.CODE_39, 
-            Html5QrcodeSupportedFormats.CODE_128 
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.EAN_13 // Incluir formatos comunes para DNI
         ]
     };
-
-    if (!html5QrcodeScanner) {
-        html5QrcodeScanner = new Html5Qrcode("reader");
-    }
 
     html5QrcodeScanner.start(
         { facingMode: "environment" }, 
@@ -188,15 +179,80 @@ function startScanner() {
     });
 }
 
-function stopScannerAndResume() {
+function stopScanner() {
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
-        html5QrcodeScanner.stop().catch(console.error);
-        // Limpiar la visualización del lector
-        document.getElementById('reader').innerHTML = ''; 
+        html5QrcodeScanner.stop().then(() => {
+            document.getElementById(readerId).innerHTML = ''; 
+        }).catch(console.error);
     }
 }
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO ---
+
+function getReporteData() {
+    // Obtiene todos los registros guardados
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+}
+
+function renderReporteListado() {
+    const data = getReporteData();
+    const container = document.getElementById('reporteListContainer');
+    container.innerHTML = '';
+    
+    if (data.length === 0) {
+        container.innerHTML = '<p class="text-center text-secondary">No hay registros guardados en la base de datos local.</p>';
+        return;
+    }
+    
+    // Muestra todos los registros inicialmente
+    data.reverse().forEach((item, index) => { // Mostrar el más reciente primero
+        const listItem = document.createElement('div');
+        listItem.className = 'list-group-item reporte-item';
+        listItem.innerHTML = `
+            <div><strong>[${item.FECHA} ${item.HORA}]</strong></div>
+            <div><strong>Perfil:</strong> ${item.PERFIL}</div>
+            <div><strong>Código/DNI:</strong> ${item['CREDENCIAL / DNI']}</div>
+            <div><strong>Nombre:</strong> ${item.NOMBRE_PROCESADO}</div>
+            <div><strong>Dominio:</strong> ${item.DOMINIO || 'N/A'}</div>
+        `;
+        container.appendChild(listItem);
+    });
+}
+
+function filterReporteListado() {
+    const searchTerm = document.getElementById('reporteSearch').value.toLowerCase();
+    const data = getReporteData();
+    const container = document.getElementById('reporteListContainer');
+    container.innerHTML = '';
+
+    const filteredData = data.filter(item => {
+        // Busca en todos los campos relevantes
+        return Object.values(item).some(value => 
+            String(value).toLowerCase().includes(searchTerm)
+        );
+    }).reverse(); // Mostrar el más reciente primero
+
+    if (filteredData.length === 0) {
+        container.innerHTML = `<p class="text-center text-warning">No se encontraron resultados para "${searchTerm}".</p>`;
+        return;
+    }
+
+    filteredData.forEach(item => {
+        const listItem = document.createElement('div');
+        listItem.className = 'list-group-item reporte-item';
+        listItem.innerHTML = `
+            <div><strong>[${item.FECHA} ${item.HORA}]</strong></div>
+            <div><strong>Perfil:</strong> ${item.PERFIL}</div>
+            <div><strong>Código/DNI:</strong> ${item['CREDENCIAL / DNI']}</div>
+            <div><strong>Nombre:</strong> ${item.NOMBRE_PROCESADO}</div>
+            <div><strong>Dominio:</strong> ${item.DOMINIO || 'N/A'}</div>
+        `;
+        container.appendChild(listItem);
+    });
+}
+
+
+// --- LÓGICA DE ENVÍO DE FORMULARIO (CORREGIDA PARA NUEVO ESCANEO) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -214,10 +270,9 @@ function submitForm(event) {
         return;
     }
     
-    // Asegurarse de procesar el código si fue introducido manualmente y no se ha procesado
+    // Asegurarse de procesar el código antes de enviar (para obtener el NOMBRE_PROCESADO)
     processCodeAndDisplayResult(barcodeValue); 
 
-    // Recoger datos
     const formData = {
         FECHA: new Date().toLocaleDateString('es-AR'),
         HORA: new Date().toLocaleTimeString('es-AR', { hour12: false }),
@@ -229,43 +284,39 @@ function submitForm(event) {
         'DESTINO': 'Unidad de Control Penitenciario'
     };
 
-    // Guardar en la base de datos local (simulada)
     const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    showAlert(`✅ Ingreso registrado con éxito. Registros totales: ${storedData.length}.`, 'success');
+    showAlert(`✅ Ingreso registrado con éxito. Código: ${barcodeValue}.`, 'success');
     
-    // Resetear la interfaz
+    // CORRECCIÓN: Resetear completamente la interfaz para el siguiente escaneo
     document.getElementById('control-form').reset();
-    barcodeInput.value = '';
-    document.getElementById('scan-result').innerHTML = 'Ningún código escaneado';
-    document.getElementById('scan-result').style.color = '#ffc107';
+    document.getElementById('barcode_id').value = '';
+    processCodeAndDisplayResult(''); // Limpia la visualización de escaneo y deja lista la interfaz
 }
 
 
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Establecer Event Listener para el formulario
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
-    // 2. Event Listener para actualizar el resultado al escribir manualmente
     document.getElementById('barcode_id').addEventListener('change', (e) => {
         processCodeAndDisplayResult(e.target.value.trim());
     });
 
-    // 3. Eventos para iniciar y detener el escáner con el modal de Bootstrap
+    // Inicializar el evento de búsqueda para el reporte
+    document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
+
+    // Eventos del Modal de Escáner
     const modalElement = document.getElementById('scannerModal');
-    
-    // Inicia el escáner cuando el modal se muestra
     modalElement.addEventListener('shown.bs.modal', () => {
         startScanner();
     });
 
-    // Detiene el escáner cuando el modal se oculta (ej: al hacer clic fuera o cerrar)
     modalElement.addEventListener('hidden.bs.modal', () => {
-        stopScannerAndResume();
+        stopScanner();
     });
 
-    console.log("Aplicación de Control General cargada.");
+    console.log("Aplicación de Control General cargada. Modo oscuro activo.");
 });
