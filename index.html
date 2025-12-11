@@ -34,7 +34,7 @@
 
             <div class="card mb-3 custom-card">
                 <div class="card-header border-warning text-warning fw-bold">
-                    <i class="bi bi-list"></i> PERFIL <span class="required-badge">*</span>
+                    <i class="bi bi-person-badge"></i> PERFIL <span class="required-badge">*</span>
                 </div>
                 <div class="card-body">
                     <div class="input-group">
@@ -62,7 +62,7 @@
 
             <div class="card mb-3 custom-card">
                 <div class="card-header text-warning fw-bold">
-                    <i class="bi bi-textarea-t"></i> DOMINIO
+                    <i class="bi bi-car-front"></i> DOMINIO
                 </div>
                 <div class="card-body">
                     <textarea rows="2" class="form-control custom-input" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
@@ -71,7 +71,7 @@
             
             <div class="card mb-3 custom-card">
                 <div class="card-header text-warning fw-bold">
-                    <i class="bi bi-textarea"></i> OBSERVACIONES
+                    <i class="bi bi-card-text"></i> OBSERVACIONES
                 </div>
                 <div class="card-body">
                     <textarea rows="2" class="form-control custom-input" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
@@ -80,15 +80,15 @@
 
             <div class="card mb-3 custom-card">
                 <div class="card-header text-warning fw-bold">
-                    <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla
+                    <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla <span class="required-badge">*</span>
                 </div>
                 <div class="card-body text-center">
-                    <div id="scan-result" class="mb-3 p-2 text-warning fw-bold">
+                    <div id="scan-result" class="mb-3 p-2 text-warning fw-bold" style="min-height: 20px;">
                         Ningún código escaneado
                     </div>
                     
                     <div class="input-group">
-                        <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Código escaneado" required readonly>
+                        <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
                         
                         <button type="button" class="btn btn-warning" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
                             <i class="bi bi-qr-code-scan" style="font-size: 1.5rem;"></i>
@@ -102,7 +102,9 @@
 
         </form>
 
-    </div> <button type="submit" id="sendButton" class="floating-send-btn" form="control-form" title="Registrar Ingreso">
+    </div> 
+
+    <button type="submit" id="sendButton" class="floating-send-btn" form="control-form" title="Registrar Ingreso">
         <i class="bi bi-send-fill"></i>
     </button>
 
