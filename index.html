@@ -1,190 +1,28 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CONTROL GENERAL - UCP</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
-    
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
-    <nav class="navbar navbar-dark bg-dark border-bottom border-warning">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">CONTROL GENERAL</span>
-            <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#adminModal" title="Administrar Dotación y Pases">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
-        </div>
-    </nav>
-
-    <div class="container my-3 pb-5">
-        
-        <div id="alert-container"></div>
-
-        <form id="control-form">
-
-            <div class="card mb-3 custom-card">
-                <div class="card-header border-warning text-warning fw-bold">
-                    <i class="bi bi-person-badge"></i> PERFIL <span class="required-badge">*</span>
+<div class="modal fade" id="reporteModal" tabindex="-1" aria-labelledby="reporteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header bg-dark border-warning">
+                <h5 class="modal-title" id="reporteModalLabel">📋 Listado Diario de Ingresos</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="reporteSearch" class="form-label">Buscar por Fecha, Código, Dominio, etc.</label>
+                    <input type="text" class="form-control custom-input" id="reporteSearch" placeholder="Escriba aquí para filtrar..." oninput="filterReporteListado()">
                 </div>
-                <div class="card-body">
-                    <div class="input-group">
-                        <select class="form-select custom-input" id="list_id" data-name="PERFIL" required>
-                            <option value="" selected>- Seleccione -</option>
-                            <option value="PERSONAL">PERSONAL</option>
-                            <option value="MOVIL">MOVIL</option>
-                            <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
-                            <option value="DOCENTE">DOCENTE</option>
-                            <option value="ABOGADO">ABOGADO</option>
-                            <option value="PASTORAL">PASTORAL</option>
-                            <option value="CANTINA">CANTINA</option>
-                            <option value="PROVEEDORES">PROVEEDORES</option>
-                            <option value="OBRA">OBRA</option>
-                            <option value="VISITA">VISITA</option>
-                            <option value="CPA">CPA</option>
-                            <option value="OTROS">OTROS</option>
-                        </select>
-                        <button type="button" class="btn btn-warning" title="Buscar Perfil">
-                            <i class="bi bi-search"></i>
-                        </button>
+
+                <h6 class="text-warning mt-4">AGENTE (CREDENCIAL/AFILIADO)</h6>
+                <div id="agentesTableContainer" class="table-responsive mb-5">
                     </div>
-                </div>
-            </div>
 
-            <div class="card mb-3 custom-card">
-                <div class="card-header text-warning fw-bold">
-                    <i class="bi bi-car-front"></i> DOMINIO
-                </div>
-                <div class="card-body">
-                    <textarea rows="2" class="form-control custom-input" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
-                </div>
-            </div>
-            
-            <div class="card mb-3 custom-card">
-                <div class="card-header text-warning fw-bold">
-                    <i class="bi bi-card-text"></i> OBSERVACIONES
-                </div>
-                <div class="card-body">
-                    <textarea rows="2" class="form-control custom-input" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
-                </div>
-            </div>
-
-            <div class="card mb-3 custom-card">
-                <div class="card-header text-warning fw-bold">
-                    <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla <span class="required-badge">*</span>
-                </div>
-                <div class="card-body text-center">
-                    <div id="scan-result" class="mb-3 p-2 text-warning fw-bold" style="min-height: 20px;">
-                        Ningún código escaneado
+                <h6 class="text-warning mt-4">OTROS / VISITAS (DNI/MANUAL)</h6>
+                <div id="otrosTableContainer" class="table-responsive">
                     </div>
-                    
-                    <div class="input-group">
-                        <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
-                        
-                        <button type="button" class="btn btn-warning" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
-                            <i class="bi bi-qr-code-scan" style="font-size: 1.5rem;"></i>
-                        </button>
-                    </div>
-                </div>
+                
             </div>
-            
-            <input type="hidden" id="date_id" data-name="FECHA">
-            <input type="hidden" id="time_id" data-name="HORA">
-
-        </form>
-
-    </div> 
-
-    <button type="submit" id="sendButton" class="floating-send-btn" form="control-form" title="Registrar Ingreso">
-        <i class="bi bi-send-fill"></i>
-    </button>
-
-
-    <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen modal-dialog-centered">
-            <div class="modal-content bg-dark">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title text-white" id="scannerModalLabel">ESCANEAR CÓDIGO</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopScanner()"></button>
-                </div>
-                <div class="modal-body p-1 d-flex justify-content-center align-items-center">
-                    <div id="reader" style="width: 100%; max-width: 500px; max-height: 80vh;"></div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScanner()">Cerrar y Cancelar Escaneo</button>
-                </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
-
-
-    <div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white">
-                <div class="modal-header bg-dark border-warning">
-                    <h5 class="modal-title" id="adminModalLabel">Menú de Administración</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="d-grid gap-2 mb-3">
-                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#reporteModal" onclick="renderReporteListado()">
-                            <i class="bi bi-list-columns"></i> VER LISTADO DIARIO
-                        </button>
-                    </div>
-                    <hr class="border-secondary">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Carga y Actualización de Dotación</label>
-                        <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
-                        <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
-                        <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
-                    </div>
-                    <hr class="border-secondary">
-                    <div class="mb-3">
-                        <label class="form-label">Registros de Pases (Body Scan)</label>
-                        <input type="file" class="form-control bg-secondary text-white" id="pasesFile" accept=".xlsx, .xls">
-                        <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
-                        <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
-                    </div>
-                    <div id="pases-status" class="mt-2 text-warning"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="reporteModal" tabindex="-1" aria-labelledby="reporteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content bg-dark text-white">
-                <div class="modal-header bg-dark border-warning">
-                    <h5 class="modal-title" id="reporteModalLabel">📋 Listado Diario de Ingresos</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="reporteSearch" class="form-label">Buscar por Fecha, Código, Dominio, etc.</label>
-                        <input type="text" class="form-control custom-input" id="reporteSearch" placeholder="Escriba aquí para filtrar..." oninput="filterReporteListado()">
-                    </div>
-                    <div id="reporteListContainer" class="list-group">
-                        </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
-</body>
-</html>
+</div>
