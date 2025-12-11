@@ -8,6 +8,7 @@ let html5QrcodeScanner;
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 
 // --- Funciones de Utilidad (showAlert) ---
+
 function showAlert(message, type = 'success') {
     const alertContainer = document.getElementById('alert-container');
     const alertHTML = `
@@ -18,7 +19,6 @@ function showAlert(message, type = 'success') {
     `;
     alertContainer.innerHTML = alertHTML;
     setTimeout(() => {
-        // Cierra la alerta después de 5 segundos
         const alertEl = alertContainer.querySelector('.alert');
         if (alertEl) {
             const bsAlert = bootstrap.Alert.getInstance(alertEl);
@@ -27,8 +27,7 @@ function showAlert(message, type = 'success') {
     }, 5000);
 }
 
-// --- LÓGICA DE CARGA DE EXCEL (loadDotacion, loadPases, processExcelFile) ---
-// (Estas funciones son idénticas a la versión anterior, solo se incluye una para evitar repetición excesiva)
+// --- LÓGICA DE CARGA DE EXCEL (loadDotacion, loadPases) ---
 
 function processExcelFile(file, handlerFunction) {
     const reader = new FileReader();
@@ -61,7 +60,6 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        console.log("Dotación cargada.");
     });
 }
 
@@ -90,23 +88,29 @@ function loadPases() {
     });
 }
 
-// --- LÓGICA DE ESCANEO Y MODAL ---
+/**
+ * Función central para buscar y mostrar el resultado del código.
+ * Se llama después del escaneo O después de ingresar un código manualmente.
+ * @param {string} code El código de credencial, afiliado o DNI.
+ */
+function processCodeAndDisplayResult(code) {
+    if (!code) return;
 
-function onScanSuccess(decodedText) {
-    html5QrcodeScanner.stop().catch(console.error); // Detenemos la cámara
-    scannerModal.hide(); // Cerramos el modal
-
-    document.getElementById('barcode_id').value = decodedText;
     let scanResultEl = document.getElementById('scan-result');
     let agentName = 'PERSONA EXTERNA (DNI)';
     let pasesInfo = '';
+
+    // 1. Limpiar resultado previo
+    scanResultEl.style.color = '#ffc107'; 
+    scanResultEl.innerHTML = 'Procesando código...';
     
-    // Búsqueda en Dotación
-    if (DOTACION_DB[decodedText]) {
-        agentName = DOTACION_DB[decodedText];
+    // 2. Búsqueda en Dotación
+    if (DOTACION_DB[code]) {
+        agentName = DOTACION_DB[code];
         scanResultEl.style.color = 'lime'; // Color verde para éxito
         
-        const pases = PASES_DB[decodedText];
+        // 3. Verificar pases
+        const pases = PASES_DB[code];
         if (pases) {
             pasesInfo = ` | Pases 60d: ${pases.pases_60_dias}, Pases 15d: ${pases.pases_15_dias}`;
         } else {
@@ -116,37 +120,51 @@ function onScanSuccess(decodedText) {
         scanResultEl.innerHTML = `✅ AGENTE ENCONTRADO: <strong>${agentName}</strong>${pasesInfo}`;
 
     } 
-    // Manejar DNI
-    else if (decodedText.includes('@')) {
-        const dataArray = decodedText.split('@');
+    // 4. Manejar DNI
+    else if (code.includes('@')) {
+        const dataArray = code.split('@');
         agentName = (dataArray[0] || 'N/A') + ' ' + (dataArray[1] || 'N/A');
         
         scanResultEl.style.color = 'yellow';
         scanResultEl.innerHTML = `⚠️ DNI QR: <strong>${agentName}</strong>. Registro como Externo.`;
     }
-    // Código desconocido
+    // 5. Código desconocido
     else {
         agentName = 'CÓDIGO DESCONOCIDO';
         scanResultEl.style.color = 'red';
-        scanResultEl.innerHTML = `❌ CÓDIGO NO IDENTIFICADO. Nombre: ${agentName}`;
+        scanResultEl.innerHTML = `❌ CÓDIGO/DNI NO IDENTIFICADO. Nombre: ${agentName}`;
     }
     
     document.getElementById('barcode_id').setAttribute('data-processed-name', agentName);
 }
 
+
+// --- LÓGICA DE ESCANEO Y MODAL ---
+
+function onScanSuccess(decodedText) {
+    stopScannerAndResume(); // Detenemos la cámara y cerramos el modal
+    scannerModal.hide(); 
+
+    // 1. Colocar el valor escaneado en el campo manual
+    document.getElementById('barcode_id').value = decodedText;
+    
+    // 2. Procesar el código (busca nombre y pases)
+    processCodeAndDisplayResult(decodedText);
+}
+
 function onScanError(errorMessage) {
-    // Esto se ejecuta constantemente. Lo ignoramos.
+    // Ignorado para no saturar la consola
 }
 
 function startScanner() {
-    // Si el escáner ya fue inicializado y está corriendo, lo detenemos primero para reiniciarlo
+    // Si el escáner ya fue inicializado y está corriendo, lo detenemos primero para reiniciar
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
     }
     
     const config = { 
         fps: 10, 
-        qrbox: { width: 300, height: 200 }, // Ajuste para el modal
+        qrbox: { width: 300, height: 200 }, 
         formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE, 
             Html5QrcodeSupportedFormats.CODE_39, 
@@ -154,7 +172,6 @@ function startScanner() {
         ]
     };
 
-    // La instancia debe ser creada cada vez que se usa un nuevo elemento DOM (aunque es el mismo ID, es buena práctica)
     if (!html5QrcodeScanner) {
         html5QrcodeScanner = new Html5Qrcode("reader");
     }
@@ -174,7 +191,7 @@ function startScanner() {
 function stopScannerAndResume() {
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
-        // Opcional: limpiar la visualización
+        // Limpiar la visualización del lector
         document.getElementById('reader').innerHTML = ''; 
     }
 }
@@ -184,17 +201,21 @@ function stopScannerAndResume() {
 function submitForm(event) {
     event.preventDefault();
 
-    const barcodeValue = document.getElementById('barcode_id').value;
+    const barcodeInput = document.getElementById('barcode_id');
+    const barcodeValue = barcodeInput.value.trim();
     const perfilValue = document.getElementById('list_id').value;
 
     if (!barcodeValue) {
-        showAlert("'CREDENCIAL / DNI' es un campo obligatorio. Escanee el código.", 'danger');
+        showAlert("'CREDENCIAL / DNI' es un campo obligatorio. Ingrese o escanee el código.", 'danger');
         return;
     }
     if (!perfilValue) {
         showAlert("'PERFIL' es un campo obligatorio.", 'danger');
         return;
     }
+    
+    // Asegurarse de procesar el código si fue introducido manualmente y no se ha procesado
+    processCodeAndDisplayResult(barcodeValue); 
 
     // Recoger datos
     const formData = {
@@ -204,7 +225,7 @@ function submitForm(event) {
         DOMINIO: document.getElementById('text1_id').value,
         OBSERVACIONES: document.getElementById('text2_id').value,
         'CREDENCIAL / DNI': barcodeValue,
-        'NOMBRE_PROCESADO': document.getElementById('barcode_id').getAttribute('data-processed-name') || 'N/A',
+        'NOMBRE_PROCESADO': barcodeInput.getAttribute('data-processed-name') || 'N/A',
         'DESTINO': 'Unidad de Control Penitenciario'
     };
 
@@ -217,18 +238,23 @@ function submitForm(event) {
     
     // Resetear la interfaz
     document.getElementById('control-form').reset();
-    document.getElementById('barcode_id').value = '';
+    barcodeInput.value = '';
     document.getElementById('scan-result').innerHTML = 'Ningún código escaneado';
     document.getElementById('scan-result').style.color = '#ffc107';
 }
 
 
-// --- Inicialización y Event Listeners del Modal ---
+// --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Establecer Event Listener para el formulario
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
-    // 2. Eventos para iniciar y detener el escáner con el modal de Bootstrap
+    // 2. Event Listener para actualizar el resultado al escribir manualmente
+    document.getElementById('barcode_id').addEventListener('change', (e) => {
+        processCodeAndDisplayResult(e.target.value.trim());
+    });
+
+    // 3. Eventos para iniciar y detener el escáner con el modal de Bootstrap
     const modalElement = document.getElementById('scannerModal');
     
     // Inicia el escáner cuando el modal se muestra
@@ -241,5 +267,5 @@ document.addEventListener('DOMContentLoaded', () => {
         stopScannerAndResume();
     });
 
-    console.log("Aplicación de Control General cargada. Lista para escanear.");
+    console.log("Aplicación de Control General cargada.");
 });
