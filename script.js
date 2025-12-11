@@ -4,7 +4,7 @@ let DOTACION_DB = {};
 let PASES_DB = {}; 
 let html5QrcodeScanner = null; 
 const readerId = "reader"; 
-let lastFilteredData = []; // Almacena los últimos datos filtrados para la exportación
+let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 const sendButton = document.getElementById('sendButton');
@@ -90,7 +90,6 @@ function loadPases() {
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
     });
 }
-
 
 // --- LÓGICA DE ESCANEO Y PROCESAMIENTO ---
 
@@ -227,7 +226,7 @@ function generateReportTableHTML(data, title) {
         return `<p class="text-secondary">No hay ${title} registrados.</p>`;
     }
 
-    // Encabezados dinámicos para el DNI (solo para la tabla, no la exportación final)
+    // Encabezados dinámicos para el DNI (solo para la tabla local)
     const isOtros = title === 'Otros';
     let headers = `
         <th>Hora</th>
@@ -238,7 +237,6 @@ function generateReportTableHTML(data, title) {
         <th>Obs.</th>
     `;
     
-    // Si es "Otros", mostramos los campos de DNI separados en la tabla local
     if (isOtros) {
         headers = `
             <th>Hora</th>
@@ -321,7 +319,6 @@ function filterReporteListado() {
         });
     });
 
-    // Guardamos los datos filtrados para su posterior exportación
     lastFilteredData = filteredData;
 
     const agentesData = filteredData.filter(item => item.IS_AGENT === 'true');
@@ -385,6 +382,7 @@ function prepareExportData(tableTitle) {
 
 function exportarAExcel(tableTitle) {
     const { header, body } = prepareExportData(tableTitle);
+
     const data = [header, ...body];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
@@ -405,8 +403,8 @@ function exportarAPDF(tableTitle) {
     const searchTerm = document.getElementById('reporteSearch').value.trim();
 
     // Membrete con fondo blanco y letras negras
-    doc.setFillColor(255, 255, 255); // Fondo blanco
-    doc.setTextColor(0, 0, 0); // Letras negras
+    doc.setFillColor(255, 255, 255); 
+    doc.setTextColor(0, 0, 0); 
     doc.setFontSize(14);
     doc.text(`REPORTE DE INGRESOS - ${tableTitle.toUpperCase()}`, 14, 15);
     
@@ -420,8 +418,8 @@ function exportarAPDF(tableTitle) {
         head: [header],
         body: body,
         startY: 25,
-        styles: { fontSize: 8, cellPadding: 2, fillColor: [255, 255, 255], textColor: [0, 0, 0] }, // Fondo blanco, texto negro
-        headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' }, // Gris claro para encabezados
+        styles: { fontSize: 8, cellPadding: 2, fillColor: [255, 255, 255], textColor: [0, 0, 0] }, 
+        headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' }, 
         margin: { top: 10 }
     });
 
@@ -463,7 +461,6 @@ function submitForm(event) {
             DNI_DATA_1: dniParts[0] || '',
             DNI_DATA_2: dniParts[1] || '',
             DNI_DATA_3: dniParts[2] || '',
-            // Puedes agregar más si el QR de tu país tiene más de 3 datos clave
         };
     }
 
@@ -477,7 +474,7 @@ function submitForm(event) {
         'NOMBRE_PROCESADO': agentName,
         'IS_AGENT': isAgentFlag, 
         'DESTINO': 'Unidad de Control Penitenciario',
-        ...dniDataFields // Añade campos DNI si existen
+        ...dniDataFields 
     };
 
     const storedData = getReporteData();
@@ -487,7 +484,7 @@ function submitForm(event) {
     // 1. Feedback Visual: Botón verde por 2 segundos
     sendButton.classList.add('success-flash');
     
-    // 2. Feedback de texto debajo del botón flotante
+    // 2. Feedback de texto abajo del botón flotante
     const feedbackContainer = document.getElementById('send-feedback-container');
     feedbackContainer.innerHTML = `<div class="alert alert-success mt-2 text-center" role="alert">
         ✅ Ingreso de <strong>${agentName}</strong> registrado.
@@ -529,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Evento del Modal de Reporte
+    const reporteModalElement = document.getElementById('reporteModal');
     reporteModalElement.addEventListener('shown.bs.modal', () => {
         renderReporteListado();
     });
