@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -103,14 +103,18 @@
             <input type="hidden" id="date_id" data-name="FECHA">
             <input type="hidden" id="time_id" data-name="HORA">
 
+            <div class="d-grid gap-2 mt-4 mb-5">
+                <button type="submit" id="sendButtonRect" class="btn btn-warning btn-block btn-lg registrar-ingreso-btn">
+                    <i class="bi bi-send-fill"></i> REGISTRAR INGRESO
+                </button>
+            </div>
+            <button type="submit" id="sendButton" class="floating-send-btn hidden" form="control-form" title="Registrar Ingreso">
+                <i class="bi bi-send-fill"></i>
+            </button>
+
         </form>
 
     </div> 
-
-    <button type="submit" id="sendButton" class="floating-send-btn" form="control-form" title="Registrar Ingreso">
-        <i class="bi bi-send-fill"></i>
-    </button>
-
 
     <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen modal-dialog-centered">
