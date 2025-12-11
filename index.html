@@ -3,47 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Registro de Ingresos Local</title>
-    <link rel="stylesheet" href="style.css">
+    <title>CONTROL GENERAL - UCP</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <div class="container">
-        <h1>Registro de Ingresos</h1>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">CONTROL GENERAL</span>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#adminModal">
+                <i class="bi bi-gear"></i> Administrar
+            </button>
+        </div>
+    </nav>
 
-        <div class="mode-selector">
-            <button id="mode-agente" class="active">Modo Agente (Código de Barras)</button>
-            <button id="mode-persona">Modo Público (DNI QR)</button>
+    <div class="container my-4">
+        
+        <div id="alert-container"></div>
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">1. Credencial / DNI <span class="required-badge">*</span></h5>
+            </div>
+            <div class="card-body">
+                <div id="reader" style="width: 100%; height: 300px;"></div>
+                <div id="scan-result" class="mt-3 p-2 border rounded bg-light text-center">
+                    Escanee su **CREDENCIAL** (código de barras) o **DNI** (QR).
+                </div>
+                <input type="text" class="form-control mt-2" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Código escaneado aparecerá aquí" required readonly>
+            </div>
         </div>
 
-        <div id="scanner-container">
-            <div id="reader"></div>
-        </div>
+        <form id="control-form">
 
-        <div class="results-area">
-            <h2>Datos del Ingreso</h2>
-            
-            <div id="results-agente" class="active">
-                <p><strong>CÓDIGO/AFILIADO:</strong> <span id="data-agente">---</span></p>
-                <button id="register-agente-btn" class="register-button" disabled>Registrar Agente</button>
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">2. Información del Ingreso</h5>
+                </div>
+                <div class="card-body">
+                    
+                    <div class="mb-3">
+                        <label for="list_id" class="form-label">PERFIL <span class="required-badge">*</span></label>
+                        <select class="form-select" id="list_id" data-name="PERFIL" required>
+                            <option value="" selected>- Seleccione -</option>
+                            <option value="PERSONAL">PERSONAL</option>
+                            <option value="MOVIL">MOVIL</option>
+                            <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
+                            <option value="DOCENTE">DOCENTE</option>
+                            <option value="ABOGADO">ABOGADO</option>
+                            <option value="PASTORAL">PASTORAL</option>
+                            <option value="CANTINA">CANTINA</option>
+                            <option value="PROVEEDORES">PROVEEDORES</option>
+                            <option value="OBRA">OBRA</option>
+                            <option value="VISITA">VISITA</option>
+                            <option value="CPA">CPA</option>
+                            <option value="OTROS">OTROS</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="text1_id" class="form-label">DOMINIO</label>
+                        <textarea rows="2" class="form-control" id="text1_id" data-name="DOMINIO"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="text2_id" class="form-label">OBSERVACIONES</label>
+                        <textarea rows="2" class="form-control" id="text2_id" data-name="OBSERVACIONES"></textarea>
+                    </div>
+                    
+                    <input type="hidden" id="date_id" data-name="FECHA">
+                    <input type="hidden" id="time_id" data-name="HORA">
+
+                </div>
             </div>
 
-            <div id="results-persona" class="hidden">
-                <p><strong>Modo:</strong> DNI QR - (Datos separados por "@")</p>
-                <p><strong>NOMBRE:</strong> <span id="nombre-persona">---</span></p>
-                <p><strong>APELLIDO:</strong> <span id="apellido-persona">---</span></p>
-                <p><strong>DNI:</strong> <span id="dni-persona">---</span></p>
-                <p class="raw-data">Dato Crudo: <span id="raw-data-persona">---</span></p>
-                <button id="register-persona-btn" class="register-button" disabled>Registrar Persona</button>
+            <div class="d-grid gap-2 mb-5">
+                <button type="submit" id="sendButton" class="btn btn-success btn-lg">
+                    <i class="bi bi-send"></i> Registrar Ingreso
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="adminModalLabel">Menú de Administración</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Carga y Actualización de Dotación</label>
+                        <input type="file" class="form-control" id="dotacionFile" accept=".xlsx, .xls">
+                        <button type="button" class="btn btn-sm btn-info w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
+                        <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Registros de Pases (Body Scan)</label>
+                        <input type="file" class="form-control" id="pasesFile" accept=".xlsx, .xls">
+                        <button type="button" class="btn btn-sm btn-info w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
+                        <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
+                    </div>
+                    <div id="pases-status" class="mt-2 text-info"></div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
