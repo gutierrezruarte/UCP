@@ -29,6 +29,9 @@
     <div class="container my-3 pb-5">
         
         <div id="alert-container"></div>
+        
+        <div id="send-feedback-container" class="my-2"></div>
+
 
         <form id="control-form">
 
@@ -38,13 +41,24 @@
                 </div>
                 <div class="card-body">
                     <div class="input-group">
-                        <input type="text" class="form-control custom-input text-center" id="perfil_display" data-name="PERFIL" placeholder="Seleccionar Perfil" required readonly>
-
-                        <button type="button" class="btn btn-warning" title="Seleccionar Perfil" data-bs-toggle="modal" data-bs-target="#perfilModal">
-                            <i class="bi bi-list-check"></i>
+                        <select class="form-select custom-input" id="list_id" data-name="PERFIL" required>
+                            <option value="" selected>- Seleccione -</option>
+                            <option value="PERSONAL">PERSONAL</option>
+                            <option value="MOVIL">MOVIL</option>
+                            <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
+                            <option value="DOCENTE">DOCENTE</option>
+                            <option value="ABOGADO">ABOGADO</option>
+                            <option value="PASTORAL">PASTORAL</option>
+                            <option value="CANTINA">CANTINA</option>
+                            <option value="PROVEEDORES">PROVEEDORES</option>
+                            <option value="OBRA">OBRA</option>
+                            <option value="VISITA">VISITA</option>
+                            <option value="CPA">CPA</option>
+                            <option value="OTROS">OTROS</option>
+                        </select>
+                        <button type="button" class="btn btn-warning btn-perfil-search" title="Buscar Perfil">
+                            <i class="bi bi-search"></i>
                         </button>
-                        
-                        <input type="hidden" id="list_id" value="">
                     </div>
                 </div>
             </div>
@@ -98,22 +112,6 @@
     </button>
 
 
-    <div class="modal fade" id="perfilModal" tabindex="-1" aria-labelledby="perfilModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content bg-dark text-white">
-                <div class="modal-header bg-dark border-warning">
-                    <h5 class="modal-title" id="perfilModalLabel">SELECCIONAR PERFIL</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="perfilOptionsContainer">
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
     <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen modal-dialog-centered">
             <div class="modal-content bg-dark">
@@ -140,20 +138,21 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="d-grid gap-2 mb-3">
+                    
+                    <h6 class="text-warning">REPORTES</h6>
+                    <div class="d-grid gap-2 mb-4">
                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#reporteModal" onclick="renderReporteListado()">
                             <i class="bi bi-list-columns"></i> VER LISTADO DIARIO
                         </button>
                     </div>
-                    <hr class="border-secondary">
                     
+                    <h6 class="text-warning">IMPORTACIÓN DE DATOS (EXCEL)</h6>
                     <div class="mb-3">
                         <label class="form-label">Carga y Actualización de Dotación</label>
                         <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
                         <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
                         <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
                     </div>
-                    <hr class="border-secondary">
                     <div class="mb-3">
                         <label class="form-label">Registros de Pases (Body Scan)</label>
                         <input type="file" class="form-control bg-secondary text-white" id="pasesFile" accept=".xlsx, .xls">
@@ -161,6 +160,7 @@
                         <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
                     </div>
                     <div id="pases-status" class="mt-2 text-warning"></div>
+
                 </div>
             </div>
         </div>
