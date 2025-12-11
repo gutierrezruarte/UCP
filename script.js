@@ -28,7 +28,7 @@ function showAlert(message, type = 'success') {
     }, 5000);
 }
 
-// --- LÓGICA DE CARGA DE EXCEL (loadDotacion, loadPases) ---
+// --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
 
 function processExcelFile(file, handlerFunction) {
     const reader = new FileReader();
@@ -150,12 +150,12 @@ function onScanError(errorMessage) {
 }
 
 function startScanner() {
-    // Detenemos cualquier escaneo previo
+    // 1. Detenemos cualquier escaneo previo (por si acaso)
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
     }
     
-    // Aseguramos que solo inicializamos la clase una vez
+    // 2. CORRECCIÓN CRÍTICA: Re-inicializar la instancia si se detuvo completamente
     if (!html5QrcodeScanner) {
         html5QrcodeScanner = new Html5Qrcode(readerId);
     }
@@ -172,12 +172,14 @@ function startScanner() {
     };
 
     html5QrcodeScanner.start(
-        { facingMode: "environment" }, 
+        { facingMode: "environment" }, // Prioriza la cámara trasera
         config,
         onScanSuccess,
         onScanError
     ).catch(err => {
         console.error("No se pudo iniciar la cámara:", err);
+        // Si falla, detenemos la instancia para el siguiente intento
+        html5QrcodeScanner = null; 
         showAlert("ERROR: No se pudo iniciar la cámara. Verifique permisos.", 'danger');
         scannerModal.hide();
     });
@@ -192,7 +194,7 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (Sin Cambios) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -232,7 +234,7 @@ function filterReporteListado() {
         return Object.values(item).some(value => 
             String(value).toLowerCase().includes(searchTerm)
         );
-    }).reverse();
+    }).reverse(); 
 
     if (filteredData.length === 0) {
         container.innerHTML = `<p class="text-center text-warning">No se encontraron resultados para "${searchTerm}".</p>`;
@@ -294,7 +296,7 @@ function submitForm(event) {
     // Resetear la interfaz
     document.getElementById('control-form').reset();
     document.getElementById('barcode_id').value = '';
-    processCodeAndDisplayResult(''); // Limpia la visualización de escaneo y deja lista la interfaz
+    processCodeAndDisplayResult('');
 }
 
 
@@ -311,12 +313,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Eventos del Modal de Escáner
     const modalElement = document.getElementById('scannerModal');
     
-    // CORRECCIÓN CRÍTICA: Inicia el escáner cuando el modal SE MUESTRA COMPLETAMENTE
+    // INICIA EL ESCÁNER SOLO CUANDO EL MODAL ESTÁ VISIBLE (SOLUCIONA EL FALLO)
     modalElement.addEventListener('shown.bs.modal', () => {
         startScanner();
     });
 
-    // Detiene el escáner cuando el modal se oculta (el botón de cierre llama a stopScanner())
+    // Detiene el escáner cuando el modal se oculta
     modalElement.addEventListener('hidden.bs.modal', () => {
         stopScanner();
     });
