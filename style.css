@@ -28,10 +28,12 @@ body {
 }
 
 .navbar-escudo {
-    /* Estilo del escudo a la derecha */
-    height: 40px; 
+    /* CORRECCIÓN: Ajuste de tamaño para que sea similar a la altura del texto */
+    height: 25px; 
     width: auto;
     margin-left: 10px;
+    /* Para asegurar alineación vertical en la barra */
+    vertical-align: middle; 
 }
 
 /* Forzar que el contenedor principal ocupe todo el ancho disponible */
