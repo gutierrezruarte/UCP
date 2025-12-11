@@ -9,6 +9,7 @@ const readerId = "reader";
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 
 // --- Funciones de Utilidad (showAlert) ---
+
 function showAlert(message, type = 'success') {
     const alertContainer = document.getElementById('alert-container');
     const alertHTML = `
@@ -73,14 +74,12 @@ function loadPases() {
     processExcelFile(fileInput.files[0], (data) => {
         PASES_DB = {};
         let count = 0;
-        // La simulación de conteo de pases es aleatoria, pero la lógica de búsqueda es correcta
         for (let i = 1; i < data.length; i++) {
             const codigo = String(data[i][0]).trim();
             if (codigo && !PASES_DB[codigo]) {
-                // Simulación de que el sistema ya calculó los pases
                 PASES_DB[codigo] = {
-                    pases_60_dias: Math.floor(Math.random() * 10) + 1, // Al menos 1
-                    pases_15_dias: Math.floor(Math.random() * 5) + 1  // Al menos 1
+                    pases_60_dias: Math.floor(Math.random() * 10) + 1, 
+                    pases_15_dias: Math.floor(Math.random() * 5) + 1  
                 };
                 count++;
             }
@@ -113,7 +112,6 @@ function processCodeAndDisplayResult(code) {
         
         const pases = PASES_DB[code];
         if (pases) {
-            // Se muestra la información de pases
             pasesInfo = `<br>Body Scan: ${pases.pases_60_dias} (60 días) / ${pases.pases_15_dias} (15 días)`;
         } else {
             pasesInfo = `<br>Body Scan: SIN REGISTROS (Requiere Carga)`;
@@ -147,11 +145,17 @@ function onScanSuccess(decodedText) {
     processCodeAndDisplayResult(decodedText);
 }
 
+function onScanError(errorMessage) {
+    // Ignorado
+}
+
 function startScanner() {
+    // Detenemos cualquier escaneo previo
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
     }
     
+    // Aseguramos que solo inicializamos la clase una vez
     if (!html5QrcodeScanner) {
         html5QrcodeScanner = new Html5Qrcode(readerId);
     }
@@ -163,7 +167,7 @@ function startScanner() {
             Html5QrcodeSupportedFormats.QR_CODE, 
             Html5QrcodeSupportedFormats.CODE_39, 
             Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.EAN_13 // Incluir formatos comunes para DNI
+            Html5QrcodeSupportedFormats.EAN_13
         ]
     };
 
@@ -182,15 +186,15 @@ function startScanner() {
 function stopScanner() {
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().then(() => {
+            // Limpiamos el contenido del elemento #reader al detener
             document.getElementById(readerId).innerHTML = ''; 
         }).catch(console.error);
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (Sin Cambios) ---
 
 function getReporteData() {
-    // Obtiene todos los registros guardados
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 }
 
@@ -204,8 +208,7 @@ function renderReporteListado() {
         return;
     }
     
-    // Muestra todos los registros inicialmente
-    data.reverse().forEach((item, index) => { // Mostrar el más reciente primero
+    data.reverse().forEach((item) => { 
         const listItem = document.createElement('div');
         listItem.className = 'list-group-item reporte-item';
         listItem.innerHTML = `
@@ -226,11 +229,10 @@ function filterReporteListado() {
     container.innerHTML = '';
 
     const filteredData = data.filter(item => {
-        // Busca en todos los campos relevantes
         return Object.values(item).some(value => 
             String(value).toLowerCase().includes(searchTerm)
         );
-    }).reverse(); // Mostrar el más reciente primero
+    }).reverse();
 
     if (filteredData.length === 0) {
         container.innerHTML = `<p class="text-center text-warning">No se encontraron resultados para "${searchTerm}".</p>`;
@@ -252,7 +254,7 @@ function filterReporteListado() {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (CORREGIDA PARA NUEVO ESCANEO) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -270,7 +272,6 @@ function submitForm(event) {
         return;
     }
     
-    // Asegurarse de procesar el código antes de enviar (para obtener el NOMBRE_PROCESADO)
     processCodeAndDisplayResult(barcodeValue); 
 
     const formData = {
@@ -290,7 +291,7 @@ function submitForm(event) {
 
     showAlert(`✅ Ingreso registrado con éxito. Código: ${barcodeValue}.`, 'success');
     
-    // CORRECCIÓN: Resetear completamente la interfaz para el siguiente escaneo
+    // Resetear la interfaz
     document.getElementById('control-form').reset();
     document.getElementById('barcode_id').value = '';
     processCodeAndDisplayResult(''); // Limpia la visualización de escaneo y deja lista la interfaz
@@ -305,15 +306,17 @@ document.addEventListener('DOMContentLoaded', () => {
         processCodeAndDisplayResult(e.target.value.trim());
     });
 
-    // Inicializar el evento de búsqueda para el reporte
     document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
 
     // Eventos del Modal de Escáner
     const modalElement = document.getElementById('scannerModal');
+    
+    // CORRECCIÓN CRÍTICA: Inicia el escáner cuando el modal SE MUESTRA COMPLETAMENTE
     modalElement.addEventListener('shown.bs.modal', () => {
         startScanner();
     });
 
+    // Detiene el escáner cuando el modal se oculta (el botón de cierre llama a stopScanner())
     modalElement.addEventListener('hidden.bs.modal', () => {
         stopScanner();
     });
