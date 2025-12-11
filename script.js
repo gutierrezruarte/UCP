@@ -4,16 +4,16 @@ let DOTACION_DB = {};
 let PASES_DB = {}; 
 let html5QrcodeScanner = null; 
 const readerId = "reader"; 
+let lastFilteredData = []; // Almacena los últimos datos filtrados para la exportación
 
-// Lista estática de perfiles (para el nuevo modal)
 const PERFILES_LIST = [
     "PERSONAL", "MOVIL", "MONOTRIBUTISTA", "DOCENTE", "ABOGADO", 
     "PASTORAL", "CANTINA", "PROVEEDORES", "OBRA", "VISITA", "CPA", "OTROS"
 ];
 
-// Variables para el control del Modal
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 const perfilModal = new bootstrap.Modal(document.getElementById('perfilModal'));
+const reporteModalElement = document.getElementById('reporteModal');
 
 
 // --- Funciones de Utilidad (showAlert) ---
@@ -36,13 +36,12 @@ function showAlert(message, type = 'success') {
     }, 5000);
 }
 
-// --- LÓGICA DE PERFILES (NUEVA) ---
+// --- LÓGICA DE PERFILES ---
 
 function loadPerfilOptions() {
     const container = document.getElementById('perfilOptionsContainer');
     container.innerHTML = '';
     
-    // Generar botones de radio grandes
     PERFILES_LIST.forEach(perfil => {
         const inputId = `perfil_radio_${perfil}`;
         
@@ -54,21 +53,16 @@ function loadPerfilOptions() {
         container.appendChild(div);
     });
 
-    // Agregar listener a los nuevos inputs
     container.querySelectorAll('.perfil-radio-input').forEach(input => {
         input.addEventListener('change', function() {
             if (this.checked) {
-                // 1. Guardar valor real en el campo oculto
                 document.getElementById('list_id').value = this.value;
-                // 2. Mostrar valor en el campo visible
                 document.getElementById('perfil_display').value = this.value;
-                // 3. Cerrar el modal
                 perfilModal.hide();
             }
         });
     });
 
-    // Restaurar selección previa si existe
     const currentPeril = document.getElementById('list_id').value;
     if (currentPeril) {
         const currentInput = document.getElementById(`perfil_radio_${currentPeril}`);
@@ -77,7 +71,6 @@ function loadPerfilOptions() {
         }
     }
 }
-
 
 // --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
 
@@ -161,7 +154,6 @@ function processCodeAndDisplayResult(code) {
     scanResultEl.innerHTML = 'Procesando código...';
     
     if (DOTACION_DB[code]) {
-        // AGENTE (Credencial)
         isAgent = true;
         agentName = DOTACION_DB[code];
         scanResultEl.style.color = 'lime'; 
@@ -177,19 +169,17 @@ function processCodeAndDisplayResult(code) {
 
     } 
     else if (code.includes('@')) {
-        // OTROS (DNI QR) - CORRECCIÓN: Reemplazar @ por <br>
         isAgent = false;
         const dataArray = code.split('@');
         agentName = (dataArray[0] || 'N/A') + ' ' + (dataArray[1] || 'N/A');
         
         scanResultEl.style.color = 'yellow';
         
-        // Mostrar datos del DNI con saltos de línea
+        // DNI: Reemplazar @ por <br>
         const formattedDNI = code.replace(/@/g, '<br>');
         scanResultEl.innerHTML = `⚠️ DNI QR:<br><small>${formattedDNI}</small><br>Registro como Externo.`;
     }
     else {
-        // OTROS (Carga Manual o Código Desconocido)
         isAgent = false;
         agentName = 'CÓDIGO DESCONOCIDO';
         scanResultEl.style.color = 'red';
@@ -214,12 +204,10 @@ function onScanError(errorMessage) {
 }
 
 function startScanner() {
-    // Detenemos cualquier escaneo previo
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
     }
     
-    // Inicializar la instancia si no existe
     if (!html5QrcodeScanner) {
         html5QrcodeScanner = new Html5Qrcode(readerId);
     }
@@ -249,29 +237,43 @@ function startScanner() {
 }
 
 function stopScanner() {
-    // CORRECCIÓN: Manejo de detención más limpio
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().then(() => {
-            // Limpiamos el contenido del elemento #reader al detener
             document.getElementById(readerId).innerHTML = ''; 
         }).catch(console.error);
     }
 }
 
-
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (Generación de Tablas) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (Filtrado y Tablas) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 }
 
 function generateReportTableHTML(data, title) {
+    // Agregamos botones de exportación si hay datos
+    let exportButtons = '';
+    if (data.length > 0) {
+        // CORRECCIÓN: Llamamos a las funciones de exportación con el título de la tabla
+        exportButtons = `
+            <div class="d-flex justify-content-end mb-2 gap-2">
+                <button class="btn btn-sm btn-info" onclick="exportarAExcel('${title}')">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar XLS
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="exportarAPDF('${title}')">
+                    <i class="bi bi-file-pdf"></i> Exportar PDF
+                </button>
+            </div>
+        `;
+    }
+
     if (data.length === 0) {
         return `<p class="text-secondary">No hay ${title} registrados.</p>`;
     }
 
     let html = `
-        <table class="table table-dark table-striped table-hover custom-table" style="font-size: 0.9rem;">
+        ${exportButtons}
+        <table class="table table-dark table-striped table-hover custom-table" id="table-${title.replace(/\s/g, '-')}" style="font-size: 0.9rem;">
             <thead>
                 <tr>
                     <th>Hora</th>
@@ -287,7 +289,6 @@ function generateReportTableHTML(data, title) {
 
     data.forEach(item => {
         const rawCode = item['CREDENCIAL / DNI'];
-        // Si es DNI QR, muestra solo 'DNI QR' en la tabla (o el nombre si se procesó)
         const displayCode = rawCode.includes('@') ? 'DNI QR' : rawCode;
         
         html += `
@@ -311,20 +312,29 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
-    const data = getReporteData();
     document.getElementById('reporteSearch').value = ''; 
-    filterReporteListado(data);
+    filterReporteListado();
 }
 
 function filterReporteListado() {
     const searchTerm = document.getElementById('reporteSearch').value.toLowerCase();
     const data = getReporteData().reverse(); 
 
+    // Filtrado: busca en cualquier campo (fecha, dni, dominio, etc.)
     const filteredData = data.filter(item => {
-        return Object.values(item).some(value => 
-            String(value).toLowerCase().includes(searchTerm)
-        );
+        if (!searchTerm) return true; 
+        
+        // Iterar sobre todos los valores del registro
+        return Object.values(item).some(value => {
+            if (value && typeof value === 'string') {
+                return value.toLowerCase().includes(searchTerm);
+            }
+            return false;
+        });
     });
+
+    // Guardamos los datos filtrados para su posterior exportación
+    lastFilteredData = filteredData;
 
     // Separar los datos filtrados en dos grupos
     const agentesData = filteredData.filter(item => item.IS_AGENT === 'true');
@@ -332,19 +342,86 @@ function filterReporteListado() {
     
     // Generar las tablas y colocarlas en sus contenedores
     document.getElementById('agentesTableContainer').innerHTML = generateReportTableHTML(agentesData, 'Agentes');
-    document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros / Visitas');
+    document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros');
+}
+
+// --- FUNCIONES DE EXPORTACIÓN ---
+
+function prepareExportData(tableTitle) {
+    // Filtramos los datos que se van a exportar basándose en el título de la tabla
+    const dataToExport = tableTitle === 'Agentes' 
+        ? lastFilteredData.filter(item => item.IS_AGENT === 'true')
+        : lastFilteredData.filter(item => item.IS_AGENT === 'false');
+
+    // Mapear los datos al formato de encabezados
+    const header = [
+        "FECHA", "HORA", "PERFIL", "CÓDIGO/DNI", "NOMBRE_PROCESADO", "DOMINIO", "OBSERVACIONES"
+    ];
+
+    const body = dataToExport.map(item => [
+        item.FECHA,
+        item.HORA,
+        item.PERFIL,
+        // Limpiamos el código DNI para el Excel/PDF
+        item['CREDENCIAL / DNI'].includes('@') ? 'DNI QR: ' + item['CREDENCIAL / DNI'].replace(/@/g, ' ') : item['CREDENCIAL / DNI'],
+        item.NOMBRE_PROCESADO,
+        item.DOMINIO || '',
+        item.OBSERVACIONES || ''
+    ]);
+
+    return { header, body };
+}
+
+function exportarAExcel(tableTitle) {
+    const { header, body } = prepareExportData(tableTitle);
+
+    const data = [header, ...body];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, tableTitle);
+    
+    const filename = `${tableTitle}_Reporte_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(wb, filename);
+
+    showAlert(`Exportando ${tableTitle} a Excel...`, 'info');
+}
+
+function exportarAPDF(tableTitle) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape');
+
+    const { header, body } = prepareExportData(tableTitle);
+
+    doc.setFontSize(14);
+    doc.text(`Reporte: ${tableTitle} - ${new Date().toLocaleDateString('es-AR')}`, 14, 15);
+    doc.setFontSize(10);
+
+    doc.autoTable({
+        head: [header],
+        body: body,
+        startY: 20,
+        styles: { fontSize: 8, cellPadding: 2, fillColor: [68, 68, 68] },
+        headStyles: { fillColor: [255, 193, 7] },
+        margin: { top: 10 }
+    });
+
+    const filename = `${tableTitle}_Reporte_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`;
+    doc.save(filename);
+
+    showAlert(`Exportando ${tableTitle} a PDF...`, 'info');
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (omito cuerpos para brevedad) ---
 
 function submitForm(event) {
     event.preventDefault();
 
     const barcodeInput = document.getElementById('barcode_id');
     const barcodeValue = barcodeInput.value.trim();
-    const perfilValue = document.getElementById('list_id').value; // Valor del campo oculto
-    const perfilDisplay = document.getElementById('perfil_display').value; // Valor del campo visible
+    const perfilValue = document.getElementById('list_id').value; 
+    const isAgentFlag = barcodeInput.getAttribute('data-is-agent') || 'false';
 
     if (!barcodeValue) {
         showAlert("'CREDENCIAL / DNI' es un campo obligatorio. Ingrese o escanee el código.", 'danger');
@@ -365,11 +442,11 @@ function submitForm(event) {
         OBSERVACIONES: document.getElementById('text2_id').value,
         'CREDENCIAL / DNI': barcodeValue,
         'NOMBRE_PROCESADO': barcodeInput.getAttribute('data-processed-name') || 'N/A',
-        'IS_AGENT': barcodeInput.getAttribute('data-is-agent') || 'false', 
+        'IS_AGENT': isAgentFlag, 
         'DESTINO': 'Unidad de Control Penitenciario'
     };
 
-    const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const storedData = getReporteData();
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
@@ -378,15 +455,14 @@ function submitForm(event) {
     // Resetear la interfaz
     document.getElementById('control-form').reset();
     document.getElementById('barcode_id').value = '';
-    document.getElementById('list_id').value = ''; // Resetear campo oculto
-    document.getElementById('perfil_display').value = ''; // Resetear campo visible
+    document.getElementById('list_id').value = ''; 
+    document.getElementById('perfil_display').value = ''; 
     processCodeAndDisplayResult('');
 }
 
 
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Carga inicial de las opciones de perfil
     loadPerfilOptions();
     
     document.getElementById('control-form').addEventListener('submit', submitForm);
@@ -399,19 +475,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Eventos del Modal de Escáner
     const modalElement = document.getElementById('scannerModal');
-    
     modalElement.addEventListener('shown.bs.modal', () => {
         startScanner();
     });
-
     modalElement.addEventListener('hidden.bs.modal', () => {
         stopScanner();
     });
     
-    // Evento del Modal de Perfil para cargar opciones si se abre (aunque lo hacemos al inicio)
+    // Evento del Modal de Perfil
     document.getElementById('perfilModal').addEventListener('shown.bs.modal', () => {
-        // Aseguramos que el scroll del modal esté arriba
         document.getElementById('perfilModal').querySelector('.modal-body').scrollTop = 0;
+    });
+
+    // Evento del Modal de Reporte
+    reporteModalElement.addEventListener('shown.bs.modal', () => {
+        renderReporteListado();
     });
 
     console.log("Aplicación de Control General cargada. Modo oscuro activo.");
