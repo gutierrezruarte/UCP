@@ -63,30 +63,28 @@ h1 {
     color: #ffc107; 
 }
 
-/* --- Botón de Envío Flotante (Circular) --- */
+/* --- Botón de Envío Flotante Original (Oculto) --- */
 .floating-send-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    /* CORRECCIÓN: Tamaño similar al botón de perfil (aprox. la altura del input-group) */
-    width: 55px; 
-    height: 55px; 
-    border-radius: 50%;
-    background-color: #ffc107; 
-    color: #333; 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5rem; 
-    cursor: pointer;
-    z-index: 1050; 
+    display: none !important; /* Ocultamos el botón flotante original */
+}
+
+/* --- Botón Rectangular "REGISTRAR INGRESO" (NUEVO ESTILO) --- */
+.registrar-ingreso-btn {
+    /* TAMAÑO Y ESTILO SIMILAR A LOS BOTONES DE BUSQUEDA/ESCENAO */
+    font-size: 1.3rem;
+    padding: 10px 15px;
+    height: 55px; /* Altura similar al input-group */
+    font-weight: bold;
+    background-color: #ffc107;
+    color: #333;
+    border: none;
     transition: background-color 0.2s;
 }
 
 /* Estilo de Feedback de Envío Exitoso */
-.floating-send-btn.success-flash {
+.registrar-ingreso-btn.success-flash {
     background-color: #28a745 !important; /* Verde */
+    color: white !important;
 }
 
 /* Estilo para el botón de búsqueda de perfil (mantener mismo tamaño que el de escaneo) */
