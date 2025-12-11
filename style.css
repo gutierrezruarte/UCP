@@ -1,83 +1,60 @@
+/* Base de estilos: Bootstrap se encarga de la mayoría de la responsividad. */
 body {
-    font-family: sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f4f4f9;
+    background-color: #f8f9fa;
 }
 
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.required-badge {
+    color: red;
+    font-weight: bold;
 }
 
-h1 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 20px;
-}
-
-/* Selector de Modo */
-.mode-selector {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 20px;
-}
-
-.mode-selector button {
-    padding: 10px 15px;
-    border: none;
-    background-color: #e0e0e0;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.3s;
-}
-
-.mode-selector button.active {
-    background-color: #007bff;
-    color: white;
-}
-
-/* Área de Escáner */
-#scanner-container {
-    border: 2px solid #ccc;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 20px;
-}
-
+/* Estilos para el campo de escaneo */
 #reader {
-    width: 100%;
-}
-
-/* Área de Resultados */
-.results-area {
-    padding: 15px;
+    /* Asegura que el contenedor del escáner sea visible y responsivo */
+    min-height: 250px; 
     border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #f9f9f9;
+    border-radius: 5px;
+    overflow: hidden;
 }
 
-.raw-data {
-    font-size: 0.8em;
-    color: #888;
+/* Estilo para el resultado del escaneo */
+#scan-result {
+    font-weight: bold;
+    color: #007bff;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.hidden {
-    display: none;
+/* Estilos de Card para mejorar la separación de secciones en móvil */
+.card-header {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
 }
 
-.register-button {
-    width: 100%;
-    padding: 10px;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 1.1em;
-    cursor: pointer;
-    margin-top: 10px;
+.card-header h5 {
+    font-size: 1.1rem;
+}
+
+/* Estilos para hacer el campo de texto de escaneo más discreto pero visible */
+#barcode_id {
+    font-size: 1.2rem;
+    text-align: center;
+    color: #495057;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+}
+
+/* Estilo para el botón de envío en móvil */
+.btn-lg {
+    font-size: 1.25rem;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Media Query para mejorar la lectura en pantallas grandes si es necesario */
+@media (min-width: 768px) {
+    .container {
+        max-width: 700px; /* Limita el ancho en escritorio para mejor legibilidad */
+    }
 }
