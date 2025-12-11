@@ -102,11 +102,14 @@ function processCodeAndDisplayResult(code) {
     let scanResultEl = document.getElementById('scan-result');
     let agentName = 'PERSONA EXTERNA (DNI)';
     let pasesInfo = '';
+    let isAgent = false; // Flag para determinar el tipo de registro
 
     scanResultEl.style.color = '#ffc107'; 
     scanResultEl.innerHTML = 'Procesando código...';
     
     if (DOTACION_DB[code]) {
+        // AGENTE (Credencial)
+        isAgent = true;
         agentName = DOTACION_DB[code];
         scanResultEl.style.color = 'lime'; 
         
@@ -121,19 +124,28 @@ function processCodeAndDisplayResult(code) {
 
     } 
     else if (code.includes('@')) {
+        // OTROS (DNI QR) - CORRECCIÓN: Reemplazar @ por <br>
+        isAgent = false;
         const dataArray = code.split('@');
         agentName = (dataArray[0] || 'N/A') + ' ' + (dataArray[1] || 'N/A');
         
         scanResultEl.style.color = 'yellow';
-        scanResultEl.innerHTML = `⚠️ DNI QR: <strong>${agentName}</strong>. Registro como Externo.`;
+        
+        // CORRECCIÓN: Mostrar datos del DNI con saltos de línea
+        const formattedDNI = code.replace(/@/g, '<br>');
+        scanResultEl.innerHTML = `⚠️ DNI QR:<br><small>${formattedDNI}</small><br>Registro como Externo.`;
     }
     else {
+        // OTROS (Carga Manual o Código Desconocido)
+        isAgent = false;
         agentName = 'CÓDIGO DESCONOCIDO';
         scanResultEl.style.color = 'red';
         scanResultEl.innerHTML = `❌ CÓDIGO/DNI NO IDENTIFICADO. Nombre: ${agentName}`;
     }
     
     document.getElementById('barcode_id').setAttribute('data-processed-name', agentName);
+    // Guardamos si es agente o no para el reporte
+    document.getElementById('barcode_id').setAttribute('data-is-agent', isAgent ? 'true' : 'false');
 }
 
 
@@ -150,12 +162,10 @@ function onScanError(errorMessage) {
 }
 
 function startScanner() {
-    // 1. Detenemos cualquier escaneo previo (por si acaso)
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
     }
     
-    // 2. CORRECCIÓN CRÍTICA: Re-inicializar la instancia si se detuvo completamente
     if (!html5QrcodeScanner) {
         html5QrcodeScanner = new Html5Qrcode(readerId);
     }
@@ -172,13 +182,12 @@ function startScanner() {
     };
 
     html5QrcodeScanner.start(
-        { facingMode: "environment" }, // Prioriza la cámara trasera
+        { facingMode: "environment" }, 
         config,
         onScanSuccess,
         onScanError
     ).catch(err => {
         console.error("No se pudo iniciar la cámara:", err);
-        // Si falla, detenemos la instancia para el siguiente intento
         html5QrcodeScanner = null; 
         showAlert("ERROR: No se pudo iniciar la cámara. Verifique permisos.", 'danger');
         scannerModal.hide();
@@ -188,75 +197,98 @@ function startScanner() {
 function stopScanner() {
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().then(() => {
-            // Limpiamos el contenido del elemento #reader al detener
             document.getElementById(readerId).innerHTML = ''; 
         }).catch(console.error);
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (Generación de Tablas) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 }
 
+/**
+ * Genera la tabla HTML para un conjunto de datos filtrados.
+ * @param {Array} data Lista de objetos de registro.
+ * @param {string} title Título de la tabla.
+ * @returns {string} Código HTML de la tabla.
+ */
+function generateReportTableHTML(data, title) {
+    if (data.length === 0) {
+        return `<p class="text-secondary">No hay ${title} registrados.</p>`;
+    }
+
+    let html = `
+        <table class="table table-dark table-striped table-hover custom-table">
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Código/DNI</th>
+                    <th>Nombre</th>
+                    <th>Perfil</th>
+                    <th>Dominio</th>
+                    <th>Obs.</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    data.forEach(item => {
+        // Prepara los datos para la tabla
+        const rawCode = item['CREDENCIAL / DNI'];
+        const displayCode = rawCode.includes('@') ? 'DNI QR' : rawCode;
+        
+        html += `
+            <tr>
+                <td>${item.HORA}</td>
+                <td>${displayCode}</td>
+                <td>${item.NOMBRE_PROCESADO}</td>
+                <td>${item.PERFIL}</td>
+                <td>${item.DOMINIO || '-'}</td>
+                <td>${item.OBSERVACIONES || '-'}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+    return html;
+}
+
+
 function renderReporteListado() {
     const data = getReporteData();
-    const container = document.getElementById('reporteListContainer');
-    container.innerHTML = '';
+    // Limpiamos el campo de búsqueda al abrir el modal
+    document.getElementById('reporteSearch').value = ''; 
     
-    if (data.length === 0) {
-        container.innerHTML = '<p class="text-center text-secondary">No hay registros guardados en la base de datos local.</p>';
-        return;
-    }
-    
-    data.reverse().forEach((item) => { 
-        const listItem = document.createElement('div');
-        listItem.className = 'list-group-item reporte-item';
-        listItem.innerHTML = `
-            <div><strong>[${item.FECHA} ${item.HORA}]</strong></div>
-            <div><strong>Perfil:</strong> ${item.PERFIL}</div>
-            <div><strong>Código/DNI:</strong> ${item['CREDENCIAL / DNI']}</div>
-            <div><strong>Nombre:</strong> ${item.NOMBRE_PROCESADO}</div>
-            <div><strong>Dominio:</strong> ${item.DOMINIO || 'N/A'}</div>
-        `;
-        container.appendChild(listItem);
-    });
+    // Mostramos todos los datos por defecto al llamar a filterReporteListado
+    filterReporteListado(data);
 }
 
 function filterReporteListado() {
     const searchTerm = document.getElementById('reporteSearch').value.toLowerCase();
-    const data = getReporteData();
-    const container = document.getElementById('reporteListContainer');
-    container.innerHTML = '';
+    const data = getReporteData().reverse(); // Siempre trabajar con datos recientes primero
 
     const filteredData = data.filter(item => {
         return Object.values(item).some(value => 
             String(value).toLowerCase().includes(searchTerm)
         );
-    }).reverse(); 
-
-    if (filteredData.length === 0) {
-        container.innerHTML = `<p class="text-center text-warning">No se encontraron resultados para "${searchTerm}".</p>`;
-        return;
-    }
-
-    filteredData.forEach(item => {
-        const listItem = document.createElement('div');
-        listItem.className = 'list-group-item reporte-item';
-        listItem.innerHTML = `
-            <div><strong>[${item.FECHA} ${item.HORA}]</strong></div>
-            <div><strong>Perfil:</strong> ${item.PERFIL}</div>
-            <div><strong>Código/DNI:</strong> ${item['CREDENCIAL / DNI']}</div>
-            <div><strong>Nombre:</strong> ${item.NOMBRE_PROCESADO}</div>
-            <div><strong>Dominio:</strong> ${item.DOMINIO || 'N/A'}</div>
-        `;
-        container.appendChild(listItem);
     });
+
+    // Separar los datos filtrados en dos grupos
+    const agentesData = filteredData.filter(item => item.IS_AGENT === 'true');
+    const otrosData = filteredData.filter(item => item.IS_AGENT === 'false');
+    
+    // Generar las tablas y colocarlas en sus contenedores
+    document.getElementById('agentesTableContainer').innerHTML = generateReportTableHTML(agentesData, 'Agentes');
+    document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros / Visitas');
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (CORREGIDA PARA AGREGAR FLAG IS_AGENT) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -274,6 +306,7 @@ function submitForm(event) {
         return;
     }
     
+    // Procesar el código antes de guardar para obtener NOMBRE_PROCESADO y IS_AGENT
     processCodeAndDisplayResult(barcodeValue); 
 
     const formData = {
@@ -284,6 +317,7 @@ function submitForm(event) {
         OBSERVACIONES: document.getElementById('text2_id').value,
         'CREDENCIAL / DNI': barcodeValue,
         'NOMBRE_PROCESADO': barcodeInput.getAttribute('data-processed-name') || 'N/A',
+        'IS_AGENT': barcodeInput.getAttribute('data-is-agent') || 'false', // AGREGADO
         'DESTINO': 'Unidad de Control Penitenciario'
     };
 
@@ -313,12 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Eventos del Modal de Escáner
     const modalElement = document.getElementById('scannerModal');
     
-    // INICIA EL ESCÁNER SOLO CUANDO EL MODAL ESTÁ VISIBLE (SOLUCIONA EL FALLO)
     modalElement.addEventListener('shown.bs.modal', () => {
         startScanner();
     });
 
-    // Detiene el escáner cuando el modal se oculta
     modalElement.addEventListener('hidden.bs.modal', () => {
         stopScanner();
     });
