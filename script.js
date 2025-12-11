@@ -7,7 +7,8 @@ const readerId = "reader";
 let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-const sendButton = document.getElementById('sendButton');
+// REFERENCIA CORREGIDA AL NUEVO BOTÓN RECTANGULAR
+const sendButtonRect = document.getElementById('sendButtonRect'); 
 
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
@@ -30,10 +31,6 @@ function showAlert(message, type = 'success') {
     }, 5000);
 }
 
-/**
- * Genera un sonido simple de "pitido" usando el Web Audio API.
- * Esto es la forma más compatible de generar un sonido sin archivos externos.
- */
 function playBeep() {
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -43,12 +40,10 @@ function playBeep() {
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
 
-        // Configuración del sonido (un pitido corto)
-        oscillator.type = 'sine'; // Tipo de onda
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // Frecuencia de 440 Hz (A4)
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); // Volumen
+        oscillator.type = 'sine'; 
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); 
         
-        // El pitido dura 100ms
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
         
         oscillator.start();
@@ -161,6 +156,7 @@ function processCodeAndDisplayResult(code) {
         
         scanResultEl.style.color = 'yellow';
         
+        // DNI: Reemplazar @ por <br>
         const formattedDNI = code.replace(/@/g, '<br>');
         scanResultEl.innerHTML = `⚠️ DNI QR:<br><small>${formattedDNI}</small><br>Registro como Externo.`;
     }
@@ -442,7 +438,7 @@ function exportarAPDF(tableTitle) {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL Y SONIDO) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -460,11 +456,13 @@ function submitForm(event) {
         return;
     }
     
+    // 1. Procesar el código antes de guardar para obtener nombre y tipo de agente
     processCodeAndDisplayResult(barcodeValue); 
 
     const agentName = barcodeInput.getAttribute('data-processed-name') || 'N/A';
     const isAgentFlag = barcodeInput.getAttribute('data-is-agent') || 'false';
 
+    // 2. Manejo de datos DNI para el almacenamiento interno (para la exportación)
     let dniDataFields = {};
     if (barcodeValue.includes('@')) {
         const dniParts = barcodeValue.split('@');
@@ -492,25 +490,25 @@ function submitForm(event) {
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    // 1. Reproducir sonido de confirmación
+    // 3. Reproducir sonido de confirmación
     playBeep();
 
-    // 2. Feedback Visual: Botón verde por 2 segundos
-    sendButton.classList.add('success-flash');
+    // 4. Feedback Visual: Botón verde por 2 segundos
+    sendButtonRect.classList.add('success-flash');
     
-    // 3. Feedback de texto abajo del botón flotante
+    // 5. Feedback de texto debajo del formulario
     const feedbackContainer = document.getElementById('send-feedback-container');
     feedbackContainer.innerHTML = `<div class="alert alert-success mt-2 text-center" role="alert">
-        ✅ Ingreso de <strong>${agentName}</strong> registrado.
+        ✅ Registro de <strong>${agentName}</strong> enviado con éxito.
     </div>`;
 
     setTimeout(() => {
         // Quitar el color verde
-        sendButton.classList.remove('success-flash');
+        sendButtonRect.classList.remove('success-flash');
         // Quitar el mensaje de feedback
         feedbackContainer.innerHTML = '';
         
-        // 4. Resetear la interfaz
+        // 6. Resetear la interfaz para el siguiente ingreso
         document.getElementById('control-form').reset();
         document.getElementById('barcode_id').value = '';
         document.getElementById('list_id').value = ''; 
@@ -518,33 +516,11 @@ function submitForm(event) {
     }, 2000);
 }
 
-// --- FUNCIÓN DE SONIDO ---
-function playBeep() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.type = 'sine'; 
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime); 
-        
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-        
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (e) {
-        console.warn("Web Audio API no soportada o falló al iniciar el sonido.");
-    }
-}
-
 
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
+    // Corregido: El evento submit del formulario apunta al botón rectangular
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
