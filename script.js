@@ -5,8 +5,16 @@ let PASES_DB = {};
 let html5QrcodeScanner = null; 
 const readerId = "reader"; 
 
+// Lista estática de perfiles (para el nuevo modal)
+const PERFILES_LIST = [
+    "PERSONAL", "MOVIL", "MONOTRIBUTISTA", "DOCENTE", "ABOGADO", 
+    "PASTORAL", "CANTINA", "PROVEEDORES", "OBRA", "VISITA", "CPA", "OTROS"
+];
+
 // Variables para el control del Modal
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
+const perfilModal = new bootstrap.Modal(document.getElementById('perfilModal'));
+
 
 // --- Funciones de Utilidad (showAlert) ---
 
@@ -27,6 +35,49 @@ function showAlert(message, type = 'success') {
         }
     }, 5000);
 }
+
+// --- LÓGICA DE PERFILES (NUEVA) ---
+
+function loadPerfilOptions() {
+    const container = document.getElementById('perfilOptionsContainer');
+    container.innerHTML = '';
+    
+    // Generar botones de radio grandes
+    PERFILES_LIST.forEach(perfil => {
+        const inputId = `perfil_radio_${perfil}`;
+        
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <input type="radio" name="perfil_option" id="${inputId}" value="${perfil}" class="perfil-radio-input">
+            <label for="${inputId}" class="perfil-radio-label">${perfil}</label>
+        `;
+        container.appendChild(div);
+    });
+
+    // Agregar listener a los nuevos inputs
+    container.querySelectorAll('.perfil-radio-input').forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.checked) {
+                // 1. Guardar valor real en el campo oculto
+                document.getElementById('list_id').value = this.value;
+                // 2. Mostrar valor en el campo visible
+                document.getElementById('perfil_display').value = this.value;
+                // 3. Cerrar el modal
+                perfilModal.hide();
+            }
+        });
+    });
+
+    // Restaurar selección previa si existe
+    const currentPeril = document.getElementById('list_id').value;
+    if (currentPeril) {
+        const currentInput = document.getElementById(`perfil_radio_${currentPeril}`);
+        if (currentInput) {
+            currentInput.checked = true;
+        }
+    }
+}
+
 
 // --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
 
@@ -89,6 +140,7 @@ function loadPases() {
     });
 }
 
+
 // --- LÓGICA DE ESCANEO Y PROCESAMIENTO ---
 
 function processCodeAndDisplayResult(code) {
@@ -96,13 +148,14 @@ function processCodeAndDisplayResult(code) {
         document.getElementById('scan-result').innerHTML = 'Ningún código escaneado';
         document.getElementById('scan-result').style.color = '#ffc107';
         document.getElementById('barcode_id').setAttribute('data-processed-name', '');
+        document.getElementById('barcode_id').setAttribute('data-is-agent', 'false');
         return;
     }
 
     let scanResultEl = document.getElementById('scan-result');
     let agentName = 'PERSONA EXTERNA (DNI)';
     let pasesInfo = '';
-    let isAgent = false; // Flag para determinar el tipo de registro
+    let isAgent = false; 
 
     scanResultEl.style.color = '#ffc107'; 
     scanResultEl.innerHTML = 'Procesando código...';
@@ -131,7 +184,7 @@ function processCodeAndDisplayResult(code) {
         
         scanResultEl.style.color = 'yellow';
         
-        // CORRECCIÓN: Mostrar datos del DNI con saltos de línea
+        // Mostrar datos del DNI con saltos de línea
         const formattedDNI = code.replace(/@/g, '<br>');
         scanResultEl.innerHTML = `⚠️ DNI QR:<br><small>${formattedDNI}</small><br>Registro como Externo.`;
     }
@@ -144,7 +197,6 @@ function processCodeAndDisplayResult(code) {
     }
     
     document.getElementById('barcode_id').setAttribute('data-processed-name', agentName);
-    // Guardamos si es agente o no para el reporte
     document.getElementById('barcode_id').setAttribute('data-is-agent', isAgent ? 'true' : 'false');
 }
 
@@ -162,10 +214,12 @@ function onScanError(errorMessage) {
 }
 
 function startScanner() {
+    // Detenemos cualquier escaneo previo
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().catch(console.error);
     }
     
+    // Inicializar la instancia si no existe
     if (!html5QrcodeScanner) {
         html5QrcodeScanner = new Html5Qrcode(readerId);
     }
@@ -195,12 +249,15 @@ function startScanner() {
 }
 
 function stopScanner() {
+    // CORRECCIÓN: Manejo de detención más limpio
     if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
         html5QrcodeScanner.stop().then(() => {
+            // Limpiamos el contenido del elemento #reader al detener
             document.getElementById(readerId).innerHTML = ''; 
         }).catch(console.error);
     }
 }
+
 
 // --- LÓGICA DE REPORTE/LISTADO DIARIO (Generación de Tablas) ---
 
@@ -208,19 +265,13 @@ function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 }
 
-/**
- * Genera la tabla HTML para un conjunto de datos filtrados.
- * @param {Array} data Lista de objetos de registro.
- * @param {string} title Título de la tabla.
- * @returns {string} Código HTML de la tabla.
- */
 function generateReportTableHTML(data, title) {
     if (data.length === 0) {
         return `<p class="text-secondary">No hay ${title} registrados.</p>`;
     }
 
     let html = `
-        <table class="table table-dark table-striped table-hover custom-table">
+        <table class="table table-dark table-striped table-hover custom-table" style="font-size: 0.9rem;">
             <thead>
                 <tr>
                     <th>Hora</th>
@@ -235,8 +286,8 @@ function generateReportTableHTML(data, title) {
     `;
 
     data.forEach(item => {
-        // Prepara los datos para la tabla
         const rawCode = item['CREDENCIAL / DNI'];
+        // Si es DNI QR, muestra solo 'DNI QR' en la tabla (o el nombre si se procesó)
         const displayCode = rawCode.includes('@') ? 'DNI QR' : rawCode;
         
         html += `
@@ -261,16 +312,13 @@ function generateReportTableHTML(data, title) {
 
 function renderReporteListado() {
     const data = getReporteData();
-    // Limpiamos el campo de búsqueda al abrir el modal
     document.getElementById('reporteSearch').value = ''; 
-    
-    // Mostramos todos los datos por defecto al llamar a filterReporteListado
     filterReporteListado(data);
 }
 
 function filterReporteListado() {
     const searchTerm = document.getElementById('reporteSearch').value.toLowerCase();
-    const data = getReporteData().reverse(); // Siempre trabajar con datos recientes primero
+    const data = getReporteData().reverse(); 
 
     const filteredData = data.filter(item => {
         return Object.values(item).some(value => 
@@ -288,25 +336,25 @@ function filterReporteListado() {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (CORREGIDA PARA AGREGAR FLAG IS_AGENT) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO ---
 
 function submitForm(event) {
     event.preventDefault();
 
     const barcodeInput = document.getElementById('barcode_id');
     const barcodeValue = barcodeInput.value.trim();
-    const perfilValue = document.getElementById('list_id').value;
+    const perfilValue = document.getElementById('list_id').value; // Valor del campo oculto
+    const perfilDisplay = document.getElementById('perfil_display').value; // Valor del campo visible
 
     if (!barcodeValue) {
         showAlert("'CREDENCIAL / DNI' es un campo obligatorio. Ingrese o escanee el código.", 'danger');
         return;
     }
     if (!perfilValue) {
-        showAlert("'PERFIL' es un campo obligatorio.", 'danger');
+        showAlert("'PERFIL' es un campo obligatorio. Por favor, seleccione un perfil.", 'danger');
         return;
     }
     
-    // Procesar el código antes de guardar para obtener NOMBRE_PROCESADO y IS_AGENT
     processCodeAndDisplayResult(barcodeValue); 
 
     const formData = {
@@ -317,7 +365,7 @@ function submitForm(event) {
         OBSERVACIONES: document.getElementById('text2_id').value,
         'CREDENCIAL / DNI': barcodeValue,
         'NOMBRE_PROCESADO': barcodeInput.getAttribute('data-processed-name') || 'N/A',
-        'IS_AGENT': barcodeInput.getAttribute('data-is-agent') || 'false', // AGREGADO
+        'IS_AGENT': barcodeInput.getAttribute('data-is-agent') || 'false', 
         'DESTINO': 'Unidad de Control Penitenciario'
     };
 
@@ -330,12 +378,17 @@ function submitForm(event) {
     // Resetear la interfaz
     document.getElementById('control-form').reset();
     document.getElementById('barcode_id').value = '';
+    document.getElementById('list_id').value = ''; // Resetear campo oculto
+    document.getElementById('perfil_display').value = ''; // Resetear campo visible
     processCodeAndDisplayResult('');
 }
 
 
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Carga inicial de las opciones de perfil
+    loadPerfilOptions();
+    
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
@@ -353,6 +406,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modalElement.addEventListener('hidden.bs.modal', () => {
         stopScanner();
+    });
+    
+    // Evento del Modal de Perfil para cargar opciones si se abre (aunque lo hacemos al inicio)
+    document.getElementById('perfilModal').addEventListener('shown.bs.modal', () => {
+        // Aseguramos que el scroll del modal esté arriba
+        document.getElementById('perfilModal').querySelector('.modal-body').scrollTop = 0;
     });
 
     console.log("Aplicación de Control General cargada. Modo oscuro activo.");
