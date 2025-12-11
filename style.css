@@ -3,6 +3,7 @@ body {
     background-color: #333; /* Fondo gris oscuro */
     color: #f8f9fa;
     padding-bottom: 70px; /* Espacio para el botón flotante */
+    font-size: 1.1rem; /* Aumentar tamaño base de la fuente */
 }
 
 .required-badge {
@@ -10,72 +11,75 @@ body {
     font-weight: bold;
 }
 
+/* Encabezado del Formulario */
+h1 {
+    font-size: 1.6rem; 
+}
+.card-header {
+    /* Mantener estilo oscuro */
+    background-color: #3c3c3c; 
+    border-bottom: 1px solid #ffc107 !important; 
+    padding: 1rem; /* Mayor padding */
+    font-size: 1.2rem; /* Título de la tarjeta más grande */
+}
+
 /* Estilos de Card para replicar el diseño de la imagen */
 .custom-card {
-    background-color: #444; /* Fondo de tarjeta más oscuro */
+    background-color: #444; 
     border: 1px solid #555;
-    border-left: 5px solid #ffc107; /* Línea lateral amarilla/naranja */
+    border-left: 5px solid #ffc107; 
 }
 
-.card-header {
-    background-color: #3c3c3c; /* Cabecera aún más oscura */
-    border-bottom: 1px solid #ffc107 !important; /* Borde amarillo/naranja */
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-}
-
-/* Estilos para los campos de texto/selects */
+/* Estilos para los campos de texto/selects (Asegurar que el input sea grande) */
 .custom-input {
     background-color: #555 !important; 
     color: #fff !important;
     border: 1px solid #ffc107 !important;
+    font-size: 1.2rem; /* Letras grandes dentro de los campos */
+    padding: 0.75rem 0.5rem; /* Más espacio */
 }
 
 .custom-input::placeholder {
     color: #ccc;
 }
 
-.custom-input:focus {
-    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
-}
-
 /* Estilo para el resultado del escaneo */
 #scan-result {
-    font-size: 1.1rem;
+    font-size: 1.4rem; /* Resultados muy grandes */
     min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffc107; /* Texto de resultado amarillo */
+    color: #ffc107; 
 }
-
 
 /* --- Botón de Envío Flotante (Circular) --- */
 .floating-send-btn {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 60px;
-    height: 60px;
+    width: 65px; /* Más grande */
+    height: 65px; /* Más grande */
     border-radius: 50%;
-    background-color: #ffc107; /* Amarillo/Naranja como tu imagen */
-    color: #333; /* Texto oscuro */
-    border: none;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    background-color: #ffc107; 
+    color: #333; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.8rem;
+    font-size: 2rem; 
     cursor: pointer;
-    z-index: 1050; /* Para que esté sobre otros elementos */
+    z-index: 1050; 
 }
 
-.floating-send-btn:hover {
-    background-color: #ffcd38;
+/* Estilos para el Listado Diario */
+.reporte-item {
+    background-color: #555 !important;
+    border-color: #444 !important;
+    color: #f8f9fa;
+    margin-bottom: 5px;
+    border-radius: 5px;
 }
-
-/* Modal de Escáner en Pantalla Completa */
-#reader {
-    width: 100% !important; 
-    /* El lector de QR utiliza el 100% del espacio del modal */
+.reporte-item strong {
+    color: #ffc107;
 }
