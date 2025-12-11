@@ -63,44 +63,12 @@ h1 {
     color: #ffc107; 
 }
 
-
-/* --- Estilo de la Lista de Perfiles (Botones de Radio) --- */
-
-.perfil-radio-label {
-    display: block;
-    padding: 15px;
-    margin-bottom: 8px;
-    background-color: #555;
-    border: 1px solid #666;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.5rem; /* Letras grandes para móvil */
-    font-weight: 500;
-    transition: background-color 0.2s, border-color 0.2s;
-    user-select: none;
-}
-
-.perfil-radio-label:hover {
-    background-color: #666;
-}
-
-.perfil-radio-input:checked + .perfil-radio-label {
-    background-color: #ffc107 !important; /* Fondo amarillo/naranja al seleccionar */
-    color: #333; /* Texto oscuro */
-    border-color: #ffc107;
-}
-
-.perfil-radio-input {
-    /* Ocultar el radio button nativo */
-    display: none;
-}
-
-
 /* --- Botón de Envío Flotante (Circular) --- */
 .floating-send-btn {
     position: fixed;
     bottom: 20px;
     right: 20px;
+    /* Ajuste de tamaño para parecerse al botón de escaneo/perfil (aprox 44px de alto) */
     width: 65px; 
     height: 65px; 
     border-radius: 50%;
@@ -113,6 +81,17 @@ h1 {
     font-size: 2rem; 
     cursor: pointer;
     z-index: 1050; 
+    transition: background-color 0.2s;
+}
+
+/* Estilo de Feedback de Envío Exitoso */
+.floating-send-btn.success-flash {
+    background-color: #28a745 !important; /* Verde */
+}
+
+/* Estilo para el botón de búsqueda de perfil (mantener mismo tamaño que el de escaneo) */
+.btn-perfil-search {
+    width: 50px; /* Aprox. ancho del input-group addon */
 }
 
 /* Modal de Escáner en Pantalla Completa */
