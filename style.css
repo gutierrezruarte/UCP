@@ -1,6 +1,8 @@
-/* Base de estilos: Bootstrap se encarga de la mayoría de la responsividad. */
+/* Base de Estilos: Fondo oscuro y texto claro */
 body {
-    background-color: #f8f9fa;
+    background-color: #333; /* Fondo gris oscuro */
+    color: #f8f9fa;
+    padding-bottom: 70px; /* Espacio para el botón flotante */
 }
 
 .required-badge {
@@ -8,53 +10,72 @@ body {
     font-weight: bold;
 }
 
-/* Estilos para el campo de escaneo */
-#reader {
-    /* Asegura que el contenedor del escáner sea visible y responsivo */
-    min-height: 250px; 
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    overflow: hidden;
+/* Estilos de Card para replicar el diseño de la imagen */
+.custom-card {
+    background-color: #444; /* Fondo de tarjeta más oscuro */
+    border: 1px solid #555;
+    border-left: 5px solid #ffc107; /* Línea lateral amarilla/naranja */
+}
+
+.card-header {
+    background-color: #3c3c3c; /* Cabecera aún más oscura */
+    border-bottom: 1px solid #ffc107 !important; /* Borde amarillo/naranja */
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+/* Estilos para los campos de texto/selects */
+.custom-input {
+    background-color: #555 !important; 
+    color: #fff !important;
+    border: 1px solid #ffc107 !important;
+}
+
+.custom-input::placeholder {
+    color: #ccc;
+}
+
+.custom-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
 }
 
 /* Estilo para el resultado del escaneo */
 #scan-result {
-    font-weight: bold;
-    color: #007bff;
+    font-size: 1.1rem;
     min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #ffc107; /* Texto de resultado amarillo */
 }
 
-/* Estilos de Card para mejorar la separación de secciones en móvil */
-.card-header {
-    padding: 1rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+
+/* --- Botón de Envío Flotante (Circular) --- */
+.floating-send-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #ffc107; /* Amarillo/Naranja como tu imagen */
+    color: #333; /* Texto oscuro */
+    border: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.8rem;
+    cursor: pointer;
+    z-index: 1050; /* Para que esté sobre otros elementos */
 }
 
-.card-header h5 {
-    font-size: 1.1rem;
+.floating-send-btn:hover {
+    background-color: #ffcd38;
 }
 
-/* Estilos para hacer el campo de texto de escaneo más discreto pero visible */
-#barcode_id {
-    font-size: 1.2rem;
-    text-align: center;
-    color: #495057;
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-}
-
-/* Estilo para el botón de envío en móvil */
-.btn-lg {
-    font-size: 1.25rem;
-    padding: 0.75rem 1.5rem;
-}
-
-/* Media Query para mejorar la lectura en pantallas grandes si es necesario */
-@media (min-width: 768px) {
-    .container {
-        max-width: 700px; /* Limita el ancho en escritorio para mejor legibilidad */
-    }
+/* Modal de Escáner en Pantalla Completa */
+#reader {
+    width: 100% !important; 
+    /* El lector de QR utiliza el 100% del espacio del modal */
 }
