@@ -6,6 +6,34 @@ body {
     font-size: 1.1rem; /* Aumentar tamaño base de la fuente */
 }
 
+/* Ajuste de padding para el contenido debajo de la barra fija */
+.content-padding-top {
+    padding-top: 60px; /* Espacio para la barra fija de 56px + margen */
+}
+
+/* Navbar Fija y Centrado del Título */
+.fixed-top-nav {
+    position: sticky; /* Sticky o fixed, fixed es más común en móvil */
+    top: 0;
+    width: 100%;
+    z-index: 1030;
+}
+
+.navbar-brand.text-center-custom {
+    /* Centrar el título: Ocupa espacio para centrar entre los botones */
+    margin: 0 auto; 
+    text-align: center;
+    flex-grow: 1; 
+    font-size: 1.5rem;
+}
+
+.navbar-escudo {
+    /* Estilo del escudo a la derecha */
+    height: 40px; 
+    width: auto;
+    margin-left: 10px;
+}
+
 /* Forzar que el contenedor principal ocupe todo el ancho disponible */
 .container {
     padding-left: 10px;
@@ -70,7 +98,6 @@ h1 {
 
 /* --- Botón Rectangular "REGISTRAR INGRESO" (NUEVO ESTILO) --- */
 .registrar-ingreso-btn {
-    /* TAMAÑO Y ESTILO SIMILAR A LOS BOTONES DE BUSQUEDA/ESCENAO */
     font-size: 1.3rem;
     padding: 10px 15px;
     height: 55px; /* Altura similar al input-group */
