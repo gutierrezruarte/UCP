@@ -1,9 +1,9 @@
 /* Base de Estilos: Fondo oscuro y texto claro */
 body {
-    background-color: #333; 
+    background-color: #333; /* Fondo gris oscuro */
     color: #f8f9fa;
-    padding-bottom: 70px; 
-    font-size: 1.1rem; 
+    padding-bottom: 70px; /* Espacio para el botón flotante */
+    font-size: 1.1rem; /* Aumentar tamaño base de la fuente */
 }
 
 /* Forzar que el contenedor principal ocupe todo el ancho disponible */
@@ -118,4 +118,23 @@ h1 {
 /* Modal de Escáner en Pantalla Completa */
 #reader {
     width: 100% !important; 
+}
+
+/* Estilos para las Tablas de Reporte */
+.custom-table {
+    --bs-table-bg: #555;
+    --bs-table-color: #f8f9fa;
+    --bs-table-striped-bg: #444;
+}
+
+.custom-table thead th {
+    background-color: #3c3c3c;
+    color: #ffc107;
+    border-bottom: 2px solid #ffc107;
+}
+
+.table-responsive {
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    overflow-x: auto;
 }
