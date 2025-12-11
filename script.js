@@ -6,14 +6,8 @@ let html5QrcodeScanner = null;
 const readerId = "reader"; 
 let lastFilteredData = []; // Almacena los últimos datos filtrados para la exportación
 
-const PERFILES_LIST = [
-    "PERSONAL", "MOVIL", "MONOTRIBUTISTA", "DOCENTE", "ABOGADO", 
-    "PASTORAL", "CANTINA", "PROVEEDORES", "OBRA", "VISITA", "CPA", "OTROS"
-];
-
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-const perfilModal = new bootstrap.Modal(document.getElementById('perfilModal'));
-const reporteModalElement = document.getElementById('reporteModal');
+const sendButton = document.getElementById('sendButton');
 
 
 // --- Funciones de Utilidad (showAlert) ---
@@ -34,42 +28,6 @@ function showAlert(message, type = 'success') {
             if(bsAlert) bsAlert.close();
         }
     }, 5000);
-}
-
-// --- LÓGICA DE PERFILES ---
-
-function loadPerfilOptions() {
-    const container = document.getElementById('perfilOptionsContainer');
-    container.innerHTML = '';
-    
-    PERFILES_LIST.forEach(perfil => {
-        const inputId = `perfil_radio_${perfil}`;
-        
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <input type="radio" name="perfil_option" id="${inputId}" value="${perfil}" class="perfil-radio-input">
-            <label for="${inputId}" class="perfil-radio-label">${perfil}</label>
-        `;
-        container.appendChild(div);
-    });
-
-    container.querySelectorAll('.perfil-radio-input').forEach(input => {
-        input.addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('list_id').value = this.value;
-                document.getElementById('perfil_display').value = this.value;
-                perfilModal.hide();
-            }
-        });
-    });
-
-    const currentPeril = document.getElementById('list_id').value;
-    if (currentPeril) {
-        const currentInput = document.getElementById(`perfil_radio_${currentPeril}`);
-        if (currentInput) {
-            currentInput.checked = true;
-        }
-    }
 }
 
 // --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
@@ -244,17 +202,15 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (Filtrado y Tablas) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (Generación de Tablas y Filtrado) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 }
 
 function generateReportTableHTML(data, title) {
-    // Agregamos botones de exportación si hay datos
     let exportButtons = '';
     if (data.length > 0) {
-        // CORRECCIÓN: Llamamos a las funciones de exportación con el título de la tabla
         exportButtons = `
             <div class="d-flex justify-content-end mb-2 gap-2">
                 <button class="btn btn-sm btn-info" onclick="exportarAExcel('${title}')">
@@ -271,18 +227,36 @@ function generateReportTableHTML(data, title) {
         return `<p class="text-secondary">No hay ${title} registrados.</p>`;
     }
 
+    // Encabezados dinámicos para el DNI (solo para la tabla, no la exportación final)
+    const isOtros = title === 'Otros';
+    let headers = `
+        <th>Hora</th>
+        <th>Código/DNI</th>
+        <th>Nombre</th>
+        <th>Perfil</th>
+        <th>Dominio</th>
+        <th>Obs.</th>
+    `;
+    
+    // Si es "Otros", mostramos los campos de DNI separados en la tabla local
+    if (isOtros) {
+        headers = `
+            <th>Hora</th>
+            <th>Nombre Completo</th>
+            <th>Perfil</th>
+            <th>DNI Dato 1</th>
+            <th>DNI Dato 2</th>
+            <th>DNI Dato 3</th>
+            <th>Dominio</th>
+            <th>Obs.</th>
+        `;
+    }
+
     let html = `
         ${exportButtons}
         <table class="table table-dark table-striped table-hover custom-table" id="table-${title.replace(/\s/g, '-')}" style="font-size: 0.9rem;">
             <thead>
-                <tr>
-                    <th>Hora</th>
-                    <th>Código/DNI</th>
-                    <th>Nombre</th>
-                    <th>Perfil</th>
-                    <th>Dominio</th>
-                    <th>Obs.</th>
-                </tr>
+                <tr>${headers}</tr>
             </thead>
             <tbody>
     `;
@@ -291,16 +265,32 @@ function generateReportTableHTML(data, title) {
         const rawCode = item['CREDENCIAL / DNI'];
         const displayCode = rawCode.includes('@') ? 'DNI QR' : rawCode;
         
-        html += `
-            <tr>
+        let rowContent;
+        if (isOtros && item.DNI_DATA_1) {
+            // Fila para DNI separado
+            rowContent = `
+                <td>${item.HORA}</td>
+                <td>${item.NOMBRE_PROCESADO}</td>
+                <td>${item.PERFIL}</td>
+                <td>${item.DNI_DATA_1 || '-'}</td>
+                <td>${item.DNI_DATA_2 || '-'}</td>
+                <td>${item.DNI_DATA_3 || '-'}</td>
+                <td>${item.DOMINIO || '-'}</td>
+                <td>${item.OBSERVACIONES || '-'}</td>
+            `;
+        } else {
+            // Fila para Agentes o Otros no DNI
+            rowContent = `
                 <td>${item.HORA}</td>
                 <td>${displayCode}</td>
                 <td>${item.NOMBRE_PROCESADO}</td>
                 <td>${item.PERFIL}</td>
                 <td>${item.DOMINIO || '-'}</td>
                 <td>${item.OBSERVACIONES || '-'}</td>
-            </tr>
-        `;
+            `;
+        }
+        
+        html += `<tr>${rowContent}</tr>`;
     });
 
     html += `
@@ -320,11 +310,9 @@ function filterReporteListado() {
     const searchTerm = document.getElementById('reporteSearch').value.toLowerCase();
     const data = getReporteData().reverse(); 
 
-    // Filtrado: busca en cualquier campo (fecha, dni, dominio, etc.)
     const filteredData = data.filter(item => {
         if (!searchTerm) return true; 
         
-        // Iterar sobre todos los valores del registro
         return Object.values(item).some(value => {
             if (value && typeof value === 'string') {
                 return value.toLowerCase().includes(searchTerm);
@@ -336,45 +324,67 @@ function filterReporteListado() {
     // Guardamos los datos filtrados para su posterior exportación
     lastFilteredData = filteredData;
 
-    // Separar los datos filtrados en dos grupos
     const agentesData = filteredData.filter(item => item.IS_AGENT === 'true');
     const otrosData = filteredData.filter(item => item.IS_AGENT === 'false');
     
-    // Generar las tablas y colocarlas en sus contenedores
     document.getElementById('agentesTableContainer').innerHTML = generateReportTableHTML(agentesData, 'Agentes');
     document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros');
 }
 
-// --- FUNCIONES DE EXPORTACIÓN ---
+// --- FUNCIONES DE EXPORTACIÓN (ESTILO BLANCO/NEGRO Y DNI EN COLUMNAS) ---
 
 function prepareExportData(tableTitle) {
-    // Filtramos los datos que se van a exportar basándose en el título de la tabla
     const dataToExport = tableTitle === 'Agentes' 
         ? lastFilteredData.filter(item => item.IS_AGENT === 'true')
         : lastFilteredData.filter(item => item.IS_AGENT === 'false');
 
-    // Mapear los datos al formato de encabezados
-    const header = [
-        "FECHA", "HORA", "PERFIL", "CÓDIGO/DNI", "NOMBRE_PROCESADO", "DOMINIO", "OBSERVACIONES"
-    ];
+    let header = ["FECHA", "HORA", "PERFIL", "CÓDIGO/DNI", "NOMBRE_PROCESADO", "DOMINIO", "OBSERVACIONES"];
+    
+    if (tableTitle === 'Otros') {
+        // Encabezados para DNI en columnas separadas
+        header = ["FECHA", "HORA", "PERFIL", "NOMBRE_PROCESADO", "DNI_DATO_1", "DNI_DATO_2", "DNI_DATO_3", "DOMINIO", "OBSERVACIONES"];
+    }
 
-    const body = dataToExport.map(item => [
-        item.FECHA,
-        item.HORA,
-        item.PERFIL,
-        // Limpiamos el código DNI para el Excel/PDF
-        item['CREDENCIAL / DNI'].includes('@') ? 'DNI QR: ' + item['CREDENCIAL / DNI'].replace(/@/g, ' ') : item['CREDENCIAL / DNI'],
-        item.NOMBRE_PROCESADO,
-        item.DOMINIO || '',
-        item.OBSERVACIONES || ''
-    ]);
+    const body = dataToExport.map(item => {
+        let row = [
+            item.FECHA,
+            item.HORA,
+            item.PERFIL,
+            item.NOMBRE_PROCESADO,
+            item.DOMINIO || '',
+            item.OBSERVACIONES || ''
+        ];
+        
+        if (tableTitle === 'Otros' && item['CREDENCIAL / DNI'].includes('@')) {
+            // Si es DNI QR en la tabla 'Otros'
+            const dniParts = item['CREDENCIAL / DNI'].split('@');
+            row = [
+                item.FECHA,
+                item.HORA,
+                item.PERFIL,
+                item.NOMBRE_PROCESADO,
+                dniParts[0] || '', // DNI Dato 1
+                dniParts[1] || '', // DNI Dato 2
+                dniParts[2] || '', // DNI Dato 3
+                item.DOMINIO || '',
+                item.OBSERVACIONES || ''
+            ];
+        } else if (tableTitle === 'Agentes') {
+             // Si es Agente (usamos el código/dni completo)
+            row.splice(3, 0, item['CREDENCIAL / DNI']); // Insertar Código/DNI en posición 3
+        } else {
+             // Si es Otros, pero no DNI (ej: manual)
+             row.splice(3, 0, item['CREDENCIAL / DNI']); // Insertar Código/DNI en posición 3
+        }
+
+        return row;
+    });
 
     return { header, body };
 }
 
 function exportarAExcel(tableTitle) {
     const { header, body } = prepareExportData(tableTitle);
-
     const data = [header, ...body];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
@@ -392,17 +402,26 @@ function exportarAPDF(tableTitle) {
     const doc = new jsPDF('landscape');
 
     const { header, body } = prepareExportData(tableTitle);
+    const searchTerm = document.getElementById('reporteSearch').value.trim();
 
+    // Membrete con fondo blanco y letras negras
+    doc.setFillColor(255, 255, 255); // Fondo blanco
+    doc.setTextColor(0, 0, 0); // Letras negras
     doc.setFontSize(14);
-    doc.text(`Reporte: ${tableTitle} - ${new Date().toLocaleDateString('es-AR')}`, 14, 15);
+    doc.text(`REPORTE DE INGRESOS - ${tableTitle.toUpperCase()}`, 14, 15);
+    
+    // Dato de filtro
     doc.setFontSize(10);
+    const filterText = searchTerm ? `Filtro aplicado: "${searchTerm}"` : `Fecha de Exportación: ${new Date().toLocaleString('es-AR')}`;
+    doc.text(filterText, 14, 20);
 
+    // Generación de la tabla
     doc.autoTable({
         head: [header],
         body: body,
-        startY: 20,
-        styles: { fontSize: 8, cellPadding: 2, fillColor: [68, 68, 68] },
-        headStyles: { fillColor: [255, 193, 7] },
+        startY: 25,
+        styles: { fontSize: 8, cellPadding: 2, fillColor: [255, 255, 255], textColor: [0, 0, 0] }, // Fondo blanco, texto negro
+        headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' }, // Gris claro para encabezados
         margin: { top: 10 }
     });
 
@@ -413,7 +432,7 @@ function exportarAPDF(tableTitle) {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (omito cuerpos para brevedad) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -421,8 +440,7 @@ function submitForm(event) {
     const barcodeInput = document.getElementById('barcode_id');
     const barcodeValue = barcodeInput.value.trim();
     const perfilValue = document.getElementById('list_id').value; 
-    const isAgentFlag = barcodeInput.getAttribute('data-is-agent') || 'false';
-
+    
     if (!barcodeValue) {
         showAlert("'CREDENCIAL / DNI' es un campo obligatorio. Ingrese o escanee el código.", 'danger');
         return;
@@ -434,6 +452,21 @@ function submitForm(event) {
     
     processCodeAndDisplayResult(barcodeValue); 
 
+    const agentName = barcodeInput.getAttribute('data-processed-name') || 'N/A';
+    const isAgentFlag = barcodeInput.getAttribute('data-is-agent') || 'false';
+
+    // Manejo de datos DNI para el almacenamiento interno
+    let dniDataFields = {};
+    if (barcodeValue.includes('@')) {
+        const dniParts = barcodeValue.split('@');
+        dniDataFields = {
+            DNI_DATA_1: dniParts[0] || '',
+            DNI_DATA_2: dniParts[1] || '',
+            DNI_DATA_3: dniParts[2] || '',
+            // Puedes agregar más si el QR de tu país tiene más de 3 datos clave
+        };
+    }
+
     const formData = {
         FECHA: new Date().toLocaleDateString('es-AR'),
         HORA: new Date().toLocaleTimeString('es-AR', { hour12: false }),
@@ -441,29 +474,42 @@ function submitForm(event) {
         DOMINIO: document.getElementById('text1_id').value,
         OBSERVACIONES: document.getElementById('text2_id').value,
         'CREDENCIAL / DNI': barcodeValue,
-        'NOMBRE_PROCESADO': barcodeInput.getAttribute('data-processed-name') || 'N/A',
+        'NOMBRE_PROCESADO': agentName,
         'IS_AGENT': isAgentFlag, 
-        'DESTINO': 'Unidad de Control Penitenciario'
+        'DESTINO': 'Unidad de Control Penitenciario',
+        ...dniDataFields // Añade campos DNI si existen
     };
 
     const storedData = getReporteData();
     storedData.push(formData);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
 
-    showAlert(`✅ Ingreso registrado con éxito. Código: ${barcodeValue}.`, 'success');
+    // 1. Feedback Visual: Botón verde por 2 segundos
+    sendButton.classList.add('success-flash');
     
-    // Resetear la interfaz
-    document.getElementById('control-form').reset();
-    document.getElementById('barcode_id').value = '';
-    document.getElementById('list_id').value = ''; 
-    document.getElementById('perfil_display').value = ''; 
-    processCodeAndDisplayResult('');
+    // 2. Feedback de texto debajo del botón flotante
+    const feedbackContainer = document.getElementById('send-feedback-container');
+    feedbackContainer.innerHTML = `<div class="alert alert-success mt-2 text-center" role="alert">
+        ✅ Ingreso de <strong>${agentName}</strong> registrado.
+    </div>`;
+
+    setTimeout(() => {
+        // Quitar el color verde
+        sendButton.classList.remove('success-flash');
+        // Quitar el mensaje de feedback
+        feedbackContainer.innerHTML = '';
+        
+        // 3. Resetear la interfaz
+        document.getElementById('control-form').reset();
+        document.getElementById('barcode_id').value = '';
+        document.getElementById('list_id').value = ''; 
+        processCodeAndDisplayResult('');
+    }, 2000);
 }
 
 
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    loadPerfilOptions();
     
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
@@ -480,11 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     modalElement.addEventListener('hidden.bs.modal', () => {
         stopScanner();
-    });
-    
-    // Evento del Modal de Perfil
-    document.getElementById('perfilModal').addEventListener('shown.bs.modal', () => {
-        document.getElementById('perfilModal').querySelector('.modal-body').scrollTop = 0;
     });
 
     // Evento del Modal de Reporte
