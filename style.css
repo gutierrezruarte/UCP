@@ -68,9 +68,9 @@ h1 {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    /* Ajuste de tamaño para parecerse al botón de escaneo/perfil (aprox 44px de alto) */
-    width: 65px; 
-    height: 65px; 
+    /* CORRECCIÓN: Tamaño similar al botón de perfil (aprox. la altura del input-group) */
+    width: 55px; 
+    height: 55px; 
     border-radius: 50%;
     background-color: #ffc107; 
     color: #333; 
@@ -78,7 +78,7 @@ h1 {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 2rem; 
+    font-size: 1.5rem; /* Ajustado para el nuevo tamaño */
     cursor: pointer;
     z-index: 1050; 
     transition: background-color 0.2s;
@@ -91,7 +91,7 @@ h1 {
 
 /* Estilo para el botón de búsqueda de perfil (mantener mismo tamaño que el de escaneo) */
 .btn-perfil-search {
-    width: 50px; /* Aprox. ancho del input-group addon */
+    width: 50px; 
 }
 
 /* Modal de Escáner en Pantalla Completa */
