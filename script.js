@@ -9,9 +9,11 @@ let lastFilteredData = [];
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 const sendButtonRect = document.getElementById('sendButtonRect'); 
 
-// Referencias a los nuevos elementos de la barra lateral
+// Referencias a elementos de la barra lateral y vistas
 const sidebarMenu = document.getElementById('sidebar-menu');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
+const allViews = document.querySelectorAll('.view');
+
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
 
@@ -55,17 +57,39 @@ function playBeep() {
     }
 }
 
-// --- LÓGICA DE BARRA LATERAL (SIDEBAR) ---
+// --- LÓGICA DE NAVEGACIÓN DE VISTAS ---
+
+function showView(viewId) {
+    // 1. Ocultar todas las vistas
+    allViews.forEach(view => {
+        view.classList.add('hidden');
+    });
+
+    // 2. Mostrar la vista solicitada
+    const activeView = document.getElementById(viewId);
+    if (activeView) {
+        activeView.classList.remove('hidden');
+    }
+
+    // 3. Cerrar la barra lateral si está abierta
+    if (sidebarMenu.classList.contains('show')) {
+        toggleSidebar();
+    }
+    
+    // 4. Si la vista de reportes se activa, la cargamos
+    if (viewId === 'reportes-view') {
+        renderReporteListado();
+    }
+}
 
 function toggleSidebar() {
     sidebarMenu.classList.toggle('show');
     sidebarOverlay.classList.toggle('hidden');
-    // Bloquea el scroll del cuerpo cuando el menú está abierto
     document.body.style.overflow = sidebarMenu.classList.contains('show') ? 'hidden' : '';
 }
 
 
-// --- LÓGICA DE CARGA DE EXCEL ---
+// --- LÓGICA DE CARGA DE EXCEL (Integrada en carga-bases-view) ---
 
 function processExcelFile(file, handlerFunction) {
     const reader = new FileReader();
@@ -98,7 +122,7 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        // toggleSidebar() se llama desde el HTML onclick
+        // El toggleSidebar se llama desde el HTML
     });
 }
 
@@ -124,7 +148,7 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
-        // toggleSidebar() se llama desde el HTML onclick
+        // El toggleSidebar se llama desde el HTML
     });
 }
 
@@ -237,7 +261,7 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (Integrada en reportes-view) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -333,12 +357,7 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
-    // Cerrar el sidebar para asegurar que el modal se vea bien
-    if (sidebarMenu.classList.contains('show')) {
-        toggleSidebar(); 
-    }
-    
-    // Los filtros se inicializan
+    // Los datos se cargan inmediatamente al abrir la vista de reportes
     document.getElementById('reporteSearch').value = ''; 
     filterReporteListado();
 }
@@ -554,17 +573,15 @@ document.addEventListener('DOMContentLoaded', () => {
         stopScanner();
     });
 
-    // Cuando se abre el modal de reporte, se dispara la función de renderizado
-    const reporteModalElement = document.getElementById('reporteModal');
-    reporteModalElement.addEventListener('shown.bs.modal', () => {
-        renderReporteListado();
-    });
-    
-    // Se exponen funciones para su uso global
+    // Se exponen funciones y se inicializa la vista en Home
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
     window.toggleSidebar = toggleSidebar; 
+    window.showView = showView;
 
-    console.log("Aplicación de Control General cargada. Modo oscuro activo.");
+    // Iniciar la aplicación en la vista de Inicio
+    showView('home-view');
+
+    console.log("Aplicación de Control General cargada. Modo oscuro activo. Navegación por vistas.");
 });
