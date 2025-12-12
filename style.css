@@ -6,7 +6,15 @@ body {
     font-size: 1.1rem; /* Aumentar tamaño base de la fuente */
 }
 
+/* Ocultar el portal principal al inicio */
+.hidden {
+    display: none !important;
+}
+
 /* --- Estilos de Login --- */
+.min-vh-100 {
+    min-height: 100vh;
+}
 .custom-card-login {
     background-color: #2b2b2b !important;
     border: 1px solid #ffc107 !important;
@@ -109,7 +117,7 @@ body {
     color: #ffc107; 
 }
 
-.floating-send-btn, .hidden {
+.floating-send-btn {
     display: none !important; 
 }
 
