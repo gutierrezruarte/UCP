@@ -10,9 +10,8 @@ const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal')
 const sendButtonRect = document.getElementById('sendButtonRect'); 
 
 // Referencias a elementos de la barra lateral y vistas
-const sidebarMenu = document.getElementById('sidebar-menu');
-const sidebarOverlay = document.getElementById('sidebar-overlay');
 const allViews = document.querySelectorAll('.view');
+const navButtons = document.querySelectorAll('.nav-link-btn');
 
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
@@ -59,6 +58,13 @@ function playBeep() {
 
 // --- LÓGICA DE NAVEGACIÓN DE VISTAS ---
 
+const viewTitles = {
+    'home-view': 'Control de Ingresos',
+    'registro-view': 'Registro de Ingreso',
+    'carga-bases-view': 'Carga de Bases (Excel)',
+    'reportes-view': 'Reportes y Exportación'
+};
+
 function showView(viewId) {
     // 1. Ocultar todas las vistas
     allViews.forEach(view => {
@@ -70,26 +76,25 @@ function showView(viewId) {
     if (activeView) {
         activeView.classList.remove('hidden');
     }
-
-    // 3. Cerrar la barra lateral si está abierta
-    if (sidebarMenu.classList.contains('show')) {
-        toggleSidebar();
-    }
     
-    // 4. Si la vista de reportes se activa, la cargamos
+    // 3. Actualizar el título principal
+    document.getElementById('view-title').textContent = viewTitles[viewId] || 'Control General';
+
+    // 4. Actualizar estado activo de los botones de la barra lateral
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-view-id') === viewId) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // 5. Si la vista de reportes se activa, la cargamos
     if (viewId === 'reportes-view') {
         renderReporteListado();
     }
 }
 
-function toggleSidebar() {
-    sidebarMenu.classList.toggle('show');
-    sidebarOverlay.classList.toggle('hidden');
-    document.body.style.overflow = sidebarMenu.classList.contains('show') ? 'hidden' : '';
-}
-
-
-// --- LÓGICA DE CARGA DE EXCEL (Integrada en carga-bases-view) ---
+// --- LÓGICA DE CARGA DE EXCEL ---
 
 function processExcelFile(file, handlerFunction) {
     const reader = new FileReader();
@@ -122,7 +127,6 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        // El toggleSidebar se llama desde el HTML
     });
 }
 
@@ -148,7 +152,6 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
-        // El toggleSidebar se llama desde el HTML
     });
 }
 
@@ -283,7 +286,7 @@ function generateReportTableHTML(data, title) {
     }
 
     if (data.length === 0) {
-        return `<p class="text-secondary">No hay ${title} registrados.</p>`;
+        return `<p class="text-secondary p-4">No hay ${title} registrados.</p>`;
     }
 
     const isOtros = title === 'Otros';
@@ -562,8 +565,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
 
-    // Evento para abrir/cerrar la barra lateral
-    document.getElementById('toggle-sidebar-btn').addEventListener('click', toggleSidebar);
+    // Manejo de la navegación de vistas
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            showView(this.getAttribute('data-view-id'));
+        });
+    });
 
     const modalElement = document.getElementById('scannerModal');
     modalElement.addEventListener('shown.bs.modal', () => {
@@ -577,11 +584,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
-    window.toggleSidebar = toggleSidebar; 
     window.showView = showView;
+    window.exportarAExcel = exportarAExcel;
+    window.exportarAPDF = exportarAPDF;
 
     // Iniciar la aplicación en la vista de Inicio
     showView('home-view');
 
-    console.log("Aplicación de Control General cargada. Modo oscuro activo. Navegación por vistas.");
+    console.log("Aplicación de Control General cargada. Modo Portal Fijo.");
 });
