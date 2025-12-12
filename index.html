@@ -90,13 +90,13 @@
                     <div id="send-feedback-container" class="my-2"></div>
 
                     <form id="control-form">
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header border-warning text-warning fw-bold">
+                        <div class="custom-card-app-field mb-3">
+                            <div class="app-field-header">
                                 <i class="bi bi-person-badge"></i> PERFIL <span class="required-badge">*</span>
                             </div>
-                            <div class="card-body">
+                            <div class="app-field-body">
                                 <div class="input-group">
-                                    <select class="form-select custom-input" id="list_id" data-name="PERFIL" required>
+                                    <select class="form-select custom-input-app-style" id="list_id" data-name="PERFIL" required>
                                         <option value="" selected>- Seleccione -</option>
                                         <option value="PERSONAL">PERSONAL</option>
                                         <option value="MOVIL">MOVIL</option>
@@ -111,44 +111,44 @@
                                         <option value="CPA">CPA</option>
                                         <option value="OTROS">OTROS</option>
                                     </select>
-                                    <button type="button" class="btn btn-warning btn-perfil-search" title="Buscar Perfil">
+                                    <button type="button" class="btn btn-warning app-search-icon" title="Buscar Perfil">
                                         <i class="bi bi-search"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header text-warning fw-bold">
+                        <div class="custom-card-app-field mb-3">
+                            <div class="app-field-header">
                                 <i class="bi bi-car-front"></i> DOMINIO
                             </div>
-                            <div class="card-body">
-                                <textarea rows="2" class="form-control custom-input" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
+                            <div class="app-field-body">
+                                <textarea rows="2" class="form-control custom-input-app-style" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
                             </div>
                         </div>
                         
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header text-warning fw-bold">
+                        <div class="custom-card-app-field mb-3">
+                            <div class="app-field-header">
                                 <i class="bi bi-card-text"></i> OBSERVACIONES
                             </div>
-                            <div class="card-body">
-                                <textarea rows="2" class="form-control custom-input" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
+                            <div class="app-field-body">
+                                <textarea rows="2" class="form-control custom-input-app-style" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
                             </div>
                         </div>
 
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header text-warning fw-bold">
-                                <i class="bi bi-qr-code"></i> Código / DNI <span class="required-badge">*</span>
+                        <div class="custom-card-app-field mb-3">
+                            <div class="app-field-header-scan">
+                                <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla <span class="required-badge">*</span>
                             </div>
-                            <div class="card-body text-center">
+                            <div class="app-field-body-scan text-center">
                                 <div id="scan-result" class="mb-3 p-2 text-warning fw-bold" style="min-height: 20px;">
                                     Ningún código escaneado
                                 </div>
                                 
                                 <div class="input-group">
-                                    <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
+                                    <input type="text" class="form-control custom-input-app-style text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
                                     
-                                    <button type="button" class="btn btn-warning" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
+                                    <button type="button" class="btn btn-warning app-scan-icon" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
                                         <i class="bi bi-qr-code-scan" style="font-size: 1.5rem;"></i>
                                     </button>
                                 </div>
@@ -158,11 +158,14 @@
                         <input type="hidden" id="date_id" data-name="FECHA">
                         <input type="hidden" id="time_id" data-name="HORA">
 
-                        <div class="d-grid gap-2 mt-4 mb-5">
-                            <button type="submit" id="sendButtonRect" class="btn btn-warning btn-block btn-lg registrar-ingreso-btn">
-                                <i class="bi bi-send-fill"></i> REGISTRAR INGRESO
+                        <div class="fixed-send-button-app-style">
+                            <button type="submit" id="sendButtonRect" class="registrar-ingreso-btn-app-style" title="Registrar Ingreso">
+                                <i class="bi bi-send-fill"></i>
                             </button>
                         </div>
+
+                        <div style="height: 100px;"></div>
+
                     </form>
                 </div> 
 
