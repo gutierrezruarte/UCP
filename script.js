@@ -70,30 +70,36 @@ function playBeep() {
 }
 
 
-// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (VERIFICACIÓN AÑADIDA) ---
+// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (CORRECCIÓN APLICADA AQUÍ) ---
 
 function login(event) {
     event.preventDefault();
-    // Se asegura de eliminar espacios al inicio/final
+    
+    // El afiliado SIEMPRE debe limpiarse de espacios.
     const afiliado = document.getElementById('login-afiliado').value.trim();
-    const password = document.getElementById('login-password').value.trim();
+    
+    // LA CONTRASEÑA NO DEBE LIMPIARSE CON .trim() para evitar errores en ciertos entornos.
+    const password = document.getElementById('login-password').value; 
+    
     const errorP = document.getElementById('login-error');
     
     errorP.classList.add('hidden'); 
 
     const user = MOCK_USERS[afiliado];
     
-    // DEBUG: Muestra en la consola los valores leídos para verificar typos
-    console.log(`Intento de login. Usuario: "${afiliado}", Contraseña ingresada: "${password}", Contraseña esperada: "${user ? user.password : 'N/A'}"`);
+    // DIAGNÓSTICO: Esto permite verificar en la consola lo que el sistema está leyendo
+    console.log(`Intento de login. Usuario (leído): "${afiliado}", Contraseña (leída): "${password}"`);
+    console.log(`Credencial esperada: ${user ? user.password : 'N/A'}`);
 
 
     if (user && user.password === password) {
         currentUser = user;
         selectedRole = user.role;
+        console.log(`Login Exitoso. Rol: ${selectedRole}`);
         showPortal();
     } else {
         errorP.textContent = 'Usuario o contraseña incorrectos. Verifique mayúsculas (M en Marquitos) y minúsculas.';
-        errorP.classList.remove('hidden'); // Mostrar error
+        errorP.classList.remove('hidden'); 
     }
 }
 
@@ -125,7 +131,7 @@ function logout() {
     showAlert('Sesión cerrada correctamente.', 'info');
 }
 
-// --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad, solo Admin) ---
+// --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
 
 function processExcelFile(file, handlerFunction) {
     if (selectedRole !== 'administrador') {
