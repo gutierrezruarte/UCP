@@ -16,29 +16,7 @@
 </head>
 <body>
     
-    <div id="login-screen" class="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-dark text-white">
-        <div class="card p-4 custom-card-login">
-            <div class="text-center mb-4">
-                <h1 class="h3 fw-bold text-warning">CONTROL GENERAL</h1>
-                <p class="text-secondary">UCP - Ingrese Credenciales</p>
-            </div>
-            <form id="login-form">
-                <div class="mb-3">
-                    <label for="login-afiliado" class="form-label text-warning">Usuario (Afiliado/Código)</label>
-                    <input type="text" class="form-control custom-input-login" id="login-afiliado" required>
-                </div>
-                <div class="mb-3">
-                    <label for="login-password" class="form-label text-warning">Contraseña</label>
-                    <input type="text" class="form-control custom-input-login" id="login-password" required> 
-                </div>
-                <p id="login-error" class="text-danger text-center hidden"></p> 
-                <button type="submit" class="btn btn-warning w-100 mt-3 fw-bold">INGRESAR</button>
-            </form>
-        </div>
-    </div>
-
-
-    <div id="main-portal" class="hidden">
+    <div id="main-portal">
         
         <nav class="navbar navbar-dark bg-dark border-bottom border-warning fixed-top-nav">
             <div class="container-fluid">
@@ -49,9 +27,7 @@
 
                 <span class="navbar-brand mx-auto mb-0 h1 text-center-custom">CONTROL GENERAL</span>
                 
-                <button class="btn btn-sm btn-outline-danger" onclick="logout()" title="Cerrar Sesión">
-                    <i class="bi bi-door-open-fill"></i>
-                </button>
+                <div class="navbar-escudo-placeholder"></div>
             </div>
         </nav>
         
@@ -167,7 +143,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content bg-dark text-white">
                     <div class="modal-header bg-dark border-warning">
-                        <h5 class="modal-title" id="adminModalLabel">Menú de Administración (<span id="user-role-display"></span>)</h5>
+                        <h5 class="modal-title" id="adminModalLabel">Menú de Administración</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
