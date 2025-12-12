@@ -98,7 +98,7 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        toggleSidebar(); // Cierra el sidebar al completar
+        // toggleSidebar() se llama desde el HTML onclick
     });
 }
 
@@ -124,7 +124,7 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
-        toggleSidebar(); // Cierra el sidebar al completar
+        // toggleSidebar() se llama desde el HTML onclick
     });
 }
 
@@ -333,8 +333,12 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
-    toggleSidebar(); // Cierra el sidebar
-    // Abrir el modal de reporte se maneja en el HTML con data-bs-toggle="modal"
+    // Cerrar el sidebar para asegurar que el modal se vea bien
+    if (sidebarMenu.classList.contains('show')) {
+        toggleSidebar(); 
+    }
+    
+    // Los filtros se inicializan
     document.getElementById('reporteSearch').value = ''; 
     filterReporteListado();
 }
@@ -553,25 +557,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cuando se abre el modal de reporte, se dispara la función de renderizado
     const reporteModalElement = document.getElementById('reporteModal');
     reporteModalElement.addEventListener('shown.bs.modal', () => {
-        renderReporteListado(false); // Renderizar sin cerrar el sidebar
+        renderReporteListado();
     });
     
-    // Al abrir un colapso, aseguramos que la página no se mueva
-    document.querySelectorAll('.collapse').forEach(collapseEl => {
-        collapseEl.addEventListener('show.bs.collapse', () => {
-            document.body.style.overflow = 'hidden';
-        });
-        collapseEl.addEventListener('hidden.bs.collapse', () => {
-             document.body.style.overflow = sidebarMenu.classList.contains('show') ? 'hidden' : '';
-        });
-    });
-    
-
     // Se exponen funciones para su uso global
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
-    window.toggleSidebar = toggleSidebar; // Exponer la función de toggle
+    window.toggleSidebar = toggleSidebar; 
 
     console.log("Aplicación de Control General cargada. Modo oscuro activo.");
 });
