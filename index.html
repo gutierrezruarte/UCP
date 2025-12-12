@@ -16,228 +16,234 @@
 </head>
 <body>
     
-    <div id="main-portal" class="portal-layout">
+    <div id="main-portal" class="d-flex flex-column min-vh-100">
         
-        <div id="sidebar-fixed" class="sidebar-fixed">
+        <nav class="navbar navbar-dark bg-dark border-bottom border-warning fixed-top-nav">
+            <div class="container-fluid">
+                
+                <button class="btn btn-sm btn-outline-warning nav-btn-left" id="toggle-sidebar-btn" title="Menú de Navegación">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <span class="navbar-brand mx-auto mb-0 h1 text-center-custom" id="view-title">Control de Ingresos</span>
+                
+                <button class="btn btn-sm btn-outline-warning nav-btn-right" onclick="showView('home-view')" title="Ir a Inicio">
+                    <i class="bi bi-house-door-fill"></i>
+                </button>
+            </div>
+        </nav>
+        
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="sidebar-overlay hidden"></div>
+        <div id="sidebar-menu" class="sidebar-menu">
             <div class="sidebar-header">
-                <h4 class="m-0">UNIDAD DE CONTROL PENITENCIARIO</h4>
+                <h5 class="m-0 text-warning fw-bold">UNIDAD DE CONTROL PENITENCIARIO</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="toggleSidebar()" aria-label="Close"></button>
             </div>
             
             <nav class="sidebar-nav">
-                <button class="nav-link-btn active" data-view-id="home-view">
+                <button class="nav-link-btn active" data-view-id="home-view" onclick="showView('home-view')">
                     <i class="bi bi-house-door-fill"></i> Inicio
                 </button>
-                <button class="nav-link-btn" data-view-id="registro-view">
+                <button class="nav-link-btn" data-view-id="registro-view" onclick="showView('registro-view')">
                     <i class="bi bi-journal-plus"></i> Cargar Registro de Ingreso
                 </button>
-                <button class="nav-link-btn" data-view-id="carga-bases-view">
-                    <i class="bi bi-database-fill-add"></i> Importar Bases (Excel)
+                <button class="nav-link-btn" data-view-id="carga-bases-view" onclick="showView('carga-bases-view')">
+                    <i class="bi bi-database-fill-add"></i> Importar Bases
                 </button>
-                <button class="nav-link-btn" data-view-id="reportes-view">
+                <button class="nav-link-btn" data-view-id="reportes-view" onclick="showView('reportes-view')">
                     <i class="bi bi-list-columns"></i> Ver Reportes
                 </button>
-            </nav>
+                </nav>
         </div>
         
-        <main id="main-content" class="main-content">
+        <div class="flex-grow container my-3 pb-5 content-padding-top">
             
-            <header class="main-header">
-                <h1 id="view-title" class="text-warning fw-bold">Control de Ingresos</h1>
-                <button class="btn btn-sm btn-outline-warning" onclick="showView('home-view')" title="Ir a Inicio">
-                    <i class="bi bi-house-door-fill"></i>
-                </button>
-            </header>
+            <div id="alert-container"></div>
             
-            <div class="container my-3">
-                <div id="alert-container"></div>
-            </div>
-            
-            <div class="container view-container">
-            
-                <div id="home-view" class="view">
-                    <h2 class="text-warning mb-4">Bienvenido, Operador</h2>
-                    <p class="text-white-50">Seleccione una opción del menú lateral para comenzar a trabajar. Las siguientes son las funcionalidades disponibles:</p>
-                    
-                    <div class="row g-4 mt-3">
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card custom-card-intro h-100" onclick="showView('registro-view')">
-                                <div class="card-body">
-                                    <h4 class="text-warning fw-bold"><i class="bi bi-journal-plus"></i> REGISTRO DE INGRESO</h4>
-                                    <p class="text-white-50">Módulo principal para registrar el acceso de personal, vehículos, visitas y más. Permite escanear códigos o cargar manualmente los datos.</p>
-                                </div>
+            <div id="home-view" class="view">
+                <h2 class="text-white mb-4">Bienvenido, Superusuario</h2>
+                <p class="text-white-50">Desde este panel de administrador, tiene acceso completo al sistema.</p>
+                
+                <div class="row g-4 mt-3">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card custom-card-intro h-100" onclick="showView('registro-view')">
+                            <div class="card-body">
+                                <h4 class="text-warning fw-bold"><i class="bi bi-journal-plus"></i> Cargar Registro de Ingreso</h4>
+                                <p class="text-white-50">Módulo principal para registrar el acceso de personal, vehículos, visitas y otros mediante escaneo o carga manual.</p>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card custom-card-intro h-100" onclick="showView('carga-bases-view')">
-                                <div class="card-body">
-                                    <h4 class="text-warning fw-bold"><i class="bi bi-database-fill-add"></i> IMPORTAR BASES</h4>
-                                    <p class="text-white-50">Actualice las bases de datos de Dotación y Registros de Pases (Body Scan) cargando archivos Excel.</p>
-                                </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card custom-card-intro h-100" onclick="showView('carga-bases-view')">
+                            <div class="card-body">
+                                <h4 class="text-warning fw-bold"><i class="bi bi-database-fill-add"></i> Importar Bases</h4>
+                                <p class="text-white-50">Actualice la Dotación y los Registros de Pases del Body Scan mediante archivos Excel.</p>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card custom-card-intro h-100" onclick="showView('reportes-view')">
-                                <div class="card-body">
-                                    <h4 class="text-warning fw-bold"><i class="bi bi-list-columns"></i> VER REPORTES</h4>
-                                    <p class="text-white-50">Consulte el listado de ingresos registrados, aplique filtros por código o fecha y exporte los resultados a XLS o PDF.</p>
-                                </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card custom-card-intro h-100" onclick="showView('reportes-view')">
+                            <div class="card-body">
+                                <h4 class="text-warning fw-bold"><i class="bi bi-list-columns"></i> Ver Reportes</h4>
+                                <p class="text-white-50">Consulte el listado de ingresos registrados, aplique filtros y exporte los resultados a XLS o PDF.</p>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div id="registro-view" class="view hidden">
-                    <h3 class="text-warning mb-4">Módulo: REGISTRO DE INGRESO</h3>
-                    <div id="send-feedback-container" class="my-2"></div>
+            <div id="registro-view" class="view hidden">
+                <h3 class="text-warning mb-4">Módulo: REGISTRO DE INGRESO</h3>
+                <div id="send-feedback-container" class="my-2"></div>
 
-                    <form id="control-form">
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header border-warning text-warning fw-bold">
-                                <i class="bi bi-person-badge"></i> PERFIL <span class="required-badge">*</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="input-group">
-                                    <select class="form-select custom-input" id="list_id" data-name="PERFIL" required>
-                                        <option value="" selected>- Seleccione -</option>
-                                        <option value="PERSONAL">PERSONAL</option>
-                                        <option value="MOVIL">MOVIL</option>
-                                        <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
-                                        <option value="DOCENTE">DOCENTE</option>
-                                        <option value="ABOGADO">ABOGADO</option>
-                                        <option value="PASTORAL">PASTORAL</option>
-                                        <option value="CANTINA">CANTINA</option>
-                                        <option value="PROVEEDORES">PROVEEDORES</option>
-                                        <option value="OBRA">OBRA</option>
-                                        <option value="VISITA">VISITA</option>
-                                        <option value="CPA">CPA</option>
-                                        <option value="OTROS">OTROS</option>
-                                    </select>
-                                    <button type="button" class="btn btn-warning btn-perfil-search" title="Buscar Perfil">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                </div>
+                <form id="control-form">
+                    <div class="card mb-3 custom-card">
+                        <div class="card-header border-warning text-warning fw-bold">
+                            <i class="bi bi-person-badge"></i> PERFIL <span class="required-badge">*</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="input-group">
+                                <select class="form-select custom-input" id="list_id" data-name="PERFIL" required>
+                                    <option value="" selected>- Seleccione -</option>
+                                    <option value="PERSONAL">PERSONAL</option>
+                                    <option value="MOVIL">MOVIL</option>
+                                    <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
+                                    <option value="DOCENTE">DOCENTE</option>
+                                    <option value="ABOGADO">ABOGADO</option>
+                                    <option value="PASTORAL">PASTORAL</option>
+                                    <option value="CANTINA">CANTINA</option>
+                                    <option value="PROVEEDORES">PROVEEDORES</option>
+                                    <option value="OBRA">OBRA</option>
+                                    <option value="VISITA">VISITA</option>
+                                    <option value="CPA">CPA</option>
+                                    <option value="OTROS">OTROS</option>
+                                </select>
+                                <button type="button" class="btn btn-warning btn-perfil-search" title="Buscar Perfil">
+                                    <i class="bi bi-search"></i>
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header text-warning fw-bold">
-                                <i class="bi bi-car-front"></i> DOMINIO
-                            </div>
-                            <div class="card-body">
-                                <textarea rows="2" class="form-control custom-input" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
-                            </div>
+                    <div class="card mb-3 custom-card">
+                        <div class="card-header text-warning fw-bold">
+                            <i class="bi bi-car-front"></i> DOMINIO
                         </div>
-                        
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header text-warning fw-bold">
-                                <i class="bi bi-card-text"></i> OBSERVACIONES
-                            </div>
-                            <div class="card-body">
-                                <textarea rows="2" class="form-control custom-input" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
-                            </div>
+                        <div class="card-body">
+                            <textarea rows="2" class="form-control custom-input" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
                         </div>
+                    </div>
+                    
+                    <div class="card mb-3 custom-card">
+                        <div class="card-header text-warning fw-bold">
+                            <i class="bi bi-card-text"></i> OBSERVACIONES
+                        </div>
+                        <div class="card-body">
+                            <textarea rows="2" class="form-control custom-input" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
+                        </div>
+                    </div>
 
-                        <div class="card mb-3 custom-card">
-                            <div class="card-header text-warning fw-bold">
-                                <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla <span class="required-badge">*</span>
+                    <div class="card mb-3 custom-card">
+                        <div class="card-header text-warning fw-bold">
+                            <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla <span class="required-badge">*</span>
+                        </div>
+                        <div class="card-body text-center">
+                            <div id="scan-result" class="mb-3 p-2 text-warning fw-bold" style="min-height: 20px;">
+                                Ningún código escaneado
                             </div>
-                            <div class="card-body text-center">
-                                <div id="scan-result" class="mb-3 p-2 text-warning fw-bold" style="min-height: 20px;">
-                                    Ningún código escaneado
-                                </div>
+                            
+                            <div class="input-group">
+                                <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
                                 
-                                <div class="input-group">
-                                    <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
-                                    
-                                    <button type="button" class="btn btn-warning" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
-                                        <i class="bi bi-qr-code-scan" style="font-size: 1.5rem;"></i>
-                                    </button>
-                                </div>
+                                <button type="button" class="btn btn-warning" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
+                                    <i class="bi bi-qr-code-scan" style="font-size: 1.5rem;"></i>
+                                </button>
                             </div>
                         </div>
-                        
-                        <input type="hidden" id="date_id" data-name="FECHA">
-                        <input type="hidden" id="time_id" data-name="HORA">
-
-                        <div class="d-grid gap-2 mt-4 mb-5">
-                            <button type="submit" id="sendButtonRect" class="btn btn-warning btn-block btn-lg registrar-ingreso-btn">
-                                <i class="bi bi-send-fill"></i> REGISTRAR INGRESO
-                            </button>
-                        </div>
-
-                    </form>
-                </div> 
-
-                <div id="carga-bases-view" class="view hidden">
-                    <h3 class="text-warning mb-4">Módulo: CARGA DE BASES (Excel)</h3>
-                    <p class="text-white-50">Utilice esta sección para mantener actualizada la información de Dotación y Pases del Body Scan.</p>
-                    <hr class="text-secondary">
-
-                    <div class="card mb-4 custom-card p-3">
-                        <h5 class="text-warning"><i class="bi bi-person-fill-gear"></i> Carga y Actualización de Dotación</h5>
-                        <label class="form-label">Seleccionar archivo Excel</label>
-                        <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
-                        <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
-                        <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
                     </div>
-
-                    <div class="card custom-card p-3">
-                        <h5 class="text-warning"><i class="bi bi-body-text"></i> Registros de Pases (Body Scan)</h5>
-                        <label class="form-label">Seleccionar archivo Excel</label>
-                        <input type="file" class="form-control bg-secondary text-white" id="pasesFile" accept=".xlsx, .xls">
-                        <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
-                        <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
-                        <div id="pases-status" class="mt-2 text-warning"></div>
-                    </div>
-                </div>
-                
-                <div id="reportes-view" class="view hidden">
-                    <h3 class="text-warning mb-4">Módulo: REPORTES Y EXPORTACIÓN</h3>
-                    <p class="text-white-50">Visualice, filtre y exporte el historial completo de ingresos registrados en el dispositivo.</p>
-                    <hr class="text-secondary">
                     
-                    <button class="btn btn-warning w-100 mb-3" onclick="renderReporteListado(true)">
-                        <i class="bi bi-arrow-clockwise"></i> Recargar Listado
-                    </button>
-                    
-                    <div class="mb-3">
-                        <label for="reporteSearch" class="form-label">Buscar por Fecha, Código, Dominio, etc.</label>
-                        <input type="text" class="form-control custom-input" id="reporteSearch" placeholder="Escriba aquí para filtrar..." oninput="filterReporteListado()">
+                    <input type="hidden" id="date_id" data-name="FECHA">
+                    <input type="hidden" id="time_id" data-name="HORA">
+
+                    <div class="d-grid gap-2 mt-4 mb-5">
+                        <button type="submit" id="sendButtonRect" class="btn btn-warning btn-block btn-lg registrar-ingreso-btn">
+                            <i class="bi bi-send-fill"></i> REGISTRAR INGRESO
+                        </button>
                     </div>
 
-                    <h6 class="text-warning mt-4">AGENTE (CREDENCIAL/AFILIADO)</h6>
-                    <div id="agentesTableContainer" class="table-responsive mb-5">
-                        <p class="text-secondary p-4">Cargue el listado para ver los datos.</p>
-                    </div>
-
-                    <h6 class="text-warning mt-4">OTROS / VISITAS (DNI/MANUAL)</h6>
-                    <div id="otrosTableContainer" class="table-responsive">
-                        <p class="text-secondary p-4">Cargue el listado para ver los datos.</p>
-                    </div>
-                </div>
-                
+                </form>
             </div> 
+
+            <div id="carga-bases-view" class="view hidden">
+                <h3 class="text-warning mb-4">Módulo: CARGA DE BASES (Excel)</h3>
+                <p class="text-white-50">Utilice esta sección para mantener actualizada la información de Dotación y Pases del Body Scan.</p>
+                <hr class="text-secondary">
+
+                <div class="card mb-4 custom-card p-3">
+                    <h5 class="text-warning"><i class="bi bi-person-fill-gear"></i> Carga y Actualización de Dotación</h5>
+                    <label class="form-label">Seleccionar archivo Excel</label>
+                    <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
+                    <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
+                    <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
+                </div>
+
+                <div class="card custom-card p-3">
+                    <h5 class="text-warning"><i class="bi bi-body-text"></i> Registros de Pases (Body Scan)</h5>
+                    <label class="form-label">Seleccionar archivo Excel</label>
+                    <input type="file" class="form-control bg-secondary text-white" id="pasesFile" accept=".xlsx, .xls">
+                    <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
+                    <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
+                    <div id="pases-status" class="mt-2 text-warning"></div>
+                </div>
+            </div>
             
-            <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-fullscreen modal-dialog-centered">
-                    <div class="modal-content bg-dark">
-                        <div class="modal-header border-0">
-                            <h5 class="modal-title text-white" id="scannerModalLabel">ESCANEAR CÓDIGO</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopScanner()"></button>
-                        </div>
-                        <div class="modal-body p-1 d-flex justify-content-center align-items-center">
-                            <div id="reader" style="width: 100%; max-width: 500px; max-height: 80vh;"></div>
-                        </div>
-                        <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScanner()">Cerrar y Cancelar Escaneo</button>
-                        </div>
+            <div id="reportes-view" class="view hidden">
+                <h3 class="text-warning mb-4">Módulo: REPORTES Y EXPORTACIÓN</h3>
+                <p class="text-white-50">Visualice, filtre y exporte el historial completo de ingresos registrados en el dispositivo.</p>
+                <hr class="text-secondary">
+                
+                <button class="btn btn-warning w-100 mb-3" onclick="renderReporteListado(true)">
+                    <i class="bi bi-arrow-clockwise"></i> Recargar Listado
+                </button>
+                
+                <div class="mb-3">
+                    <label for="reporteSearch" class="form-label">Buscar por Fecha, Código, Dominio, etc.</label>
+                    <input type="text" class="form-control custom-input" id="reporteSearch" placeholder="Escriba aquí para filtrar..." oninput="filterReporteListado()">
+                </div>
+
+                <h6 class="text-warning mt-4">AGENTE (CREDENCIAL/AFILIADO)</h6>
+                <div id="agentesTableContainer" class="table-responsive mb-5">
+                    <p class="text-secondary p-4">Cargue el listado para ver los datos.</p>
+                </div>
+
+                <h6 class="text-warning mt-4">OTROS / VISITAS (DNI/MANUAL)</h6>
+                <div id="otrosTableContainer" class="table-responsive">
+                    <p class="text-secondary p-4">Cargue el listado para ver los datos.</p>
+                </div>
+            </div>
+            
+        </div> 
+        
+        <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-fullscreen modal-dialog-centered">
+                <div class="modal-content bg-dark">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title text-white" id="scannerModalLabel">ESCANEAR CÓDIGO</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopScanner()"></button>
+                    </div>
+                    <div class="modal-body p-1 d-flex justify-content-center align-items-center">
+                        <div id="reader" style="width: 100%; max-width: 500px; max-height: 80vh;"></div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScanner()">Cerrar y Cancelar Escaneo</button>
                     </div>
                 </div>
             </div>
+        </div>
 
-        </main>
+
     </div>
 
 
