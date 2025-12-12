@@ -8,7 +8,9 @@ let lastFilteredData = [];
 
 // --- AUTENTICACIÓN Y ROLES (SIMULACIÓN) ---
 const MOCK_USERS = {
+    // SUPERUSUARIO (ADMINISTRADOR) - CREDENCIALES SOLICITADAS POR EL USUARIO
     '136219951': { afiliado: '136219951', password: 'Marquitos123', nombreCompleto: 'SUPERUSUARIO', role: 'administrador' },
+    // OTROS USUARIOS DE PRUEBA
     '0001': { afiliado: '0001', password: 'admin', nombreCompleto: 'ADMINISTRADOR DE PRUEBA', role: 'administrador' },
     '0002': { afiliado: '0002', password: 'user', nombreCompleto: 'OPERADOR DE REGISTRO', role: 'operador' }
 };
@@ -76,7 +78,7 @@ function login(event) {
     const password = document.getElementById('login-password').value.trim();
     const errorP = document.getElementById('login-error');
     
-    errorP.classList.add('hidden');
+    errorP.classList.add('hidden'); // Ocultar mensaje de error anterior
 
     const user = MOCK_USERS[afiliado];
 
@@ -85,8 +87,8 @@ function login(event) {
         selectedRole = user.role;
         showPortal();
     } else {
-        errorP.textContent = 'Usuario o contraseña incorrectos.';
-        errorP.classList.remove('hidden');
+        errorP.textContent = 'Usuario o contraseña incorrectos. Verifique mayúsculas y minúsculas.';
+        errorP.classList.remove('hidden'); // Mostrar error
     }
 }
 
@@ -94,7 +96,6 @@ function showPortal() {
     loginScreen.classList.add('hidden');
     mainPortal.classList.remove('hidden');
     
-    // Configurar la interfaz según el rol
     setupPortalForRole();
 }
 
@@ -109,8 +110,6 @@ function setupPortalForRole() {
     } else {
         importSection.classList.add('hidden');
     }
-    
-    // Otros permisos (deshabilitar botones de edición/eliminación si fuera el caso, pero aquí solo afecta la vista de administración)
 }
 
 function logout() {
@@ -129,7 +128,6 @@ function processExcelFile(file, handlerFunction) {
         showAlert('Permiso denegado. Solo los administradores pueden importar datos.', 'danger');
         return;
     }
-    // ... (El cuerpo de la función sigue siendo el mismo)
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
@@ -164,7 +162,7 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        adminModal.hide(); // Ocultar el modal después de la carga exitosa
+        adminModal.hide(); 
     });
 }
 
@@ -194,7 +192,7 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
-        adminModal.hide(); // Ocultar el modal después de la carga exitosa
+        adminModal.hide(); 
     });
 }
 
@@ -403,8 +401,6 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
-    // Si el modal de reportes se abre desde el menú de administración,
-    // se asegura que el menú se oculte primero
     adminModal.hide(); 
     document.getElementById('reporteSearch').value = ''; 
     filterReporteListado();
@@ -624,12 +620,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const reporteModalElement = document.getElementById('reporteModal');
     reporteModalElement.addEventListener('shown.bs.modal', () => {
-        // Asegurar que el menú de administración se cierre si sigue abierto
         adminModal.hide();
         renderReporteListado();
     });
 
-    // Se expone logout para el botón en la navbar
+    // Se exponen funciones para su uso global
     window.logout = logout;
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
