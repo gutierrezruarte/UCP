@@ -2,7 +2,8 @@
 body {
     background-color: #333; /* Fondo gris oscuro */
     color: #f8f9fa;
-    padding-bottom: 0; 
+    padding: 0; 
+    margin: 0;
     font-size: 1.1rem; 
 }
 
@@ -11,123 +12,114 @@ body {
     display: none !important;
 }
 .view {
-    padding-top: 10px; /* Separación del título */
+    /* Padding interior del contenedor de vista */
+    padding-bottom: 50px; 
 }
 
-/* --- Estilos de Navbar Fija y Título --- */
-.content-padding-top {
-    padding-top: 60px; /* Espacio para la barra fija */
-}
 
-.fixed-top-nav {
-    position: fixed; 
-    top: 0;
-    width: 100%;
-    z-index: 1030;
-}
-
-.navbar-brand.text-center-custom {
-    margin: 0 auto; 
-    text-align: center;
-    flex-grow: 1; 
-    font-size: 1.5rem;
-}
-
-/* Botón de Menú a la izquierda */
-.nav-btn-left {
-    width: 50px; 
-    height: 40px;
+/* --- Estructura de Portal (Fijo) --- */
+.portal-layout {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-left: 5px;
+    min-height: 100vh;
 }
 
-/* Placeholder para mantener el centrado perfecto / Botón de Home a la derecha */
-.navbar-escudo-placeholder,
-.fixed-top-nav .btn-outline-warning:last-child { 
-    width: 50px; 
-    margin-right: 5px;
-}
-
-/* Estilos de la Home View */
-.custom-card-intro {
-    background-color: #444; 
-    border-left: 5px solid #ffc107;
-}
-
-/* --- SIDEBAR CUSTOM STYLES --- */
-
-/* La barra lateral en sí */
-.sidebar-menu {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 280px; /* Ancho de la barra */
-    height: 100%;
-    background-color: #2b2b2b; /* Fondo oscuro */
+/* 1. Sidebar Fija */
+.sidebar-fixed {
+    width: 280px; /* Ancho fijo como en la imagen de referencia */
+    background-color: #212529; /* bg-dark de Bootstrap */
     color: #fff;
-    z-index: 1040; 
-    transform: translateX(-100%); /* Oculta la barra por defecto */
-    transition: transform 0.3s ease-in-out;
-    border-right: 3px solid #ffc107;
+    flex-shrink: 0;
     box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-}
-
-/* Mostrar la barra lateral */
-.sidebar-menu.show {
-    transform: translateX(0);
-}
-
-/* Fondo de superposición (overlay) */
-.sidebar-overlay {
-    position: fixed;
+    border-right: 3px solid #ffc107;
+    position: sticky;
     top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 1039;
+    height: 100vh; /* Ocupa toda la altura */
+    overflow-y: auto;
 }
 
-/* Encabezado y contenido */
 .sidebar-header {
-    padding: 1rem;
+    padding: 20px 15px;
+    text-align: center;
+    background-color: #1c2024;
+    border-bottom: 1px solid #ffc107;
+    font-size: 1.2rem;
+}
+
+.sidebar-nav {
+    padding: 10px 0;
+}
+
+.nav-link-btn {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: #ccc;
+    padding: 12px 15px 12px 20px;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-link-btn i {
+    margin-right: 12px;
+    font-size: 1.2rem;
+}
+
+.nav-link-btn:hover {
+    background-color: #343a40;
+    color: #ffc107;
+}
+
+.nav-link-btn.active {
+    background-color: #ffc107;
+    color: #333;
+    font-weight: bold;
+    border-left: 5px solid #fff;
+    padding-left: 15px; /* Ajuste para compensar el borde */
+}
+
+/* 2. Contenido Principal */
+.main-content {
+    flex-grow: 1;
+    background-color: #333; 
+    padding: 0; 
+    overflow-y: auto;
+}
+
+.main-header {
+    background-color: #3c3c3c;
+    padding: 15px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #ffc107;
+    border-bottom: 2px solid #ffc107;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
-.sidebar-content {
-    padding: 1rem;
-    overflow-y: auto;
-    flex-grow: 1;
+.main-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
 }
 
-/* Estilo para los elementos primarios que abren las "pantallas" */
-.menu-item-primary {
-    background-color: #ffc107 !important;
-    color: #333 !important;
-    font-weight: bold;
-    padding: 10px 15px;
-    font-size: 1rem;
-    border: none;
+/* Estilos de la Home View Cards */
+.custom-card-intro {
+    background-color: #444; 
+    border: 1px solid #555;
+    border-left: 5px solid #ffc107; 
+    cursor: pointer;
     transition: background-color 0.2s;
 }
 
-.menu-item-primary:hover {
-    background-color: #e0ac10 !important; /* Un poco más oscuro */
-}
-
-.menu-item-primary i {
-    margin-right: 10px;
+.custom-card-intro:hover {
+    background-color: #555;
 }
 
 
-/* --- Estilos de Formulario Principal y Cards --- */
+/* --- Estilos de Formulario y Componentes --- */
 
 .required-badge {
     color: red;
