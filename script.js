@@ -70,24 +70,29 @@ function playBeep() {
 }
 
 
-// --- AUTENTICACIÓN Y FLUJO DE PANTALLA ---
+// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (VERIFICACIÓN AÑADIDA) ---
 
 function login(event) {
     event.preventDefault();
+    // Se asegura de eliminar espacios al inicio/final
     const afiliado = document.getElementById('login-afiliado').value.trim();
     const password = document.getElementById('login-password').value.trim();
     const errorP = document.getElementById('login-error');
     
-    errorP.classList.add('hidden'); // Ocultar mensaje de error anterior
+    errorP.classList.add('hidden'); 
 
     const user = MOCK_USERS[afiliado];
+    
+    // DEBUG: Muestra en la consola los valores leídos para verificar typos
+    console.log(`Intento de login. Usuario: "${afiliado}", Contraseña ingresada: "${password}", Contraseña esperada: "${user ? user.password : 'N/A'}"`);
+
 
     if (user && user.password === password) {
         currentUser = user;
         selectedRole = user.role;
         showPortal();
     } else {
-        errorP.textContent = 'Usuario o contraseña incorrectos. Verifique mayúsculas y minúsculas.';
+        errorP.textContent = 'Usuario o contraseña incorrectos. Verifique mayúsculas (M en Marquitos) y minúsculas.';
         errorP.classList.remove('hidden'); // Mostrar error
     }
 }
@@ -104,7 +109,6 @@ function setupPortalForRole() {
 
     userRoleDisplay.textContent = `${currentUser.nombreCompleto} (${selectedRole.toUpperCase()})`;
     
-    // PERMISOS: Solo el rol 'administrador' puede ver la sección de importación
     if (selectedRole === 'administrador') {
         importSection.classList.remove('hidden');
     } else {
@@ -121,7 +125,7 @@ function logout() {
     showAlert('Sesión cerrada correctamente.', 'info');
 }
 
-// --- LÓGICA DE CARGA DE EXCEL (requiere rol de administrador) ---
+// --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad, solo Admin) ---
 
 function processExcelFile(file, handlerFunction) {
     if (selectedRole !== 'administrador') {
@@ -196,7 +200,7 @@ function loadPases() {
     });
 }
 
-// --- LÓGICA DE ESCANEO Y PROCESAMIENTO ---
+// --- LÓGICA DE ESCANEO Y PROCESAMIENTO (omito cuerpos para brevedad) ---
 
 function processCodeAndDisplayResult(code) {
     if (!code) {
@@ -305,7 +309,7 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (DISPONIBLE PARA TODOS LOS ROLES) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -430,7 +434,7 @@ function filterReporteListado() {
     document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros');
 }
 
-// --- FUNCIONES DE EXPORTACIÓN (DISPONIBLE PARA TODOS LOS ROLES) ---
+// --- FUNCIONES DE EXPORTACIÓN (omito cuerpos para brevedad) ---
 
 function prepareExportData(tableTitle) {
     const dataToExport = tableTitle === 'Agentes' 
@@ -519,7 +523,7 @@ function exportarAPDF(tableTitle) {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (DISPONIBLE PARA TODOS LOS ROLES) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (omito cuerpos para brevedad) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -598,10 +602,8 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Evento para el LOGIN
     document.getElementById('login-form').addEventListener('submit', login);
 
-    // Evento para el formulario principal (solo se activa si está visible)
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
@@ -624,13 +626,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderReporteListado();
     });
 
-    // Se exponen funciones para su uso global
     window.logout = logout;
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
 
-    // Iniciar en la pantalla de login
     loginScreen.classList.remove('hidden');
     mainPortal.classList.add('hidden');
     
