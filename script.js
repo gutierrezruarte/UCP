@@ -63,9 +63,7 @@ const viewTitles = {
     'home-view': 'Control de Ingresos',
     'registro-view': 'Registro de Ingreso',
     'carga-bases-view': 'Importar Bases (Excel)',
-    'reportes-view': 'Ver Reportes (Histórico)',
-    'reportes-diarios-view': 'Reportes Diarios',
-    'registro-actividad-view': 'Registro de Actividad'
+    'reportes-view': 'Ver Reportes (Histórico)'
 };
 
 function showView(viewId) {
