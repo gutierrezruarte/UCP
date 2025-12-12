@@ -16,12 +16,12 @@
 </head>
 <body>
     
-    <div id="main-portal">
+    <div id="main-portal" class="d-flex flex-column min-vh-100">
         
         <nav class="navbar navbar-dark bg-dark border-bottom border-warning fixed-top-nav">
             <div class="container-fluid">
                 
-                <button class="btn btn-sm btn-outline-warning nav-btn-left" data-bs-toggle="modal" data-bs-target="#adminModal" title="Menú de Administración">
+                <button class="btn btn-sm btn-outline-warning nav-btn-left" id="toggle-sidebar-btn" title="Menú de Administración">
                     <i class="bi bi-list"></i>
                 </button>
 
@@ -31,7 +31,53 @@
             </div>
         </nav>
         
-        <div class="container my-3 pb-5 content-padding-top">
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="sidebar-overlay hidden"></div>
+        <div id="sidebar-menu" class="sidebar-menu">
+            <div class="sidebar-header">
+                <h5 class="m-0 text-warning fw-bold">ADMINISTRACIÓN</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="toggleSidebar()" aria-label="Close"></button>
+            </div>
+            
+            <div class="sidebar-content">
+                
+                <div class="menu-group">
+                    <button class="btn btn-block w-100 text-start menu-toggle-btn" data-bs-toggle="collapse" data-bs-target="#submenu-reportes" aria-expanded="false" aria-controls="submenu-reportes">
+                        <i class="bi bi-file-earmark-bar-graph"></i> REPORTES
+                    </button>
+                    <div class="collapse submenu-items" id="submenu-reportes">
+                        <button type="button" class="btn btn-sm btn-outline-warning w-100 submenu-item" data-bs-toggle="modal" data-bs-target="#reporteModal" onclick="renderReporteListado()">
+                            <i class="bi bi-list-columns"></i> VER LISTADO DIARIO
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="text-secondary">
+
+                <div class="menu-group">
+                    <button class="btn btn-block w-100 text-start menu-toggle-btn" data-bs-toggle="collapse" data-bs-target="#submenu-bases" aria-expanded="false" aria-controls="submenu-bases">
+                        <i class="bi bi-database-fill-add"></i> CARGA DE BASES
+                    </button>
+                    <div class="collapse submenu-items" id="submenu-bases">
+                        
+                        <div class="mb-3 p-2 bg-secondary bg-opacity-25 rounded">
+                            <label class="form-label text-white">Actualizar Dotación</label>
+                            <input type="file" class="form-control form-control-sm bg-dark text-white" id="dotacionFile" accept=".xlsx, .xls">
+                            <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación</button>
+                        </div>
+
+                        <div class="mb-3 p-2 bg-secondary bg-opacity-25 rounded">
+                            <label class="form-label text-white">Registros de Pases</label>
+                            <input type="file" class="form-control form-control-sm bg-dark text-white" id="pasesFile" accept=".xlsx, .xls">
+                            <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
+                            <div id="pases-status" class="mt-2 text-warning"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <div class="flex-grow container my-3 pb-5 content-padding-top">
             
             <div id="alert-container"></div>
             
@@ -113,7 +159,8 @@
                         <i class="bi bi-send-fill"></i> REGISTRAR INGRESO
                     </button>
                 </div>
-                </form>
+
+            </form>
 
         </div> 
         
@@ -129,45 +176,6 @@
                     </div>
                     <div class="modal-footer border-0">
                         <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScanner()">Cerrar y Cancelar Escaneo</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content bg-dark text-white">
-                    <div class="modal-header bg-dark border-warning">
-                        <h5 class="modal-title" id="adminModalLabel">Menú de Administración</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        
-                        <h6 class="text-warning">REPORTES</h6>
-                        <div class="d-grid gap-2 mb-4">
-                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#reporteModal" onclick="renderReporteListado()">
-                                <i class="bi bi-list-columns"></i> VER LISTADO DIARIO
-                            </button>
-                        </div>
-                        
-                        <div id="import-section">
-                            <h6 class="text-warning">IMPORTACIÓN DE DATOS (EXCEL)</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Carga y Actualización de Dotación</label>
-                                <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
-                                <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
-                                <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Registros de Pases (Body Scan)</label>
-                                <input type="file" class="form-control bg-secondary text-white" id="pasesFile" accept=".xlsx, .xls">
-                                <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
-                                <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
-                            </div>
-                            <div id="pases-status" class="mt-2 text-warning"></div>
-                        </div>
-
                     </div>
                 </div>
             </div>
