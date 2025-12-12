@@ -16,37 +16,99 @@ body {
     padding-bottom: 50px; 
 }
 
-
-/* --- Estructura de Portal (Fijo) --- */
-.portal-layout {
-    display: flex;
-    min-height: 100vh;
+/* --- Estilos de Navbar Fija y Título --- */
+.content-padding-top {
+    padding-top: 60px; /* Espacio para la barra fija */
 }
 
-/* 1. Sidebar Fija */
-.sidebar-fixed {
-    width: 280px; /* Ancho fijo como en la imagen de referencia */
-    background-color: #212529; /* bg-dark de Bootstrap */
-    color: #fff;
-    flex-shrink: 0;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
-    border-right: 3px solid #ffc107;
-    position: sticky;
+.fixed-top-nav {
+    position: fixed; 
     top: 0;
-    height: 100vh; /* Ocupa toda la altura */
-    overflow-y: auto;
+    width: 100%;
+    z-index: 1030;
 }
 
+.navbar-brand.text-center-custom {
+    margin: 0 auto; 
+    text-align: center;
+    flex-grow: 1; 
+    font-size: 1.5rem;
+}
+
+/* Botones de Navegación */
+.nav-btn-left, .nav-btn-right {
+    width: 50px; 
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 5px;
+}
+
+/* Estilos de la Home View Cards */
+.custom-card-intro {
+    background-color: #444; 
+    border: 1px solid #555;
+    border-left: 5px solid #ffc107; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.custom-card-intro:hover {
+    background-color: #555;
+}
+
+
+/* --- SIDEBAR CONTRAÍBLE (FLOTANTE) --- */
+
+/* La barra lateral en sí */
+.sidebar-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px; /* Ancho fijo como en la imagen de referencia */
+    height: 100%;
+    background-color: #212529; /* Fondo oscuro (bg-dark) */
+    color: #fff;
+    z-index: 1040; 
+    transform: translateX(-100%); /* OCULTA LA BARRA POR DEFECTO */
+    transition: transform 0.3s ease-in-out;
+    border-right: 3px solid #ffc107;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Mostrar la barra lateral */
+.sidebar-menu.show {
+    transform: translateX(0);
+}
+
+/* Fondo de superposición (overlay) */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1039;
+}
+
+/* Encabezado y contenido */
 .sidebar-header {
     padding: 20px 15px;
-    text-align: center;
-    background-color: #1c2024;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     border-bottom: 1px solid #ffc107;
-    font-size: 1.2rem;
+    text-align: left;
+    background-color: #1c2024;
 }
 
 .sidebar-nav {
     padding: 10px 0;
+    flex-grow: 1;
 }
 
 .nav-link-btn {
@@ -78,44 +140,6 @@ body {
     font-weight: bold;
     border-left: 5px solid #fff;
     padding-left: 15px; /* Ajuste para compensar el borde */
-}
-
-/* 2. Contenido Principal */
-.main-content {
-    flex-grow: 1;
-    background-color: #333; 
-    padding: 0; 
-    overflow-y: auto;
-}
-
-.main-header {
-    background-color: #3c3c3c;
-    padding: 15px 25px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #ffc107;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
-.main-header h1 {
-    margin: 0;
-    font-size: 1.8rem;
-}
-
-/* Estilos de la Home View Cards */
-.custom-card-intro {
-    background-color: #444; 
-    border: 1px solid #555;
-    border-left: 5px solid #ffc107; 
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.custom-card-intro:hover {
-    background-color: #555;
 }
 
 
