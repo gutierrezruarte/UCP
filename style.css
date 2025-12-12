@@ -47,6 +47,93 @@ body {
 }
 
 
+/* --- SIDEBAR CUSTOM STYLES --- */
+
+/* La barra lateral en sí */
+.sidebar-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px; /* Ancho de la barra */
+    height: 100%;
+    background-color: #2b2b2b; /* Fondo oscuro */
+    color: #fff;
+    z-index: 1040; /* Mayor que la navbar */
+    transform: translateX(-100%); /* Oculta la barra por defecto */
+    transition: transform 0.3s ease-in-out;
+    border-right: 3px solid #ffc107;
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Mostrar la barra lateral */
+.sidebar-menu.show {
+    transform: translateX(0);
+}
+
+/* Fondo de superposición (overlay) */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1039;
+}
+
+/* Encabezado y contenido */
+.sidebar-header {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ffc107;
+}
+
+.sidebar-content {
+    padding: 1rem;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* Botones de los menús principales */
+.menu-toggle-btn {
+    color: #f8f9fa;
+    background-color: #3c3c3c;
+    border: 1px solid #555;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.menu-toggle-btn:hover {
+    background-color: #4b4b4b;
+    color: #ffc107;
+}
+
+.menu-toggle-btn i {
+    margin-right: 10px;
+}
+
+/* Elementos dentro de los submenús */
+.submenu-items {
+    padding: 0.5rem 1rem;
+    background-color: #333;
+    border-left: 3px solid #ffc107;
+    margin-bottom: 1rem;
+}
+
+.submenu-item {
+    margin: 5px 0;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+}
+
+
 /* --- Estilos de Formulario Principal --- */
 
 .required-badge {
@@ -92,8 +179,6 @@ body {
     justify-content: center;
     color: #ffc107; 
 }
-
-/* ELIMINADA .floating-send-btn { display: none !important; } */
 
 /* Botón Rectangular "REGISTRAR INGRESO" */
 .registrar-ingreso-btn {
