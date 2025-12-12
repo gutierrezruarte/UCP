@@ -6,8 +6,23 @@ let html5QrcodeScanner = null;
 const readerId = "reader"; 
 let lastFilteredData = []; 
 
+// --- AUTENTICACIÓN Y ROLES (SIMULACIÓN) ---
+const MOCK_USERS = {
+    '136219951': { afiliado: '136219951', password: 'Marquitos123', nombreCompleto: 'SUPERUSUARIO', role: 'administrador' },
+    '0001': { afiliado: '0001', password: 'admin', nombreCompleto: 'ADMINISTRADOR DE PRUEBA', role: 'administrador' },
+    '0002': { afiliado: '0002', password: 'user', nombreCompleto: 'OPERADOR DE REGISTRO', role: 'operador' }
+};
+
+let currentUser = null; 
+let selectedRole = null; 
+
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
+const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
 const sendButtonRect = document.getElementById('sendButtonRect'); 
+const loginScreen = document.getElementById('login-screen');
+const mainPortal = document.getElementById('main-portal');
+const importSection = document.getElementById('import-section');
+const userRoleDisplay = document.getElementById('user-role-display');
 
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
@@ -41,7 +56,7 @@ function playBeep() {
 
         oscillator.type = 'sine'; 
         oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
-        gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); 
+        gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); // Volumen Máximo
         
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
         
@@ -53,9 +68,68 @@ function playBeep() {
 }
 
 
-// --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
+// --- AUTENTICACIÓN Y FLUJO DE PANTALLA ---
+
+function login(event) {
+    event.preventDefault();
+    const afiliado = document.getElementById('login-afiliado').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const errorP = document.getElementById('login-error');
+    
+    errorP.classList.add('hidden');
+
+    const user = MOCK_USERS[afiliado];
+
+    if (user && user.password === password) {
+        currentUser = user;
+        selectedRole = user.role;
+        showPortal();
+    } else {
+        errorP.textContent = 'Usuario o contraseña incorrectos.';
+        errorP.classList.remove('hidden');
+    }
+}
+
+function showPortal() {
+    loginScreen.classList.add('hidden');
+    mainPortal.classList.remove('hidden');
+    
+    // Configurar la interfaz según el rol
+    setupPortalForRole();
+}
+
+function setupPortalForRole() {
+    if (!currentUser) return;
+
+    userRoleDisplay.textContent = `${currentUser.nombreCompleto} (${selectedRole.toUpperCase()})`;
+    
+    // PERMISOS: Solo el rol 'administrador' puede ver la sección de importación
+    if (selectedRole === 'administrador') {
+        importSection.classList.remove('hidden');
+    } else {
+        importSection.classList.add('hidden');
+    }
+    
+    // Otros permisos (deshabilitar botones de edición/eliminación si fuera el caso, pero aquí solo afecta la vista de administración)
+}
+
+function logout() {
+    currentUser = null;
+    selectedRole = null;
+    mainPortal.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+    document.getElementById('login-form').reset();
+    showAlert('Sesión cerrada correctamente.', 'info');
+}
+
+// --- LÓGICA DE CARGA DE EXCEL (requiere rol de administrador) ---
 
 function processExcelFile(file, handlerFunction) {
+    if (selectedRole !== 'administrador') {
+        showAlert('Permiso denegado. Solo los administradores pueden importar datos.', 'danger');
+        return;
+    }
+    // ... (El cuerpo de la función sigue siendo el mismo)
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
@@ -69,6 +143,10 @@ function processExcelFile(file, handlerFunction) {
 }
 
 function loadDotacion() {
+    if (selectedRole !== 'administrador') {
+        showAlert('Permiso denegado.', 'danger');
+        return;
+    }
     const fileInput = document.getElementById('dotacionFile');
     if (!fileInput.files.length) {
         showAlert('Seleccione un archivo de Dotación.', 'warning');
@@ -86,10 +164,15 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
+        adminModal.hide(); // Ocultar el modal después de la carga exitosa
     });
 }
 
 function loadPases() {
+    if (selectedRole !== 'administrador') {
+        showAlert('Permiso denegado.', 'danger');
+        return;
+    }
     const fileInput = document.getElementById('pasesFile');
     if (!fileInput.files.length) {
         showAlert('Seleccione un archivo de Registros de Pases.', 'warning');
@@ -111,6 +194,7 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
+        adminModal.hide(); // Ocultar el modal después de la carga exitosa
     });
 }
 
@@ -223,7 +307,7 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (DISPONIBLE PARA TODOS LOS ROLES) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -319,6 +403,9 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
+    // Si el modal de reportes se abre desde el menú de administración,
+    // se asegura que el menú se oculte primero
+    adminModal.hide(); 
     document.getElementById('reporteSearch').value = ''; 
     filterReporteListado();
 }
@@ -347,7 +434,7 @@ function filterReporteListado() {
     document.getElementById('otrosTableContainer').innerHTML = generateReportTableHTML(otrosData, 'Otros');
 }
 
-// --- FUNCIONES DE EXPORTACIÓN (omito cuerpos para brevedad) ---
+// --- FUNCIONES DE EXPORTACIÓN (DISPONIBLE PARA TODOS LOS ROLES) ---
 
 function prepareExportData(tableTitle) {
     const dataToExport = tableTitle === 'Agentes' 
@@ -436,7 +523,7 @@ function exportarAPDF(tableTitle) {
 }
 
 
-// --- LÓGICA DE ENVÍO DE FORMULARIO (FEEDBACK VISUAL) ---
+// --- LÓGICA DE ENVÍO DE FORMULARIO (DISPONIBLE PARA TODOS LOS ROLES) ---
 
 function submitForm(event) {
     event.preventDefault();
@@ -515,6 +602,10 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
+    // Evento para el LOGIN
+    document.getElementById('login-form').addEventListener('submit', login);
+
+    // Evento para el formulario principal (solo se activa si está visible)
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
@@ -533,8 +624,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const reporteModalElement = document.getElementById('reporteModal');
     reporteModalElement.addEventListener('shown.bs.modal', () => {
+        // Asegurar que el menú de administración se cierre si sigue abierto
+        adminModal.hide();
         renderReporteListado();
     });
 
+    // Se expone logout para el botón en la navbar
+    window.logout = logout;
+    window.loadDotacion = loadDotacion;
+    window.loadPases = loadPases;
+    window.renderReporteListado = renderReporteListado;
+
+    // Iniciar en la pantalla de login
+    loginScreen.classList.remove('hidden');
+    mainPortal.classList.add('hidden');
+    
     console.log("Aplicación de Control General cargada. Modo oscuro activo.");
 });
