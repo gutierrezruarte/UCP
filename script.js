@@ -58,7 +58,7 @@ function playBeep() {
 
         oscillator.type = 'sine'; 
         oscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
-        gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); // Volumen Máximo
+        gainNode.gain.setValueAtTime(1.0, audioContext.currentTime); 
         
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
         
@@ -70,28 +70,38 @@ function playBeep() {
 }
 
 
-// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (CORRECCIÓN APLICADA AQUÍ) ---
+// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (VERIFICACIÓN AÑADIDA) ---
 
 function login(event) {
     event.preventDefault();
     
-    // El afiliado SIEMPRE debe limpiarse de espacios.
-    const afiliado = document.getElementById('login-afiliado').value.trim();
-    
-    // LA CONTRASEÑA NO DEBE LIMPIARSE CON .trim() para evitar errores en ciertos entornos.
-    const password = document.getElementById('login-password').value; 
-    
+    // 1. Obtener referencias y verificar si existen (Para robustez)
+    const afiliadoInput = document.getElementById('login-afiliado');
+    const passwordInput = document.getElementById('login-password');
     const errorP = document.getElementById('login-error');
+
+    if (!afiliadoInput || !passwordInput) {
+        console.error("ERROR: No se encontraron los campos de login.");
+        return;
+    }
+    
+    // 2. Leer valores
+    const afiliado = afiliadoInput.value.trim(); // Afiliado sí debe limpiarse (no debe contener espacios)
+    const password = passwordInput.value; // Contraseña NO debe tener .trim() para respetar mayúsculas y espacios internos
     
     errorP.classList.add('hidden'); 
 
     const user = MOCK_USERS[afiliado];
     
-    // DIAGNÓSTICO: Esto permite verificar en la consola lo que el sistema está leyendo
-    console.log(`Intento de login. Usuario (leído): "${afiliado}", Contraseña (leída): "${password}"`);
-    console.log(`Credencial esperada: ${user ? user.password : 'N/A'}`);
+    // DIAGNÓSTICO CLAVE
+    console.log(`--- INTENTO DE LOGIN ---`);
+    console.log(`Usuario (leído): "${afiliado}"`);
+    console.log(`Contraseña (leída): "${password}"`);
+    console.log(`Contraseña esperada en DB (MOCK_USERS): "${user ? user.password : 'N/A'}"`);
+    console.log(`------------------------`);
 
 
+    // 3. Comprobación estricta
     if (user && user.password === password) {
         currentUser = user;
         selectedRole = user.role;
