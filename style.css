@@ -41,9 +41,7 @@ body {
 }
 
 /* Placeholder para mantener el centrado perfecto */
-/* El botón de Cerrar Sesión (o el placeholder) ocupa el espacio a la derecha */
-.navbar-escudo-placeholder,
-.navbar-fluid .btn-outline-danger { 
+.navbar-escudo-placeholder { 
     width: 50px; 
     margin-right: 5px;
 }
@@ -95,9 +93,7 @@ body {
     color: #ffc107; 
 }
 
-.floating-send-btn {
-    display: none !important; 
-}
+/* ELIMINADA .floating-send-btn { display: none !important; } */
 
 /* Botón Rectangular "REGISTRAR INGRESO" */
 .registrar-ingreso-btn {
