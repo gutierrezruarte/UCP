@@ -521,9 +521,7 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Ya no hay login
-    // document.getElementById('login-form').addEventListener('submit', login);
-
+    // El formulario principal es el punto de envío
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
@@ -546,11 +544,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderReporteListado();
     });
 
-    // Se exponen funciones para su uso global, pero 'logout' ya no existe
+    // Se exponen funciones para su uso global
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
 
-    // EL PORTAL INICIA DIRECTAMENTE
     console.log("Aplicación de Control General cargada. Modo oscuro activo. Sin requerir autenticación.");
 });
