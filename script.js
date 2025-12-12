@@ -70,24 +70,26 @@ function playBeep() {
 }
 
 
-// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (VERIFICACIÓN AÑADIDA) ---
+// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (CORRECCIÓN APLICADA AQUÍ) ---
 
 function login(event) {
     event.preventDefault();
     
-    // 1. Obtener referencias y verificar si existen (Para robustez)
+    // 1. Obtener referencias y verificar si existen 
     const afiliadoInput = document.getElementById('login-afiliado');
     const passwordInput = document.getElementById('login-password');
     const errorP = document.getElementById('login-error');
 
     if (!afiliadoInput || !passwordInput) {
-        console.error("ERROR: No se encontraron los campos de login.");
+        console.error("ERROR: No se encontraron los campos de login en el DOM.");
         return;
     }
     
     // 2. Leer valores
-    const afiliado = afiliadoInput.value.trim(); // Afiliado sí debe limpiarse (no debe contener espacios)
-    const password = passwordInput.value; // Contraseña NO debe tener .trim() para respetar mayúsculas y espacios internos
+    // Afiliado: Limpio de espacios y convertido a string
+    const afiliado = String(afiliadoInput.value).trim(); 
+    // Contraseña: Leída directamente, sin .trim(), respeta mayúsculas.
+    const password = passwordInput.value; 
     
     errorP.classList.add('hidden'); 
 
@@ -95,8 +97,8 @@ function login(event) {
     
     // DIAGNÓSTICO CLAVE
     console.log(`--- INTENTO DE LOGIN ---`);
-    console.log(`Usuario (leído): "${afiliado}"`);
-    console.log(`Contraseña (leída): "${password}"`);
+    console.log(`Usuario (leído): "${afiliado}" (Tipo: ${typeof afiliado})`);
+    console.log(`Contraseña (leída): "${password}" (Tipo: ${typeof password})`);
     console.log(`Contraseña esperada en DB (MOCK_USERS): "${user ? user.password : 'N/A'}"`);
     console.log(`------------------------`);
 
@@ -242,7 +244,7 @@ function processCodeAndDisplayResult(code) {
         
         const pases = PASES_DB[code];
         if (pases) {
-            pasesInfo = `<br>Body Scan: ${pases.pases_60_dias} (60 días) / ${pases.pases_15_dias} (15 días)`;
+            pasesInfo = `<br>Body Scan: ${pases.pases_60_dias} (60 días) / ${pases.pases_15_dases} (15 días)`;
         } else {
             pasesInfo = `<br>Body Scan: SIN REGISTROS (Requiere Carga)`;
         }
@@ -647,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
 
+    // Asegurar que el portal inicie oculto si no hay login
     loginScreen.classList.remove('hidden');
     mainPortal.classList.add('hidden');
     
