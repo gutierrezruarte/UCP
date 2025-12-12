@@ -20,20 +20,18 @@ body {
 }
 
 .navbar-brand.text-center-custom {
-    /* Centrar el título: Ocupa espacio para centrar entre los botones */
+    /* Centrar el título */
     margin: 0 auto; 
     text-align: center;
     flex-grow: 1; 
     font-size: 1.5rem;
 }
 
-.navbar-escudo {
-    /* CORRECCIÓN: Ajuste de tamaño para que sea similar a la altura del texto */
-    height: 25px; 
-    width: auto;
-    margin-left: 10px;
-    /* Para asegurar alineación vertical en la barra */
-    vertical-align: middle; 
+/* NUEVO: Placeholder para mantener el centrado perfecto */
+.navbar-escudo-placeholder {
+    /* Debe tener el mismo ancho que el botón de menú a la izquierda */
+    width: 50px; 
+    margin-right: 10px;
 }
 
 /* Forzar que el contenedor principal ocupe todo el ancho disponible */
