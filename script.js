@@ -6,25 +6,10 @@ let html5QrcodeScanner = null;
 const readerId = "reader"; 
 let lastFilteredData = []; 
 
-// --- AUTENTICACIÓN Y ROLES (SIMULACIÓN) ---
-const MOCK_USERS = {
-    // SUPERUSUARIO (ADMINISTRADOR) - CREDENCIALES SOLICITADAS POR EL USUARIO
-    '136219951': { afiliado: '136219951', password: 'Marquitos123', nombreCompleto: 'SUPERUSUARIO', role: 'administrador' },
-    // OTROS USUARIOS DE PRUEBA
-    '0001': { afiliado: '0001', password: 'admin', nombreCompleto: 'ADMINISTRADOR DE PRUEBA', role: 'administrador' },
-    '0002': { afiliado: '0002', password: 'user', nombreCompleto: 'OPERADOR DE REGISTRO', role: 'operador' }
-};
-
-let currentUser = null; 
-let selectedRole = null; 
-
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
 const sendButtonRect = document.getElementById('sendButtonRect'); 
-const loginScreen = document.getElementById('login-screen');
-const mainPortal = document.getElementById('main-portal');
 const importSection = document.getElementById('import-section');
-const userRoleDisplay = document.getElementById('user-role-display');
 
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
@@ -70,86 +55,10 @@ function playBeep() {
 }
 
 
-// --- AUTENTICACIÓN Y FLUJO DE PANTALLA (CORRECCIÓN APLICADA AQUÍ) ---
-
-function login(event) {
-    event.preventDefault();
-    
-    // 1. Obtener referencias y verificar si existen 
-    const afiliadoInput = document.getElementById('login-afiliado');
-    const passwordInput = document.getElementById('login-password');
-    const errorP = document.getElementById('login-error');
-
-    if (!afiliadoInput || !passwordInput) {
-        console.error("ERROR: No se encontraron los campos de login en el DOM.");
-        return;
-    }
-    
-    // 2. Leer valores
-    // Afiliado: Limpio de espacios y convertido a string
-    const afiliado = String(afiliadoInput.value).trim(); 
-    // Contraseña: Leída directamente, sin .trim(), respeta mayúsculas.
-    const password = passwordInput.value; 
-    
-    errorP.classList.add('hidden'); 
-
-    const user = MOCK_USERS[afiliado];
-    
-    // DIAGNÓSTICO CLAVE
-    console.log(`--- INTENTO DE LOGIN ---`);
-    console.log(`Usuario (leído): "${afiliado}" (Tipo: ${typeof afiliado})`);
-    console.log(`Contraseña (leída): "${password}" (Tipo: ${typeof password})`);
-    console.log(`Contraseña esperada en DB (MOCK_USERS): "${user ? user.password : 'N/A'}"`);
-    console.log(`------------------------`);
-
-
-    // 3. Comprobación estricta
-    if (user && user.password === password) {
-        currentUser = user;
-        selectedRole = user.role;
-        console.log(`Login Exitoso. Rol: ${selectedRole}`);
-        showPortal();
-    } else {
-        errorP.textContent = 'Usuario o contraseña incorrectos. Verifique mayúsculas (M en Marquitos) y minúsculas.';
-        errorP.classList.remove('hidden'); 
-    }
-}
-
-function showPortal() {
-    loginScreen.classList.add('hidden');
-    mainPortal.classList.remove('hidden');
-    
-    setupPortalForRole();
-}
-
-function setupPortalForRole() {
-    if (!currentUser) return;
-
-    userRoleDisplay.textContent = `${currentUser.nombreCompleto} (${selectedRole.toUpperCase()})`;
-    
-    if (selectedRole === 'administrador') {
-        importSection.classList.remove('hidden');
-    } else {
-        importSection.classList.add('hidden');
-    }
-}
-
-function logout() {
-    currentUser = null;
-    selectedRole = null;
-    mainPortal.classList.add('hidden');
-    loginScreen.classList.remove('hidden');
-    document.getElementById('login-form').reset();
-    showAlert('Sesión cerrada correctamente.', 'info');
-}
-
-// --- LÓGICA DE CARGA DE EXCEL (omito cuerpos para brevedad) ---
+// --- LÓGICA DE CARGA DE EXCEL (SIN RESTRICCIONES DE ROL) ---
 
 function processExcelFile(file, handlerFunction) {
-    if (selectedRole !== 'administrador') {
-        showAlert('Permiso denegado. Solo los administradores pueden importar datos.', 'danger');
-        return;
-    }
+    // Ya no hay chequeo de rol
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
@@ -163,10 +72,6 @@ function processExcelFile(file, handlerFunction) {
 }
 
 function loadDotacion() {
-    if (selectedRole !== 'administrador') {
-        showAlert('Permiso denegado.', 'danger');
-        return;
-    }
     const fileInput = document.getElementById('dotacionFile');
     if (!fileInput.files.length) {
         showAlert('Seleccione un archivo de Dotación.', 'warning');
@@ -189,10 +94,6 @@ function loadDotacion() {
 }
 
 function loadPases() {
-    if (selectedRole !== 'administrador') {
-        showAlert('Permiso denegado.', 'danger');
-        return;
-    }
     const fileInput = document.getElementById('pasesFile');
     if (!fileInput.files.length) {
         showAlert('Seleccione un archivo de Registros de Pases.', 'warning');
@@ -244,7 +145,7 @@ function processCodeAndDisplayResult(code) {
         
         const pases = PASES_DB[code];
         if (pases) {
-            pasesInfo = `<br>Body Scan: ${pases.pases_60_dias} (60 días) / ${pases.pases_15_dases} (15 días)`;
+            pasesInfo = `<br>Body Scan: ${pases.pases_60_dias} (60 días) / ${pases.pases_15_dias} (15 días)`;
         } else {
             pasesInfo = `<br>Body Scan: SIN REGISTROS (Requiere Carga)`;
         }
@@ -620,7 +521,8 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    document.getElementById('login-form').addEventListener('submit', login);
+    // Ya no hay login
+    // document.getElementById('login-form').addEventListener('submit', login);
 
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
@@ -644,14 +546,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderReporteListado();
     });
 
-    window.logout = logout;
+    // Se exponen funciones para su uso global, pero 'logout' ya no existe
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
 
-    // Asegurar que el portal inicie oculto si no hay login
-    loginScreen.classList.remove('hidden');
-    mainPortal.classList.add('hidden');
-    
-    console.log("Aplicación de Control General cargada. Modo oscuro activo.");
+    // EL PORTAL INICIA DIRECTAMENTE
+    console.log("Aplicación de Control General cargada. Modo oscuro activo. Sin requerir autenticación.");
 });
