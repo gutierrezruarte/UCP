@@ -12,6 +12,8 @@ const sendButtonRect = document.getElementById('sendButtonRect');
 // Referencias a elementos de la barra lateral y vistas
 const allViews = document.querySelectorAll('.view');
 const navButtons = document.querySelectorAll('.nav-link-btn');
+const sidebarMenu = document.getElementById('sidebar-menu');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
@@ -56,7 +58,7 @@ function playBeep() {
     }
 }
 
-// --- LÓGICA DE NAVEGACIÓN DE VISTAS ---
+// --- LÓGICA DE NAVEGACIÓN Y SIDEBAR ---
 
 const viewTitles = {
     'home-view': 'Control de Ingresos',
@@ -76,11 +78,16 @@ function showView(viewId) {
     if (activeView) {
         activeView.classList.remove('hidden');
     }
-    
-    // 3. Actualizar el título principal
-    document.getElementById('view-title').textContent = viewTitles[viewId] || 'Control General';
 
-    // 4. Actualizar estado activo de los botones de la barra lateral
+    // 3. Cerrar la barra lateral si está abierta
+    if (sidebarMenu.classList.contains('show')) {
+        toggleSidebar();
+    }
+    
+    // 4. Actualizar el título de la navbar
+    document.getElementById('view-title').textContent = viewTitles[viewId] || 'Control General';
+    
+    // 5. Actualizar estado activo de los botones de la barra lateral
     navButtons.forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('data-view-id') === viewId) {
@@ -88,11 +95,19 @@ function showView(viewId) {
         }
     });
     
-    // 5. Si la vista de reportes se activa, la cargamos
+    // 6. Si la vista de reportes se activa, la cargamos
     if (viewId === 'reportes-view') {
         renderReporteListado();
     }
 }
+
+function toggleSidebar() {
+    sidebarMenu.classList.toggle('show');
+    sidebarOverlay.classList.toggle('hidden');
+    // Bloquea el scroll del cuerpo cuando el menú está abierto
+    document.body.style.overflow = sidebarMenu.classList.contains('show') ? 'hidden' : '';
+}
+
 
 // --- LÓGICA DE CARGA DE EXCEL ---
 
@@ -565,12 +580,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
 
-    // Manejo de la navegación de vistas
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            showView(this.getAttribute('data-view-id'));
-        });
-    });
+    // Evento para abrir/cerrar la barra lateral
+    document.getElementById('toggle-sidebar-btn').addEventListener('click', toggleSidebar);
 
     const modalElement = document.getElementById('scannerModal');
     modalElement.addEventListener('shown.bs.modal', () => {
@@ -584,6 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
+    window.toggleSidebar = toggleSidebar; 
     window.showView = showView;
     window.exportarAExcel = exportarAExcel;
     window.exportarAPDF = exportarAPDF;
@@ -591,5 +603,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // Iniciar la aplicación en la vista de Inicio
     showView('home-view');
 
-    console.log("Aplicación de Control General cargada. Modo Portal Fijo.");
+    console.log("Aplicación de Control General cargada. Modo Sidebar Contraíble.");
 });
