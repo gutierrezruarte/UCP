@@ -7,10 +7,11 @@ const readerId = "reader";
 let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
 const sendButtonRect = document.getElementById('sendButtonRect'); 
-const importSection = document.getElementById('import-section');
 
+// Referencias a los nuevos elementos de la barra lateral
+const sidebarMenu = document.getElementById('sidebar-menu');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
 
@@ -54,11 +55,19 @@ function playBeep() {
     }
 }
 
+// --- LÓGICA DE BARRA LATERAL (SIDEBAR) ---
 
-// --- LÓGICA DE CARGA DE EXCEL (SIN RESTRICCIONES DE ROL) ---
+function toggleSidebar() {
+    sidebarMenu.classList.toggle('show');
+    sidebarOverlay.classList.toggle('hidden');
+    // Bloquea el scroll del cuerpo cuando el menú está abierto
+    document.body.style.overflow = sidebarMenu.classList.contains('show') ? 'hidden' : '';
+}
+
+
+// --- LÓGICA DE CARGA DE EXCEL ---
 
 function processExcelFile(file, handlerFunction) {
-    // Ya no hay chequeo de rol
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
@@ -89,7 +98,7 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
-        adminModal.hide(); 
+        toggleSidebar(); // Cierra el sidebar al completar
     });
 }
 
@@ -115,7 +124,7 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
-        adminModal.hide(); 
+        toggleSidebar(); // Cierra el sidebar al completar
     });
 }
 
@@ -324,7 +333,8 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
-    adminModal.hide(); 
+    toggleSidebar(); // Cierra el sidebar
+    // Abrir el modal de reporte se maneja en el HTML con data-bs-toggle="modal"
     document.getElementById('reporteSearch').value = ''; 
     filterReporteListado();
 }
@@ -521,7 +531,6 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // El formulario principal es el punto de envío
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
@@ -529,6 +538,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
+
+    // Evento para abrir/cerrar la barra lateral
+    document.getElementById('toggle-sidebar-btn').addEventListener('click', toggleSidebar);
 
     const modalElement = document.getElementById('scannerModal');
     modalElement.addEventListener('shown.bs.modal', () => {
@@ -538,16 +550,28 @@ document.addEventListener('DOMContentLoaded', () => {
         stopScanner();
     });
 
+    // Cuando se abre el modal de reporte, se dispara la función de renderizado
     const reporteModalElement = document.getElementById('reporteModal');
     reporteModalElement.addEventListener('shown.bs.modal', () => {
-        adminModal.hide();
-        renderReporteListado();
+        renderReporteListado(false); // Renderizar sin cerrar el sidebar
     });
+    
+    // Al abrir un colapso, aseguramos que la página no se mueva
+    document.querySelectorAll('.collapse').forEach(collapseEl => {
+        collapseEl.addEventListener('show.bs.collapse', () => {
+            document.body.style.overflow = 'hidden';
+        });
+        collapseEl.addEventListener('hidden.bs.collapse', () => {
+             document.body.style.overflow = sidebarMenu.classList.contains('show') ? 'hidden' : '';
+        });
+    });
+    
 
     // Se exponen funciones para su uso global
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
+    window.toggleSidebar = toggleSidebar; // Exponer la función de toggle
 
-    console.log("Aplicación de Control General cargada. Modo oscuro activo. Sin requerir autenticación.");
+    console.log("Aplicación de Control General cargada. Modo oscuro activo.");
 });
