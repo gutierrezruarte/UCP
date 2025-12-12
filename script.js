@@ -7,7 +7,8 @@ const readerId = "reader";
 let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-const sendButtonRect = document.getElementById('sendButtonRect'); 
+// Nota: Ahora referenciamos el botón flotante con la nueva clase
+const sendButtonRect = document.querySelector('.registrar-ingreso-btn-app-style'); 
 
 // Referencias a elementos de la barra lateral y vistas
 const allViews = document.querySelectorAll('.view');
