@@ -72,7 +72,8 @@ body {
     padding: 20px 0; 
 }
 .sidebar-fixed.minimized .sidebar-header h4 {
-    display: none; /* Ocultar título largo */
+    /* Muestra solo la inicial "U.C.P." que es más corta */
+    font-size: 1rem;
 }
 
 /* Navegación */
