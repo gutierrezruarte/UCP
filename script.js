@@ -7,13 +7,9 @@ const readerId = "reader";
 let lastFilteredData = []; 
 
 const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-// Nota: Ahora referenciamos el botón flotante con la nueva clase
-const sendButtonRect = document.querySelector('.registrar-ingreso-btn-app-style'); 
-
-// Referencias a elementos de la barra lateral y vistas
-const allViews = document.querySelectorAll('.view');
-const navButtons = document.querySelectorAll('.nav-link-btn');
-const sidebarFixed = document.getElementById('sidebar-fixed');
+const adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
+const sendButtonRect = document.getElementById('sendButtonRect'); 
+const importSection = document.getElementById('import-section');
 
 
 // --- Funciones de Utilidad (showAlert y Sonido) ---
@@ -58,65 +54,11 @@ function playBeep() {
     }
 }
 
-// --- LÓGICA DE NAVEGACIÓN Y SIDEBAR ---
 
-const viewTitles = {
-    'home-view': 'Control de Ingresos',
-    'registro-view': 'Registro de Ingreso',
-    'carga-bases-view': 'Importar Bases (Excel)',
-    'reportes-view': 'Ver Reportes (Histórico)'
-};
-
-function showView(viewId) {
-    // 1. Ocultar todas las vistas
-    allViews.forEach(view => {
-        view.classList.add('hidden');
-    });
-
-    // 2. Mostrar la vista solicitada
-    const activeView = document.getElementById(viewId);
-    if (activeView) {
-        activeView.classList.remove('hidden');
-    }
-
-    // 3. Actualizar el título de la navbar
-    document.getElementById('view-title').textContent = viewTitles[viewId] || 'Control General';
-    
-    // 4. Actualizar estado activo de los botones de la barra lateral
-    navButtons.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-view-id') === viewId) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 5. Si la vista de reportes se activa, la cargamos
-    if (viewId === 'reportes-view') {
-        renderReporteListado();
-    }
-}
-
-function toggleSidebarCollapse() {
-    sidebarFixed.classList.toggle('minimized');
-    const isMinimized = sidebarFixed.classList.contains('minimized');
-    const toggleButton = document.getElementById('toggle-sidebar-collapse');
-    const icon = toggleButton.querySelector('.toggle-icon');
-
-    if (isMinimized) {
-        icon.classList.remove('bi-chevron-left');
-        icon.classList.add('bi-chevron-right');
-        toggleButton.title = "Expandir Menú";
-    } else {
-        icon.classList.remove('bi-chevron-right');
-        icon.classList.add('bi-chevron-left');
-        toggleButton.title = "Contraer Menú";
-    }
-}
-
-
-// --- LÓGICA DE CARGA DE EXCEL ---
+// --- LÓGICA DE CARGA DE EXCEL (SIN RESTRICCIONES DE ROL) ---
 
 function processExcelFile(file, handlerFunction) {
+    // Ya no hay chequeo de rol
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
@@ -147,6 +89,7 @@ function loadDotacion() {
             }
         }
         showAlert(`Dotación actualizada. Total de ${Object.keys(DOTACION_DB).length} agentes cargados.`, 'success');
+        adminModal.hide(); 
     });
 }
 
@@ -172,6 +115,7 @@ function loadPases() {
         }
         document.getElementById('pases-status').textContent = `Pases de ${count} códigos cargados/simulados.`;
         showAlert('Registros de Pases (Body Scan) cargados/simulados con éxito.', 'success');
+        adminModal.hide(); 
     });
 }
 
@@ -284,7 +228,7 @@ function stopScanner() {
     }
 }
 
-// --- LÓGICA DE REPORTE/LISTADO DIARIO (Integrada en reportes-view) ---
+// --- LÓGICA DE REPORTE/LISTADO DIARIO (omito cuerpos para brevedad) ---
 
 function getReporteData() {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -306,7 +250,7 @@ function generateReportTableHTML(data, title) {
     }
 
     if (data.length === 0) {
-        return `<p class="text-secondary p-4">No hay ${title} registrados.</p>`;
+        return `<p class="text-secondary">No hay ${title} registrados.</p>`;
     }
 
     const isOtros = title === 'Otros';
@@ -380,7 +324,7 @@ function generateReportTableHTML(data, title) {
 
 
 function renderReporteListado() {
-    // Los datos se cargan inmediatamente al abrir la vista de reportes
+    adminModal.hide(); 
     document.getElementById('reporteSearch').value = ''; 
     filterReporteListado();
 }
@@ -577,6 +521,7 @@ function submitForm(event) {
 // --- Inicialización y Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     
+    // El formulario principal es el punto de envío
     document.getElementById('control-form').addEventListener('submit', submitForm);
 
     document.getElementById('barcode_id').addEventListener('change', (e) => {
@@ -584,10 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('reporteSearch').addEventListener('input', filterReporteListado);
-
-    // Evento para colapsar/expandir
-    document.getElementById('toggle-sidebar-collapse').addEventListener('click', toggleSidebarCollapse);
-
 
     const modalElement = document.getElementById('scannerModal');
     modalElement.addEventListener('shown.bs.modal', () => {
@@ -597,17 +538,16 @@ document.addEventListener('DOMContentLoaded', () => {
         stopScanner();
     });
 
-    // Se exponen funciones y se inicializa la vista en Home
+    const reporteModalElement = document.getElementById('reporteModal');
+    reporteModalElement.addEventListener('shown.bs.modal', () => {
+        adminModal.hide();
+        renderReporteListado();
+    });
+
+    // Se exponen funciones para su uso global
     window.loadDotacion = loadDotacion;
     window.loadPases = loadPases;
     window.renderReporteListado = renderReporteListado;
-    window.showView = showView;
-    window.exportarAExcel = exportarAExcel;
-    window.exportarAPDF = exportarAPDF;
-    window.toggleSidebarCollapse = toggleSidebarCollapse;
 
-    // Iniciar la aplicación en la vista de Inicio
-    showView('home-view');
-
-    console.log("Aplicación de Control General cargada. Modo Portal Fijo y Contraíble.");
+    console.log("Aplicación de Control General cargada. Modo oscuro activo. Sin requerir autenticación.");
 });
