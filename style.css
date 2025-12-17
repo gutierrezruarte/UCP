@@ -2,292 +2,90 @@
 body {
     background-color: #333; /* Fondo gris oscuro */
     color: #f8f9fa;
-    padding: 0; 
-    margin: 0;
+    padding-bottom: 0; 
     font-size: 1.1rem; 
 }
 
-/* Ocultar elementos auxiliares / Vistas no activas */
+/* Ocultar elementos auxiliares */
 .hidden {
     display: none !important;
 }
-.view {
-    padding-bottom: 50px; 
+
+/* --- Estilos de Navbar Fija y Título --- */
+.content-padding-top {
+    padding-top: 60px; /* Espacio para la barra fija */
 }
 
-/* --- ESTRUCTURA DEL PORTAL --- */
-.portal-layout {
-    display: flex;
-    min-height: 100vh;
-}
-
-/* Variables de ancho */
-:root {
-    --sidebar-width-expanded: 280px;
-    --sidebar-width-minimized: 70px;
-    --transition-speed: 0.3s;
-    --app-dark-card: #424242; /* Color oscuro similar al de la app */
-    --app-dark-bg: #333333;
-}
-
-/* 1. Sidebar Fija (Base) */
-.sidebar-fixed {
-    width: var(--sidebar-width-expanded);
-    background-color: #212529; /* bg-dark de Bootstrap */
-    color: #fff;
-    flex-shrink: 0;
-    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.5);
-    border-right: 3px solid #ffc107;
-    position: sticky;
+.fixed-top-nav {
+    position: fixed; 
     top: 0;
-    height: 100vh;
-    overflow-y: auto;
-    transition: width var(--transition-speed) ease-in-out;
-    display: flex;
-    flex-direction: column;
-}
-
-/* 1.1 Estado Minimizado */
-.sidebar-fixed.minimized {
-    width: var(--sidebar-width-minimized);
-    overflow-x: hidden;
-}
-
-/* 2. Contenido Principal */
-.main-content {
-    flex-grow: 1;
-    background-color: var(--app-dark-bg); 
-    padding: 0; 
-    overflow-y: auto;
-}
-
-/* Encabezado del Sidebar */
-.sidebar-header {
-    padding: 20px 15px;
-    text-align: center;
-    background-color: #1c2024;
-    border-bottom: 1px solid #ffc107;
-    font-size: 1.2rem;
-    white-space: nowrap;
-}
-.sidebar-fixed.minimized .sidebar-header {
-    padding: 20px 0; 
-}
-.sidebar-fixed.minimized .sidebar-header h4 {
-    font-size: 1rem;
-}
-
-/* Navegación (Estilos de menú se mantienen) */
-.sidebar-nav {
-    padding: 10px 0;
-    flex-grow: 1;
-}
-
-.nav-link-btn {
     width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: #ccc;
-    padding: 12px 15px 12px 20px;
-    font-size: 1rem;
+    z-index: 1030;
+}
+
+.navbar-brand.text-center-custom {
+    margin: 0 auto; 
+    text-align: center;
+    flex-grow: 1; 
+    font-size: 1.5rem;
+}
+
+/* Botón de Menú a la izquierda */
+.nav-btn-left {
+    width: 50px; 
+    height: 40px;
     display: flex;
-    align-items: center;
-    transition: background-color 0.2s, color 0.2s;
-    white-space: nowrap;
-}
-
-.nav-link-btn i {
-    margin-right: 12px;
-    font-size: 1.2rem;
-}
-
-.nav-link-btn:hover {
-    background-color: #343a40;
-    color: #ffc107;
-}
-
-.nav-link-btn.active {
-    background-color: #ffc107;
-    color: #333;
-    font-weight: bold;
-    border-left: 5px solid #fff;
-    padding-left: 15px; 
-}
-
-/* Ocultar el texto en el estado minimizado */
-.sidebar-fixed.minimized .nav-text {
-    display: none;
-}
-.sidebar-fixed.minimized .nav-link-btn i {
-    margin-right: 0;
-}
-.sidebar-fixed.minimized .nav-link-btn {
     justify-content: center;
-    padding: 12px 0;
-}
-.sidebar-fixed.minimized .nav-link-btn.active {
-    padding-left: 0;
-    border-left: none; 
-    border-right: 5px solid #fff; 
-}
-
-/* Footer y Botón de Colapso */
-.sidebar-footer {
-    padding: 10px;
-    border-top: 1px solid #3c3c3c;
-    flex-shrink: 0;
-}
-
-.sidebar-fixed.minimized .sidebar-footer {
-    padding: 10px 0;
-}
-
-.toggle-icon {
-    transition: transform var(--transition-speed) ease-in-out;
-}
-.sidebar-fixed.minimized .toggle-icon {
-    transform: rotate(180deg);
-}
-
-/* Header del Contenido Principal (Fijo en la parte superior del scroll) */
-.main-header {
-    background-color: #3c3c3c;
-    padding: 15px 25px;
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    border-bottom: 2px solid #ffc107;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+    margin-left: 5px;
 }
 
-.main-header h1 {
-    margin: 0;
-    font-size: 1.8rem;
-}
-
-/* Contenedor de Vistas */
-.view-container {
-    padding: 25px;
-}
-
-/* Estilos de la Home View Cards */
-.custom-card-intro {
-    background-color: var(--app-dark-card); 
-    border: 1px solid #555;
-    border-left: 5px solid #ffc107; 
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.custom-card-intro:hover {
-    background-color: #555;
+/* Placeholder para mantener el centrado perfecto */
+.navbar-escudo-placeholder { 
+    width: 50px; 
+    margin-right: 5px;
 }
 
 
-/* --- ESTILOS DE FORMULARIO (MODO APP COMPACTA) --- */
+/* --- Estilos de Formulario Principal --- */
 
 .required-badge {
     color: red;
     font-weight: bold;
-    font-size: 0.8rem;
-    margin-left: 5px;
 }
 
-/* Tarjeta contenedora de campos */
-.custom-card-app-field {
-    background-color: var(--app-dark-card); 
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-    padding: 0; 
-    overflow: hidden; 
+.card-header {
+    background-color: #3c3c3c; 
+    border-bottom: 1px solid #ffc107 !important; 
+    padding: 1rem; 
+    font-size: 1.2rem; 
 }
 
-/* Estilo del encabezado del campo (PERFIL, DOMINIO, OBS) */
-.app-field-header {
-    background-color: #333; 
-    color: #ffc107;
-    padding: 10px 15px;
-    font-weight: bold;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid #555;
-}
-.app-field-header i {
-    margin-right: 8px;
+.custom-card {
+    background-color: #444; 
+    border: 1px solid #555;
+    border-left: 5px solid #ffc107; 
 }
 
-/* Estilo del cuerpo del campo */
-.app-field-body {
-    padding: 10px 15px; 
-}
-
-/* Estilo del input/select/textarea para imitar la app */
-.custom-input-app-style {
-    background-color: #333 !important; 
+.custom-input {
+    background-color: #555 !important; 
     color: #fff !important;
-    border: 1px solid #555 !important;
+    border: 1px solid #ffc107 !important;
     font-size: 1.2rem; 
     padding: 0.75rem 0.5rem; 
     box-shadow: none !important; 
-    height: 55px; /* Altura uniforme */
 }
 
-.custom-input-app-style:focus {
-    border-color: #ffc107 !important;
+.custom-input::placeholder {
+    color: #ccc;
+}
+
+.custom-input:focus {
     box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
 }
 
-/* Ícono de búsqueda al lado del Perfil */
-.app-search-icon {
-    background-color: #ffc107 !important;
-    border-color: #ffc107 !important;
-    color: #333 !important;
-    width: 50px;
-    height: 55px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    margin-left: -1px; /* Para que se pegue al input */
-}
-.app-search-icon:hover {
-     background-color: #e0b400 !important;
-}
-
-/* Estilos específicos para la sección de escaneo */
-.app-field-header-scan {
-    background-color: #333;
-    color: #ffc107; 
-    padding: 10px 15px;
-    font-weight: bold;
-    font-size: 1rem;
-}
-.app-field-body-scan {
-    padding: 20px 15px;
-    background-color: #212121; /* Fondo más oscuro para el área de escaneo */
-}
-
-/* Icono de Escaneo */
-.app-scan-icon {
-    background-color: #ffc107 !important;
-    border-color: #ffc107 !important;
-    color: #333 !important;
-    width: 55px;
-    height: 55px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    margin-left: 5px; 
-    border-radius: 8px !important;
-}
-
 #scan-result {
-    font-size: 1.2rem; 
+    font-size: 1.4rem; 
     min-height: 40px;
     display: flex;
     align-items: center;
@@ -295,39 +93,30 @@ body {
     color: #ffc107; 
 }
 
-/* Botón de Envío Flotante (estilo App) */
-.fixed-send-button-app-style {
-    position: fixed;
-    right: 30px; 
-    bottom: 30px;
-    z-index: 1050; 
-}
+/* ELIMINADA .floating-send-btn { display: none !important; } */
 
-.registrar-ingreso-btn-app-style {
-    background-color: #ffc107; /* Amarillo/Naranja */
+/* Botón Rectangular "REGISTRAR INGRESO" */
+.registrar-ingreso-btn {
+    font-size: 1.3rem;
+    padding: 10px 15px;
+    height: 55px; 
+    font-weight: bold;
+    background-color: #ffc107;
     color: #333;
     border: none;
-    border-radius: 50%; 
-    width: 65px; 
-    height: 65px;
-    font-size: 1.8rem; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     transition: background-color 0.2s;
 }
 
-.registrar-ingreso-btn-app-style:hover {
-    background-color: #e0b400;
-}
-
-.registrar-ingreso-btn-app-style.success-flash {
+.registrar-ingreso-btn.success-flash {
     background-color: #28a745 !important; 
     color: white !important;
 }
 
-/* --- Estilos de Reportes (Se mantienen) --- */
+.btn-perfil-search {
+    width: 50px; 
+}
+
+/* --- Estilos de Reportes --- */
 .custom-table {
     --bs-table-bg: #555;
     --bs-table-color: #f8f9fa;
