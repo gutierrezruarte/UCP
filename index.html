@@ -1,216 +1,604 @@
 <!DOCTYPE html>
-<html>
+<html lang="es" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CONTROL GENERAL - UCP</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>U.C.P. - Portal de Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- Biblioteca de Escaneo -->
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        darkCard: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
 
-    <link rel="stylesheet" href="styles.css">
+        .sidebar-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        input[type="text"], textarea {
+            text-transform: uppercase;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media (min-width: 1024px) {
+            .compact-table td { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+            .compact-card { padding: 1.25rem !important; }
+            .compact-header { height: 3.5rem !important; }
+        }
+
+        /* Scanner a pantalla completa en su contenedor */
+        #reader {
+            width: 100% !important;
+            border: none !important;
+            border-radius: 0px;
+            overflow: hidden;
+            background: black;
+        }
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+        /* Eliminar la superposición de sombreado del centro */
+        #reader__scan_region {
+            background: transparent !important;
+        }
+    </style>
 </head>
-<body>
-    
-    <div id="main-portal">
-        
-        <nav class="navbar navbar-dark bg-dark border-bottom border-warning fixed-top-nav">
-            <div class="container-fluid">
-                
-                <button class="btn btn-sm btn-outline-warning nav-btn-left" data-bs-toggle="modal" data-bs-target="#adminModal" title="Menú de Administración">
-                    <i class="bi bi-list"></i>
-                </button>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden">
 
-                <span class="navbar-brand mx-auto mb-0 h1 text-center-custom">CONTROL GENERAL</span>
-                
-                <div class="navbar-escudo-placeholder"></div>
-            </div>
-        </nav>
-        
-        <div class="container my-3 pb-5 content-padding-top">
-            
-            <div id="alert-container"></div>
-            
-            <div id="send-feedback-container" class="my-2"></div>
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2"></div>
 
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity duration-300 opacity-0"></div>
 
-            <form id="control-form">
-
-                <div class="card mb-3 custom-card">
-                    <div class="card-header border-warning text-warning fw-bold">
-                        <i class="bi bi-person-badge"></i> PERFIL <span class="required-badge">*</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="input-group">
-                            <select class="form-select custom-input" id="list_id" data-name="PERFIL" required>
-                                <option value="" selected>- Seleccione -</option>
-                                <option value="PERSONAL">PERSONAL</option>
-                                <option value="MOVIL">MOVIL</option>
-                                <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
-                                <option value="DOCENTE">DOCENTE</option>
-                                <option value="ABOGADO">ABOGADO</option>
-                                <option value="PASTORAL">PASTORAL</option>
-                                <option value="CANTINA">CANTINA</option>
-                                <option value="PROVEEDORES">PROVEEDORES</option>
-                                <option value="OBRA">OBRA</option>
-                                <option value="VISITA">VISITA</option>
-                                <option value="CPA">CPA</option>
-                                <option value="OTROS">OTROS</option>
-                            </select>
-                            <button type="button" class="btn btn-warning btn-perfil-search" title="Buscar Perfil">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mb-3 custom-card">
-                    <div class="card-header text-warning fw-bold">
-                        <i class="bi bi-car-front"></i> DOMINIO
-                    </div>
-                    <div class="card-body">
-                        <textarea rows="2" class="form-control custom-input" id="text1_id" data-name="DOMINIO" placeholder="Escriba el dominio aquí"></textarea>
-                    </div>
-                </div>
-                
-                <div class="card mb-3 custom-card">
-                    <div class="card-header text-warning fw-bold">
-                        <i class="bi bi-card-text"></i> OBSERVACIONES
-                    </div>
-                    <div class="card-body">
-                        <textarea rows="2" class="form-control custom-input" id="text2_id" data-name="OBSERVACIONES" placeholder="Notas adicionales"></textarea>
-                    </div>
-                </div>
-
-                <div class="card mb-3 custom-card">
-                    <div class="card-header text-warning fw-bold">
-                        <i class="bi bi-qr-code"></i> Corroborar que se registre en la planilla <span class="required-badge">*</span>
-                    </div>
-                    <div class="card-body text-center">
-                        <div id="scan-result" class="mb-3 p-2 text-warning fw-bold" style="min-height: 20px;">
-                            Ningún código escaneado
-                        </div>
-                        
-                        <div class="input-group">
-                            <input type="text" class="form-control custom-input text-center" id="barcode_id" data-name="CREDENCIAL / DNI" placeholder="Cargar N° Afiliado / Código Manualmente" required>
-                            
-                            <button type="button" class="btn btn-warning" id="openScannerBtn" title="Escanear Código" data-bs-toggle="modal" data-bs-target="#scannerModal">
-                                <i class="bi bi-qr-code-scan" style="font-size: 1.5rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <input type="hidden" id="date_id" data-name="FECHA">
-                <input type="hidden" id="time_id" data-name="HORA">
-
-                <div class="d-grid gap-2 mt-4 mb-5">
-                    <button type="submit" id="sendButtonRect" class="btn btn-warning btn-block btn-lg registrar-ingreso-btn">
-                        <i class="bi bi-send-fill"></i> REGISTRAR INGRESO
-                    </button>
-                </div>
-                </form>
-
-        </div> 
-        
-        <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-fullscreen modal-dialog-centered">
-                <div class="modal-content bg-dark">
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title text-white" id="scannerModalLabel">ESCANEAR CÓDIGO</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="stopScanner()"></button>
-                    </div>
-                    <div class="modal-body p-1 d-flex justify-content-center align-items-center">
-                        <div id="reader" style="width: 100%; max-width: 500px; max-height: 80vh;"></div>
-                    </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="stopScanner()">Cerrar y Cancelar Escaneo</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content bg-dark text-white">
-                    <div class="modal-header bg-dark border-warning">
-                        <h5 class="modal-title" id="adminModalLabel">Menú de Administración</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        
-                        <h6 class="text-warning">REPORTES</h6>
-                        <div class="d-grid gap-2 mb-4">
-                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#reporteModal" onclick="renderReporteListado()">
-                                <i class="bi bi-list-columns"></i> VER LISTADO DIARIO
-                            </button>
-                        </div>
-                        
-                        <div id="import-section">
-                            <h6 class="text-warning">IMPORTACIÓN DE DATOS (EXCEL)</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Carga y Actualización de Dotación</label>
-                                <input type="file" class="form-control bg-secondary text-white" id="dotacionFile" accept=".xlsx, .xls">
-                                <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadDotacion()">Cargar Dotación desde Excel</button>
-                                <small class="form-text text-muted">Formato esperado: (Columna A: Código/DNI, Columna B: Nombre Completo)</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Registros de Pases (Body Scan)</label>
-                                <input type="file" class="form-control bg-secondary text-white" id="pasesFile" accept=".xlsx, .xls">
-                                <button type="button" class="btn btn-sm btn-warning w-100 mt-2" onclick="loadPases()">Cargar Pases Body Scan</button>
-                                <small class="form-text text-muted">La columna A debe contener los códigos de identificación.</small>
-                            </div>
-                            <div id="pases-status" class="mt-2 text-warning"></div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="reporteModal" tabindex="-1" aria-labelledby="reporteModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content bg-dark text-white">
-                    <div class="modal-header bg-dark border-warning">
-                        <h5 class="modal-title" id="reporteModalLabel">📋 Listado Diario de Ingresos</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="reporteSearch" class="form-label">Buscar por Fecha, Código, Dominio, etc.</label>
-                            <input type="text" class="form-control custom-input" id="reporteSearch" placeholder="Escriba aquí para filtrar..." oninput="filterReporteListado()">
-                        </div>
-
-                        <h6 class="text-warning mt-4">AGENTE (CREDENCIAL/AFILIADO)</h6>
-                        <div id="agentesTableContainer" class="table-responsive mb-5">
-                            </div>
-
-                        <h6 class="text-warning mt-4">OTROS / VISITAS (DNI/MANUAL)</h6>
-                        <div id="otrosTableContainer" class="table-responsive">
-                            </div>
-                        
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+    <!-- PANTALLA LOGIN -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
+        <div id="login-box" class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-2xl animate-fade-in"></div>
     </div>
 
+    <!-- ESTRUCTURA APP -->
+    <div id="app-container" class="hidden h-full flex overflow-hidden">
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col">
+            <div class="p-5 flex flex-col h-full">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="bg-blue-600 p-2 rounded-xl shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    </div>
+                    <div>
+                        <span class="font-black text-base tracking-tighter uppercase block leading-none">Portal U.C.P.</span>
+                        <span class="text-[7px] text-blue-400 font-bold uppercase tracking-widest">Seguridad Penitenciaria</span>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto no-scrollbar py-2">
+                    <nav id="sidebar-nav" class="space-y-1"></nav>
+                </div>
+                <div class="mt-auto pt-4 border-t border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-4 p-3 bg-slate-700/30 rounded-xl">
+                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white">M</div>
+                        <div class="overflow-hidden">
+                            <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100">Usuario</p>
+                            <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Rol</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="w-full py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-widest border border-red-500/20">Cerrar Sesión</button>
+                </div>
+            </div>
+        </aside>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm compact-header">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                    <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Inicio</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest"></div>
+                    <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
+                        <button onclick="toggleTheme()" class="p-1.5 text-slate-500 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all" title="Tema">
+                            <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M16.243 17.657l.707-.707M7.05 7.05l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+                            <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                        </button>
+                        <button onclick="toggleFullscreen()" class="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all" title="Pantalla Completa">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar"></div>
+        </main>
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    
-    <script src="script.js"></script>
+    <!-- MODAL SCANNER (MEJORADO) -->
+    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center">
+        <div class="bg-white dark:bg-slate-900 w-full h-full md:h-auto md:max-w-xl md:rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-4 bg-blue-600 text-white flex justify-between items-center shrink-0">
+                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic">Escaneando...</span>
+                <button onclick="stopScanner()" class="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
+                <div id="reader" class="w-full h-full"></div>
+                <!-- Línea de escaneo animada -->
+                <div class="absolute inset-x-0 h-0.5 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse z-10" style="top: 50%;"></div>
+            </div>
+
+            <div class="p-6 bg-white dark:bg-slate-900 text-center shrink-0">
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Apunte la cámara al código</p>
+                <p class="text-[9px] text-slate-400 italic">Detección automática de campo completo habilitada</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ROLES = {
+            ADMIN: 'ADMINISTRADOR',
+            DIP: 'DEPARTAMENTO INSPECCIÓN PENITENCIARIA',
+            UCP: 'UNIDAD DE CONTROL PENITENCIARIO'
+        };
+
+        const PROFILES = ['PERSONAL', 'MOVIL', 'MONOTRIBUTISTA', 'DOCENTE', 'ABOGADO', 'PASTORAL', 'VISITA', 'OTROS'];
+        const USER_CREDENTIALS = { username: '136219951', password: 'Marquitos123', fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE' };
+
+        let PERSONAL_DB = [
+            { id: '136604506', nombre: 'FERNANDO CLAUDIO', apellido: 'AMAYA', cargo: 'ADJUTOR' },
+            { id: '136219951', nombre: 'MARCOS MAGÍN', apellido: 'GUTIÉRREZ RUARTE', cargo: 'ADMINISTRADOR' }
+        ];
+
+        let ingresosRecientes = [];
+        let pasesBodyData = []; 
+        let currentUser = null;
+        let html5QrCode = null;
+
+        function init() {
+            document.getElementById('login-box').innerHTML = LOGIN_HTML_BASE;
+            attachLoginEvent();
+            updateHeaderDate();
+            if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
+        }
+
+        const LOGIN_HTML_BASE = `
+            <div class="text-center mb-6">
+                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-1">Control U.C.P.</h1>
+                <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic">Acceso Restringido</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <input type="text" id="username" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA">
+                <input type="password" id="password" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="CONTRASEÑA">
+                <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px] hover:bg-black transition-all">Ingresar</button>
+            </form>
+        `;
+
+        function playNotificationBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+                oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.5); 
+            } catch (e) {}
+        }
+
+        // --- FUNCIONES DE ESCANEO MEJORADAS ---
+        function startScanner(type) {
+            const modal = document.getElementById('modal-scanner');
+            const title = document.getElementById('scanner-title');
+            modal.classList.remove('hidden');
+            title.innerText = type === 'BARCODE' ? "ESCANEANDO AFILIADO (BARRAS)" : "ESCANEANDO DOCUMENTO (QR)";
+            
+            // Instanciar el escáner si no existe
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            // Configuración optimizada para "campo completo"
+            const config = { 
+                fps: 20, 
+                aspectRatio: window.innerWidth / window.innerHeight,
+                // Al NO definir qrbox, el escáner busca en toda la imagen capturada
+            };
+
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config,
+                (decodedText) => {
+                    handleScanSuccess(decodedText, type);
+                    stopScanner();
+                },
+                (errorMessage) => { /* Silenciar errores de detección de frames vacíos */ }
+            ).catch(err => {
+                showNotification("No se pudo iniciar la cámara. Verifique permisos.", "error");
+                console.error("Scanner Error:", err);
+                stopScanner();
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                }).catch(err => {
+                    console.error("Stop Error:", err);
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                });
+            } else {
+                document.getElementById('modal-scanner').classList.add('hidden');
+            }
+        }
+
+        function handleScanSuccess(text, type) {
+            playNotificationBeep();
+            if (type === 'BARCODE') {
+                const input = document.getElementById('ing-mat');
+                const sexInput = document.getElementById('ing-sexo');
+                if (input) {
+                    input.value = text;
+                    searchPersonalInDB(text);
+                    if (sexInput) {
+                        if (text.startsWith('1')) sexInput.value = 'M';
+                        else if (text.startsWith('2')) sexInput.value = 'F';
+                    }
+                    showNotification("CÓDIGO DE BARRAS LEÍDO", "success");
+                }
+            } else {
+                // Lógica avanzada para DNI (Datos separados por @)
+                const parts = text.split('@');
+                if (parts.length > 4) {
+                    const inputDni = document.getElementById('ing-dni');
+                    const inputNom = document.getElementById('ing-nom');
+                    const sexInput = document.getElementById('ing-sexo');
+                    
+                    let dni = "", nom = "", ape = "", sexo = "";
+
+                    // Los formatos de DNI varían, pero usualmente:
+                    // Formato Nuevo: num@ape@nom@sex@dni... (dni en index 4)
+                    // Formato Viejo: dni@ape@nom@sex... (dni en index 0)
+                    if (parts[4] && parts[4].length >= 7 && parts[4].length <= 9 && !isNaN(parts[4])) {
+                        dni = parts[4].trim(); ape = parts[1].trim(); nom = parts[2].trim(); sexo = parts[3].trim().toUpperCase();
+                    } else {
+                        dni = parts[0].trim(); ape = parts[1].trim(); nom = parts[2].trim(); sexo = parts[3].trim().toUpperCase();
+                    }
+
+                    if (inputDni) inputDni.value = dni;
+                    if (inputNom) inputNom.value = `${ape} ${nom}`.trim();
+                    if (sexInput) {
+                        if (sexo.startsWith('M')) sexInput.value = 'M';
+                        else if (sexo.startsWith('F')) sexInput.value = 'F';
+                    }
+                    showNotification("DNI LEÍDO CORRECTAMENTE", "success");
+                } else {
+                    showNotification("QR NO RECONOCIDO COMO DNI", "error");
+                }
+            }
+        }
+
+        function attachLoginEvent() {
+            document.getElementById('login-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const u = document.getElementById('username').value.trim();
+                const p = document.getElementById('password').value;
+                if (u === USER_CREDENTIALS.username && p === USER_CREDENTIALS.password) showRoleSelection();
+                else showNotification("Error de autenticación", "error");
+            });
+        }
+
+        function showRoleSelection() {
+            document.getElementById('login-box').innerHTML = `
+                <div class="text-center animate-fade-in">
+                    <h2 class="text-lg font-black mb-4 uppercase tracking-widest text-slate-800 dark:text-white">Seleccione Rol</h2>
+                    <div class="grid gap-2">
+                        ${Object.values(ROLES).map(role => `
+                            <button onclick="startSession('${role}')" class="p-3.5 bg-slate-50 dark:bg-slate-900 border-2 dark:border-slate-700 rounded-xl font-black uppercase text-[10px] flex justify-between items-center hover:border-blue-500 transition-all group">
+                                <span class="group-hover:text-blue-600">${role}</span>
+                                <span>→</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function startSession(role) {
+            currentUser = { ...USER_CREDENTIALS, role };
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('user-display-name').innerText = currentUser.fullName;
+            document.getElementById('user-display-role').innerText = role;
+            document.getElementById('user-initial').innerText = currentUser.fullName.charAt(0);
+            buildMenu(); renderDashboard();
+        }
+
+        function buildMenu() {
+            const nav = document.getElementById('sidebar-nav');
+            const items = [{ id: 'ingresos', label: 'REGISTRO DE INGRESOS', icon: '📝' }, { id: 'reportes', label: 'MÓDULO REPORTES', icon: '📊' }];
+            if (currentUser.role !== ROLES.UCP) {
+                items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
+            }
+            nav.innerHTML = items.map(item => `
+                <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all group">
+                    <span class="p-1.5 bg-slate-700 group-hover:bg-blue-600 rounded-md text-base transition-colors">${item.icon}</span>
+                    <span class="uppercase font-black tracking-widest leading-none">${item.label}</span>
+                </button>
+            `).join('');
+        }
+
+        function renderDashboard() { renderView('dashboard', 'Inicio'); }
+
+        function renderView(viewId, title) {
+            document.getElementById('view-title').innerText = title;
+            const content = document.getElementById('content-area');
+            if (window.innerWidth < 1024) toggleSidebar(false);
+            if (viewId === 'dashboard') {
+                content.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in">
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none">Ingresos</h3><p class="text-2xl font-black text-blue-600 leading-none">${ingresosRecientes.length}</p></div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none">Personal</h3><p class="text-2xl font-black text-emerald-600 leading-none">${PERSONAL_DB.length}</p></div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none">Pases Body</h3><p class="text-2xl font-black text-amber-500 leading-none">${pasesBodyData.length}</p></div>
+                </div><div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[2rem] text-center border dark:border-slate-800 animate-fade-in shrink-0">
+                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 md:w-40 mb-6 drop-shadow-xl brightness-110">
+                    <h2 class="text-lg md:text-xl font-black uppercase italic leading-none mb-1 dark:text-white">Unidad de Control Penitenciario</h2>
+                    <p class="text-slate-400 dark:text-slate-500 text-[9px] font-bold uppercase tracking-widest">Servicio Penitenciario de Córdoba</p>
+                </div>`;
+            } else if (viewId === 'ingresos') renderIngresosView(content);
+            else if (viewId === 'pases_body') renderPasesBodyView(content);
+            else if (viewId === 'reportes') renderReportesView(content);
+            else if (viewId === 'importar_personal') renderImportPersonalView(content);
+        }
+
+        function parseInstitutionalDate(dateStr) {
+            if (!dateStr) return new Date(0);
+            try {
+                const cleanStr = String(dateStr).replace(/"/g, '').trim();
+                const parts = cleanStr.split(/[,\s]+/);
+                const dateParts = parts[0].split('/');
+                if (dateParts.length === 3) {
+                    const day = parseInt(dateParts[0]); const month = parseInt(dateParts[1]) - 1; const year = parseInt(dateParts[2]);
+                    let h = parts[1] ? parseInt(parts[1].split(':')[0]) || 0 : 0;
+                    let m = parts[1] ? parseInt(parts[1].split(':')[1]) || 0 : 0;
+                    return new Date(year, month, day, h, m, 0);
+                }
+            } catch (e) {}
+            return new Date(0);
+        }
+
+        function getRecentPases(matricula) {
+            const sixtyDaysAgo = new Date(); sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+            const matSearch = String(matricula).trim();
+            return pasesBodyData.filter(x => {
+                const mat = String(x.matricula || "").trim();
+                const date = parseInstitutionalDate(x.fechaHora);
+                return mat === matSearch && date >= sixtyDaysAgo;
+            });
+        }
+
+        function searchPersonalInDB(val) {
+            const matValue = val.trim();
+            const p = PERSONAL_DB.find(x => x.id === matValue);
+            const preview = document.getElementById('personal-preview');
+            const nameEl = document.getElementById('prev-name');
+            const bodyInfo = document.getElementById('body-info');
+            const sexInput = document.getElementById('ing-sexo');
+            
+            if (p && matValue) {
+                const recents = getRecentPases(matValue).sort((a,b) => parseInstitutionalDate(b.fechaHora) - parseInstitutionalDate(a.fechaHora));
+                if (recents.length === 0) {
+                    nameEl.className = "font-black text-red-600 dark:text-red-400 uppercase text-xs leading-tight";
+                    bodyInfo.innerHTML = `<p class="text-[8px] font-black text-red-500 mt-1 uppercase tracking-widest leading-none">⚠️ SIN REGISTROS BODY (60 DÍAS)</p>`;
+                } else {
+                    nameEl.className = "font-black text-slate-800 dark:text-white uppercase text-xs leading-tight";
+                    bodyInfo.innerHTML = `<div class="mt-2 pt-2 border-t dark:border-slate-700">
+                        <p class="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase mb-1 leading-none text-left">Pases Recientes (${recents.length}):</p>
+                        <div class="space-y-1 max-h-20 overflow-y-auto no-scrollbar">${recents.slice(0, 3).map(r => `
+                            <div class="text-[9px] flex justify-between bg-white dark:bg-slate-800 p-1 rounded-lg border dark:border-slate-700">
+                                <span class="font-bold">${r.fechaHora.split(',')[0]}</span>
+                                <span class="font-black uppercase text-[7px] text-blue-600">${r.sector}</span>
+                            </div>`).join('')}</div></div>`;
+                }
+                nameEl.innerText = `${p.apellido}, ${p.nombre}`;
+                preview?.classList.remove('hidden');
+                
+                if (sexInput) {
+                    if (matValue.startsWith('1')) sexInput.value = 'M';
+                    else if (matValue.startsWith('2')) sexInput.value = 'F';
+                }
+            } else { preview?.classList.add('hidden'); }
+        }
+
+        function renderIngresosView(container) {
+            const now = new Date();
+            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full">
+                <div class="xl:col-span-5"><div class="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[1.5rem] border dark:border-slate-800 shadow-sm compact-card">
+                    <h3 class="text-xs font-black mb-4 uppercase tracking-widest dark:text-white leading-none">Nueva Entrada</h3>
+                    <form id="ingreso-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveIngreso();">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg font-bold dark:text-white text-[11px] outline-none">
+                            <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg font-bold dark:text-white text-[11px] outline-none">
+                        </div>
+                        <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg font-black uppercase text-[10px] outline-none dark:text-white">
+                            <option value="" disabled selected>Seleccione Perfil...</option>${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
+                        </select>
+                        <div id="dyn-fields" class="space-y-3"></div>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                             <div class="space-y-1 text-left">
+                                <label class="text-[8px] font-black uppercase text-slate-400 px-1">Sexo / Género</label>
+                                <select id="ing-sexo" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg font-black uppercase text-[10px] outline-none dark:text-white">
+                                    <option value="">-</option>
+                                    <option value="M">MASCULINO</option>
+                                    <option value="F">FEMENINO</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1 text-left">
+                                <label class="text-[8px] font-black uppercase text-slate-400 px-1">Modo Transporte</label>
+                                <div id="transport-options" class="grid grid-cols-2 gap-1">
+                                    <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="py-2 border-2 dark:border-slate-700 rounded-lg font-black uppercase text-[8px] transition-all bg-slate-50 dark:bg-slate-800 text-slate-400">P</button>
+                                    <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="py-2 border-2 dark:border-slate-700 rounded-lg font-black uppercase text-[8px] transition-all bg-slate-50 dark:bg-slate-800 text-slate-400">V</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="vehicle-fields" class="hidden animate-fade-in space-y-1 text-left"><label class="text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase px-1">Patente / Dominio</label><input type="text" id="ing-dominio" oninput="this.value = this.value.toUpperCase()" class="w-full px-4 py-3 bg-blue-50/50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-800 rounded-lg text-lg font-black text-center uppercase dark:text-blue-200 outline-none" placeholder="ABC 123"></div>
+                        <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg font-bold uppercase text-[10px] outline-none dark:text-white" placeholder="Observaciones..."></textarea>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg hover:bg-blue-700 transition-all">Registrar Ingreso</button>
+                    </form></div></div>
+                <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[1.5rem] border dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
+                    <div class="p-3 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest italic leading-none text-left">Ingresos de Hoy</div>
+                    <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-left text-[11px] md:text-xs compact-table"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800"></tbody></table></div>
+                </div></div>`;
+            updateIngresosTable();
+        }
+
+        const SVG_BARCODE = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg>`;
+        const SVG_QR = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v.01"/></svg>`;
+
+        function updateDynamicFields(perfil) {
+            const d = document.getElementById('dyn-fields'); const btnP = document.getElementById('btn-p'); const gridOpts = document.getElementById('transport-options');
+            if (!d) return; d.innerHTML = '';
+            if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
+                const placeholder = perfil === 'MOVIL' ? 'MATRÍCULA CHOFER' : 'MATRÍCULA AGENTE';
+                if (perfil === 'MOVIL') { setMode('VEHÍCULO'); if (btnP) btnP.style.display = 'none'; if (gridOpts) gridOpts.classList.replace('grid-cols-2', 'grid-cols-1'); document.getElementById('vehicle-fields')?.classList.add('hidden'); } 
+                else { if (btnP) btnP.style.display = 'block'; if (gridOpts) gridOpts.classList.replace('grid-cols-1', 'grid-cols-2'); setMode(''); }
+                d.innerHTML = `<div class="space-y-3 animate-fade-in">
+                    <div class="flex gap-2">
+                        <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg text-xs font-black dark:text-white uppercase outline-none focus:border-blue-500" placeholder="${placeholder}">
+                        <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm">${SVG_BARCODE}</button>
+                    </div>
+                    <div id="personal-preview" class="hidden p-3 bg-emerald-50 dark:bg-emerald-900/20 border dark:border-emerald-800 rounded-lg shadow-inner"><div id="prev-name" class="font-black uppercase"></div><div id="body-info"></div></div>
+                    ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" oninput="this.value = this.value.toUpperCase()" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 dark:border-slate-700 rounded-lg text-xl font-black uppercase text-center dark:text-white" placeholder="NRO UNIDAD">` : ''}
+                </div>`;
+            } else {
+                if (btnP) btnP.style.display = 'block'; if (gridOpts) gridOpts.classList.replace('grid-cols-1', 'grid-cols-2'); setMode('');
+                d.innerHTML = `<div class="space-y-3 animate-fade-in">
+                        <div class="flex gap-2">
+                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg text-xs font-black dark:text-white uppercase outline-none focus:border-blue-500" placeholder="DNI / DOCUMENTO">
+                            <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm">${SVG_QR}</button>
+                        </div>
+                        <input type="text" id="ing-nom" oninput="this.value = this.value.toUpperCase()" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg text-xs font-black uppercase dark:text-white outline-none focus:border-blue-500" placeholder="NOMBRE COMPLETO">
+                    </div>`;
+            }
+        }
+
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
+        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+        function toggleSidebar(f) { const sb = document.getElementById('sidebar'), ov = document.getElementById('sidebar-overlay'), op = f !== undefined ? f : sb.classList.contains('-translate-x-full'); if (op) { sb.classList.remove('-translate-x-full'); ov.classList.remove('hidden'); setTimeout(() => ov.classList.add('opacity-100'), 10); } else { sb.classList.add('-translate-x-full'); ov.classList.remove('opacity-100'); setTimeout(() => ov.classList.add('hidden'), 300); } }
+        function updateHeaderDate() { const el = document.getElementById('current-date'); if(el) el.innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
+        function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10`; e.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${t==='success'?'bg-emerald-400':'bg-white'}"></span><span class="font-black text-[9px] uppercase tracking-widest leading-none">${m}</span>`; c.appendChild(e); setTimeout(() => { e.style.opacity = '0'; setTimeout(() => e.remove(), 300); }, 3000); }
+        function logout() { window.location.reload(); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function setMode(m) {
+            document.getElementById('ing-modo').value = m; const bp = document.getElementById('btn-p'); const bv = document.getElementById('btn-v'); const vf = document.getElementById('vehicle-fields'); const p = document.getElementById('ing-perfil').value;
+            const act = "bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]"; const inact = "bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700";
+            if (bp) bp.className = `py-2 border-2 rounded-lg font-black uppercase text-[8px] transition-all ${m==='PEATÓN'?act:inact}`;
+            if (bv) bv.className = `py-2 border-2 rounded-lg font-black uppercase text-[8px] transition-all ${m==='VEHÍCULO'?act:inact}`;
+            if (vf) (m === 'VEHÍCULO' && p !== 'MOVIL') ? vf.classList.remove('hidden') : vf.classList.add('hidden');
+        }
+
+        function handleSaveIngreso() {
+            const p = document.getElementById('ing-perfil').value, m = document.getElementById('ing-modo').value;
+            if (!p || !m) return showNotification("Faltan datos requeridos", "error");
+            let mat = document.getElementById('ing-mat')?.value || "", dni = document.getElementById('ing-dni')?.value || "", nom = document.getElementById('ing-nom')?.value || "", nMov = document.getElementById('ing-n-movil')?.value || "", dom = document.getElementById('ing-dominio')?.value || "";
+            let su = nom, sub = p; const sexo = document.getElementById('ing-sexo').value;
+            if (p==='PERSONAL' || p==='MOVIL') { const ag = PERSONAL_DB.find(x => x.id === mat); su = ag ? `${ag.apellido}, ${ag.nombre}` : `MAT: ${mat}`; sub = ag ? ag.cargo : p; } else { mat = dni; }
+            playNotificationBeep(); ingresosRecientes.unshift({ id: Date.now(), fecha: document.getElementById('ing-fecha').value, hora: document.getElementById('ing-hora').value, sujeto: su, sub, perfil: p, matId: mat, modo: m, dominio: dom.toUpperCase(), nMovil: nMov.toUpperCase(), obs: document.getElementById('ing-obs').value.trim().toUpperCase(), sexo });
+            showNotification("Registro completado", "success"); renderView('ingresos', 'REGISTRO DE INGRESOS');
+        }
+
+        function updateIngresosTable() {
+            const b = document.getElementById('ingresos-table'); if (!b) return; if (!ingresosRecientes.length) { b.innerHTML = `<tr><td class="p-8 text-center text-slate-400 font-black uppercase italic text-[9px]">Sin actividad hoy</td></tr>`; return; }
+            b.innerHTML = ingresosRecientes.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td class="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 font-black text-sm">${i.hora}</td><td class="px-4 py-3"><div class="font-black text-slate-800 dark:text-white uppercase text-[10px] mb-1 leading-none text-left">${i.sujeto} (${i.sexo || '-'})</div><div class="text-[8px] text-slate-400 uppercase font-bold tracking-widest italic leading-none text-left">${i.sub} | ${i.modo} ${i.nMovil || i.dominio || ''}</div></td></tr>`).join('');
+        }
+
+        function renderPasesBodyView(container) {
+            container.innerHTML = `<div class="max-w-2xl mx-auto animate-fade-in"><div class="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2rem] shadow-xl text-center relative border dark:border-slate-800">
+                <button onclick="openPasesModal()" class="absolute top-6 right-6 p-4 bg-slate-50 dark:bg-slate-800 hover:bg-amber-500 rounded-xl transition-all shadow-sm">👁️</button>
+                <div class="bg-amber-50 dark:bg-amber-900/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg text-amber-600 text-2xl font-black">🔍</div>
+                <h2 class="text-lg font-black uppercase mb-1 dark:text-white tracking-tighter leading-none">Importar Pases Body</h2><p class="text-slate-500 text-[9px] font-bold uppercase mb-8 tracking-widest italic leading-none">Carga de InformeBody.xlsx</p>
+                <div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-8 mb-8 bg-slate-50 dark:bg-slate-950 hover:bg-white cursor-pointer transition-all shadow-inner" onclick="document.getElementById('pases-input').click()">
+                    <input type="file" id="pases-input" class="hidden" accept=".xlsx, .xls, .csv"><p id="pases-label" class="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none">Toque para seleccionar archivo</p></div>
+                <button onclick="handleProcessPasesBody()" class="w-full bg-amber-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-amber-700 transition-all">Sincronizar Base Body</button></div></div>`;
+            document.getElementById('pases-input')?.addEventListener('change', e => { if(e.target.files.length) document.getElementById('pases-label').innerText = e.target.files[0].name.toUpperCase(); });
+        }
+
+        async function handleProcessPasesBody() {
+            const input = document.getElementById('pases-input'); if (!input.files.length) return;
+            const reader = new FileReader(); reader.onload = (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                pasesBodyData = jsonData.map(row => ({ 
+                    matricula: String(row['Matricula']||row['MATRICULA']||row['Afiliado']||row['AFILIADO']||"").split('.')[0].trim(), 
+                    nombre: (row['Nombre']||row['Apellido y Nombre']||""), 
+                    fechaHora: (row['Fecha y Hora de Escaneo']||row['Fecha']||""), 
+                    sector: (row['Sector Marcado']||row['Sector']||"").toUpperCase() 
+                })).filter(x => x.matricula);
+                showNotification("Base Body Sincronizada", "success"); renderDashboard();
+            }; reader.readAsArrayBuffer(input.files[0]);
+        }
+
+        function renderReportesView(container) {
+            container.innerHTML = `<div class="bg-white dark:bg-slate-900 p-5 rounded-[2rem] shadow-sm border dark:border-slate-800 mb-6 animate-fade-in h-full flex flex-col">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0"><h3 class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic leading-none">Auditoría de Turno</h3><div class="flex gap-2 w-full md:w-auto"><button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">Excel</button><button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">PDF</button></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 shrink-0">
+                    <div class="md:col-span-2"><label class="text-[8px] font-black uppercase text-slate-400 px-2 mb-1 block text-left">Buscador Inteligente</label><input type="text" id="rep-search" oninput="this.value = this.value.toUpperCase(); applyFilters()" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-xl text-[11px] font-bold uppercase outline-none dark:text-white focus:border-blue-500" placeholder="NOMBRE, MATRÍCULA, DNI, PATENTE O PERFIL..."></div>
+                    <div><label class="text-[8px] font-black uppercase text-slate-400 px-2 mb-1 block text-left">Desde</label><input type="date" id="rep-start" onchange="applyFilters()" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-xl text-[11px] font-bold dark:text-white"></div>
+                    <div><label class="text-[8px] font-black uppercase text-slate-400 px-2 mb-1 block text-left">Hasta</label><input type="date" id="rep-end" onchange="applyFilters()" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-xl text-[11px] font-bold dark:text-white"></div>
+                </div><button onclick="resetFilters()" class="w-full md:w-auto bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-8 py-2.5 rounded-lg font-black text-[9px] uppercase tracking-widest shrink-0">Limpiar Filtros</button>
+                <div class="bg-white dark:bg-slate-900 rounded-[1.5rem] border dark:border-slate-800 overflow-hidden shadow-sm mt-6 flex-1"><div class="h-full overflow-auto no-scrollbar"><table class="w-full text-left text-[10px] md:text-[11px] compact-table" id="table-report"><thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0"><tr><th class="px-5 py-3 border-b dark:border-slate-700">Tiempo</th><th class="px-5 py-3 border-b dark:border-slate-700">Perfil</th><th class="px-5 py-3 border-b dark:border-slate-700">ID / DNI</th><th class="px-5 py-3 border-b dark:border-slate-700">Sujeto</th><th class="px-5 py-3 border-b dark:border-slate-700">Medio</th><th class="px-5 py-3 border-b dark:border-slate-700">Obs</th></tr></thead><tbody id="report-table-body" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody></table></div></div></div>`;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const start = document.getElementById('rep-start')?.value, end = document.getElementById('rep-end')?.value, search = document.getElementById('rep-search')?.value.trim().toUpperCase() || "", body = document.getElementById('report-table-body');
+            if (!body) return;
+            const filtered = ingresosRecientes.filter(i => {
+                const dateInRange = (!start || i.fecha >= start) && (!end || i.fecha <= end);
+                const match = !search || String(i.sujeto || "").toUpperCase().includes(search) || String(i.matId || "").toUpperCase().includes(search) || String(i.perfil || "").toUpperCase().includes(search) || String(i.sub || "").toUpperCase().includes(search) || String(i.dominio || "").toUpperCase().includes(search) || String(i.nMovil || "").toUpperCase().includes(search) || String(i.obs || "").toUpperCase().includes(search);
+                return dateInRange && match;
+            });
+            body.innerHTML = filtered.length ? filtered.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td class="px-5 py-2.5 leading-tight text-left"><div class="font-bold dark:text-white text-[10px]">${i.fecha}</div><div class="font-mono text-blue-500 text-[9px]">${i.hora}</div></td><td class="px-5 py-2.5 text-left"><span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[8px] font-black italic">${i.perfil}</span></td><td class="px-5 py-2.5 font-mono font-bold text-left">${i.matId || '-'}</td><td class="px-5 py-2.5 leading-tight text-left"><b>${i.sujeto} (${i.sexo || '-'})</b><br><span class="text-[8px] text-slate-400 italic">${i.sub}</span></td><td class="px-5 py-2.5 text-[9px] uppercase font-black leading-tight text-left">${i.modo}${i.nMovil?' ('+i.nMovil+')':''}${i.dominio?' - '+i.dominio:''}</td><td class="px-5 py-2.5 italic text-slate-400 text-[9px] max-w-[120px] truncate text-left">${i.obs || '-'}</td></tr>`).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-300 dark:text-slate-700 font-black uppercase text-[9px] italic">Sin registros coincidentes</td></tr>`;
+        }
+
+        function resetFilters() { const s = document.getElementById('rep-start'); if(s) s.value = ''; const e = document.getElementById('rep-end'); if(e) e.value = ''; const h = document.getElementById('rep-search'); if(h) h.value = ''; applyFilters(); }
+        function renderImportPersonalView(container) { container.innerHTML = `<div class="max-w-2xl mx-auto animate-fade-in shrink-0"><div class="bg-white dark:bg-slate-900 p-10 rounded-[2rem] shadow-xl text-center border dark:border-slate-800"><div class="bg-blue-50 dark:bg-blue-900/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg text-blue-600 text-2xl font-black">📥</div><h2 class="text-lg font-black uppercase mb-1 dark:text-white tracking-tighter leading-none">Importar Personal</h2><p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest mb-8 italic leading-none">Archivo Maestro IndicePersonal.csv</p><div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-10 mb-8 bg-slate-50 dark:bg-slate-950 hover:bg-white cursor-pointer transition-all shadow-inner" onclick="document.getElementById('excel-input').click()"><input type="file" id="excel-input" class="hidden"><p id="file-label" class="text-[10px] text-slate-400 font-black uppercase italic tracking-widest leading-none">Vincular Base Institucional</p></div><button onclick="handleProcessFile()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg hover:bg-blue-700 transition-all">Actualizar Personal</button></div></div>`; document.getElementById('excel-input')?.addEventListener('change', e => { if(e.target.files.length) document.getElementById('file-label').innerText = e.target.files[0].name.toUpperCase(); }); }
+        async function handleProcessFile() { const i = document.getElementById('excel-input'); if (!i.files.length) return; const r = new FileReader(); r.onload = (e) => { const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); const js = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); js.forEach(row => { let mat = String(row['Matricula']||row['MATRICULA']||"").split('.')[0].trim(); if (mat) { const entry = { id: mat, nombre: (row['Nombre']||'').toUpperCase(), apellido: (row['Apellido']||'').toUpperCase(), cargo: (row['Jerarquia']||'AGENTE').toUpperCase() }; const idx = PERSONAL_DB.findIndex(p => p.id === mat); if (idx !== -1) PERSONAL_DB[idx] = entry; else PERSONAL_DB.push(entry); } }); showNotification("Personal actualizado", "success"); renderDashboard(); }; r.readAsArrayBuffer(i.files[0]); }
+        function openPasesModal() { const modal = document.getElementById('modal-view-pases'), body = document.getElementById('modal-pases-table-body'); body.innerHTML = pasesBodyData.map(p => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td class="px-4 py-2 font-mono text-blue-600 dark:text-blue-400 font-black text-[10px] text-left">${p.matricula}</td><td class="px-4 py-2 uppercase font-bold dark:text-slate-200 text-[10px] text-left">${p.nombre}</td><td class="px-4 py-2 font-bold text-slate-500 text-[10px] text-left">${p.fechaHora}</td><td class="px-4 py-2 text-left"><span class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-tighter">${p.sector}</span></td></tr>`).join(''); modal.classList.remove('hidden'); }
+        function exportToExcel() { const ws = XLSX.utils.json_to_sheet(ingresosRecientes); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Ingresos"); XLSX.writeFile(wb, `Reporte_UCP_${new Date().toISOString().split('T')[0]}.xlsx`); }
+        window.onload = init;
+    </script>
 </body>
 </html>
