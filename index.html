@@ -65,7 +65,7 @@
                     window.ingresosRecientes = data.sort((a,b) => b.timestamp - a.timestamp);
                     if (window.updateIngresosTable) window.updateIngresosTable();
                     if (window.updateReportTable) window.updateReportTable();
-                });
+                }, (err) => console.error("Error cuota ingresos:", err));
 
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                     const data = [];
@@ -73,7 +73,7 @@
                     window.PERSONAL_DB = data;
                     if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
                     if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
-                });
+                }, (err) => console.error("Error cuota personal:", err));
 
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                     const data = [];
@@ -81,22 +81,23 @@
                     window.pasesBodyData = data;
                     if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                     if(document.getElementById('dash-total-body')) document.getElementById('dash-total-body').innerText = data.length;
-                });
+                }, (err) => console.error("Error cuota body:", err));
 
                 onSnapshot(collection(db, 'artifacts', appId, 'users'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push(doc.data()));
                     window.SYSTEM_USERS = data;
                     if (window.refreshUsersList) window.refreshUsersList();
-                });
+                }, (err) => console.error("Error cuota usuarios:", err));
             }
         });
 
-        // Funciones de actualización en masa optimizadas con Batch
+        const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
         window.fbUpdatePersonal = async (list) => {
             const chunks = [];
-            for (let i = 0; i < list.length; i += 500) {
-                chunks.push(list.slice(i, i + 500));
+            for (let i = 0; i < list.length; i += 400) {
+                chunks.push(list.slice(i, i + 400));
             }
             for (const chunk of chunks) {
                 const batch = writeBatch(db);
@@ -105,13 +106,14 @@
                     batch.set(ref, p, { merge: true });
                 });
                 await batch.commit();
+                await sleep(300);
             }
         };
 
         window.fbUpdateBody = async (list) => {
             const chunks = [];
-            for (let i = 0; i < list.length; i += 500) {
-                chunks.push(list.slice(i, i + 500));
+            for (let i = 0; i < list.length; i += 400) {
+                chunks.push(list.slice(i, i + 400));
             }
             for (const chunk of chunks) {
                 const batch = writeBatch(db);
@@ -120,6 +122,7 @@
                     batch.set(ref, p);
                 });
                 await batch.commit();
+                await sleep(300);
             }
         };
     </script>
@@ -153,7 +156,9 @@
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden text-left">
 
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 text-left"></div>
-    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity duration-300 opacity-0"></div>
+    
+    <!-- OVERLAY MEJORADO -->
+    <div id="sidebar-overlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[45] hidden transition-opacity duration-300 opacity-0"></div>
 
     <!-- LOGIN -->
     <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
@@ -162,10 +167,10 @@
 
     <!-- ESTRUCTURA PRINCIPAL -->
     <div id="app-container" class="hidden h-full flex overflow-hidden">
-        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col shrink-0">
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-[50] w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col shrink-0">
             <div class="p-5 flex flex-col h-full text-left">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="bg-blue-600 p-2 rounded-xl shadow-lg font-black text-xs">UCP</div>
+                    <div class="bg-blue-600 p-2 rounded-xl shadow-lg font-black text-xs text-center">UCP</div>
                     <div class="text-left">
                         <span class="font-black text-base tracking-tighter uppercase block leading-none text-left">Portal U.C.P.</span>
                         <span class="text-[7px] text-blue-400 font-bold uppercase tracking-widest text-left">Seguridad Penitenciaria</span>
@@ -176,26 +181,26 @@
                 </div>
                 <div class="mt-auto pt-4 border-t border-slate-700/50">
                     <div class="flex items-center gap-3 mb-4 p-3 bg-slate-700/30 rounded-xl">
-                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white">?</div>
+                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white text-center">?</div>
                         <div class="overflow-hidden text-left flex-1">
-                            <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100">Cargando...</p>
-                            <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Rol</p>
+                            <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100 text-left">Cargando...</p>
+                            <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter text-left">Rol</p>
                         </div>
                     </div>
                     <div class="flex gap-2 items-center">
-                        <button id="btn-role-switch" onclick="openRoleSwitcher()" class="hidden p-2.5 bg-slate-700/50 hover:bg-blue-600 rounded-lg transition-all" title="Cambiar Rol">
+                        <button id="btn-role-switch" onclick="openRoleSwitcher()" class="hidden p-2.5 bg-slate-700/50 hover:bg-blue-600 rounded-lg transition-all text-center" title="Cambiar Rol">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         </button>
-                        <button onclick="logout()" class="flex-1 py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-widest border border-red-500/20">Cerrar Sesión</button>
+                        <button onclick="logout()" class="flex-1 py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-widest border border-red-500/20 text-center">Cerrar Sesión</button>
                     </div>
                 </div>
             </div>
         </aside>
 
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative overflow-hidden">
-            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0 no-print">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0 no-print text-left">
                 <div class="flex items-center gap-4 text-left">
-                    <button onclick="toggleSidebar()" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg">
+                    <button onclick="toggleSidebar(true)" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
                     <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter text-left">Inicio</h2>
@@ -203,52 +208,52 @@
                 <div class="flex items-center gap-3">
                     <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest text-left"></div>
                     <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                        <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all">🌙</button>
-                        <button onclick="toggleFullscreen()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all">
+                        <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-center">🌙</button>
+                        <button onclick="toggleFullscreen()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
                         </button>
                     </div>
                 </div>
             </header>
-            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar"></div>
+            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar text-left"></div>
         </main>
     </div>
 
     <!-- MODALES -->
     <div id="modal-roles" class="hidden fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-xs rounded-3xl overflow-hidden shadow-2xl text-center">
-            <div class="p-4 bg-blue-600 text-white font-black text-center text-[10px] uppercase italic">Cambiar Perfil Activo</div>
+            <div class="p-4 bg-blue-600 text-white font-black text-center text-[10px] uppercase italic text-center text-center">Cambiar Perfil Activo</div>
             <div class="p-2 space-y-1 text-left" id="roles-list-container"></div>
             <button onclick="closeRoleModal()" class="w-full p-3 text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 text-center">Cancelar</button>
         </div>
     </div>
 
     <div id="modal-data" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-4xl h-[80vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
-            <div class="p-6 bg-blue-600 text-white flex justify-between items-center shrink-0">
-                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest italic text-left">Registros</h3>
-                <button onclick="closeDataModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all">✕</button>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-4xl h-[80vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col text-left">
+            <div class="p-6 bg-blue-600 text-white flex justify-between items-center shrink-0 text-left">
+                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest italic text-left text-left">Registros</h3>
+                <button onclick="closeDataModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center text-center">✕</button>
             </div>
             <div class="flex-1 overflow-auto p-4 no-scrollbar text-left">
-                <table class="w-full text-left text-[11px]">
-                    <thead id="modal-data-head" class="bg-slate-50 dark:bg-slate-800 sticky top-0 font-black uppercase text-[9px]"></thead>
-                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-500"></tbody>
+                <table class="w-full text-left text-[11px] text-left text-left">
+                    <thead id="modal-data-head" class="bg-slate-50 dark:bg-slate-800 sticky top-0 font-black uppercase text-[9px] text-left text-left"></thead>
+                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-500 text-left text-left"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
-            <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20 shrink-0">
-                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic text-left">Escaneo Activo</span>
-                <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all">✕</button>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col text-left">
+            <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20 shrink-0 text-left text-left">
+                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic text-left text-left">Escaneo Activo</span>
+                <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center">✕</button>
             </div>
             <div id="reader-container" class="relative">
                 <div id="reader"></div>
             </div>
             <div class="p-4 text-center bg-slate-50 dark:bg-slate-800 border-t dark:border-slate-700">
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Escaneo de campo completo activo</p>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Escaneo de campo completo activo</p>
             </div>
         </div>
     </div>
@@ -257,7 +262,7 @@
         <div class="max-w-md w-full animate-fade-in text-center text-white">
             <h2 class="text-3xl font-black uppercase mb-4 text-center">DNI NO COMPATIBLE</h2>
             <p class="bg-white/10 p-6 rounded-3xl border-2 border-white/20 mb-8 font-black italic text-center">CARGAR MANUALMENTE Y MANIFESTAR A LA VISITA QUE ACTUALICE EL EJEMPLAR DE DNI</p>
-            <button onclick="closeWarningModal()" class="w-full bg-white text-red-700 py-5 rounded-2xl font-black uppercase tracking-widest">Entendido</button>
+            <button onclick="closeWarningModal()" class="w-full bg-white text-red-700 py-5 rounded-2xl font-black uppercase tracking-widest text-center">Entendido</button>
         </div>
     </div>
 
@@ -284,20 +289,20 @@
         }
 
         const LOGIN_HTML_BASE = `
-            <div class="text-center mb-6">
-                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white font-black text-xl">SP</div>
+            <div class="text-center mb-6 text-center">
+                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white font-black text-xl text-center">SP</div>
                 <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-1 text-center">Control U.C.P.</h1>
                 <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center">Acceso Restringido</p>
             </div>
             <form id="login-form" class="space-y-4 text-center" onsubmit="event.preventDefault(); handleLogin();">
                 <div class="flex gap-2">
                     <input type="text" id="username" class="flex-1 px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA / DNI">
-                    <button type="button" onclick="startScanner('LOGIN')" class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                    <button type="button" onclick="startScanner('LOGIN')" class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm text-center">
                         ${SVG_BARCODE}
                     </button>
                 </div>
                 <input type="password" id="password" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="CONTRASEÑA">
-                <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px]">Ingresar</button>
+                <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px] text-center">Ingresar</button>
             </form>
         `;
 
@@ -339,32 +344,35 @@
             }
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left">
-                    <span class="text-base">${item.icon}</span> <span class="uppercase font-black text-left text-left">${item.label}</span>
+                    <span class="text-base">${item.icon}</span> <span class="uppercase font-black text-left">${item.label}</span>
                 </button>`).join('');
         }
 
         function renderView(viewId, title) {
+            // Cierre automático en móviles al seleccionar vista
+            if (window.innerWidth < 1024) toggleSidebar(false);
+
             document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
             currentPage = 1;
             if (viewId === 'dashboard') {
-                content.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in">
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
-                        <p class="text-[8px] font-black uppercase text-slate-400">Registros Hoy</p>
-                        <p class="text-2xl font-black text-blue-600">${window.ingresosRecientes.length}</p>
+                content.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in text-left">
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm text-left">
+                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Registros Hoy</p>
+                        <p class="text-2xl font-black text-blue-600 text-left">${window.ingresosRecientes.length}</p>
                     </div>
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
-                        <p class="text-[8px] font-black uppercase text-slate-400">Personal Base</p>
-                        <p class="text-2xl font-black text-emerald-600" id="dash-total-personal">${window.PERSONAL_DB.length}</p>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm text-left">
+                        <p class="text-[8px] font-black uppercase text-slate-400 text-left text-left">Personal Base</p>
+                        <p class="text-2xl font-black text-emerald-600 text-left" id="dash-total-personal">${window.PERSONAL_DB.length}</p>
                     </div>
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
-                        <p class="text-[8px] font-black uppercase text-slate-400">Operador Activo</p>
-                        <p class="text-base font-black uppercase truncate">${getOperatorID()}</p>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm text-left">
+                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Operador Activo</p>
+                        <p class="text-base font-black uppercase truncate text-left text-left">${getOperatorID()}</p>
                     </div>
-                </div><div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm">
-                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 mb-6 drop-shadow-lg mx-auto">
-                    <h2 class="text-xl font-black uppercase italic dark:text-white leading-none">Unidad de Control Penitenciario</h2>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-3">Portal de Control de Acceso</p>
+                </div><div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm text-center text-center">
+                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 mb-6 drop-shadow-lg mx-auto text-center">
+                    <h2 class="text-xl font-black uppercase italic dark:text-white leading-none text-center">Unidad de Control Penitenciario</h2>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-3 text-center">Portal de Control de Acceso</p>
                 </div>`;
             } else if (viewId === 'ingresos') renderIngresosView(content);
             else if (viewId === 'users_admin') renderUsersAdminView(content);
@@ -381,21 +389,21 @@
         }
 
         function renderUsersAdminView(container) {
-            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in">
-                <div class="xl:col-span-4"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl">
-                    <h3 class="text-xs font-black uppercase mb-4 italic">Alta de Usuario</h3>
-                    <form id="user-form" class="space-y-3" onsubmit="event.preventDefault(); handleSaveUser();">
-                        <input type="text" id="u-user" oninput="autocompleteUserInfo(this.value)" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs" placeholder="DNI / MATRÍCULA">
-                        <input type="text" id="u-name" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs" placeholder="NOMBRE COMPLETO">
-                        <input type="password" id="u-pass" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs" placeholder="CONTRASEÑA">
-                        <select id="u-role" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs uppercase">
+            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
+                <div class="xl:col-span-4 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
+                    <h3 class="text-xs font-black uppercase mb-4 italic text-left">Alta de Usuario</h3>
+                    <form id="user-form" class="space-y-3 text-left" onsubmit="event.preventDefault(); handleSaveUser();">
+                        <input type="text" id="u-user" oninput="autocompleteUserInfo(this.value)" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="DNI / MATRÍCULA">
+                        <input type="text" id="u-name" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="NOMBRE COMPLETO">
+                        <input type="password" id="u-pass" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="CONTRASEÑA">
+                        <select id="u-role" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs uppercase text-left">
                             ${getAvailableRolesForCreation().map(r => `<option value="${r}">${r}</option>`).join('')}
                         </select>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] shadow-lg">Crear Usuario</button>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] shadow-lg text-center">Crear Usuario</button>
                     </form></div></div>
-                <div class="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 shadow-sm flex flex-col">
+                <div class="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 shadow-sm flex flex-col text-left">
                     <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest text-left">Operadores de Sistema</div>
-                    <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-left text-[11px]"><tbody id="users-list-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left text-left"><table class="w-full text-left text-[11px] text-left"><tbody id="users-list-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
                 </div></div>`;
             window.refreshUsersList();
         }
@@ -415,7 +423,7 @@
                 return u.role === ROLES.UCP;
             });
             body.innerHTML = filteredUsers.map(u => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800"><td class="px-5 py-4"><div class="font-black uppercase">${u.fullName}</div><div class="text-[8px] text-slate-400 uppercase font-bold">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right space-x-2"><button onclick="blanquearUser('${u.username}')" class="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg text-xs" title="Reset Clave">🔑</button>${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left"><td class="px-5 py-4 text-left"><div class="font-black uppercase text-left">${u.fullName}</div><div class="text-[8px] text-slate-400 uppercase font-bold text-left">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right space-x-2 text-left"><button onclick="blanquearUser('${u.username}')" class="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg text-xs" title="Reset Clave">🔑</button>${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
         };
 
         async function blanquearUser(id) {
@@ -448,7 +456,7 @@
             document.getElementById('modal-roles').classList.remove('hidden');
             const list = document.getElementById('roles-list-container');
             const avail = activeRole === ROLES.ADMIN ? [ROLES.ADMIN, ROLES.DIP, ROLES.UCP] : [ROLES.DIP, ROLES.UCP];
-            list.innerHTML = avail.map(r => `<button onclick="setActiveRole('${r}')" class="w-full p-3 text-left font-black uppercase text-[9px] rounded-xl flex justify-between items-center ${activeRole === r ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-slate-500 hover:bg-slate-50'}"><span>${r}</span>${activeRole === r ? '<span>●</span>' : ''}</button>`).join('');
+            list.innerHTML = avail.map(r => `<button onclick="setActiveRole('${r}')" class="w-full p-3 text-left font-black uppercase text-[9px] rounded-xl flex justify-between items-center ${activeRole === r ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-slate-500 hover:bg-slate-50 text-left'}"><span>${r}</span>${activeRole === r ? '<span>●</span>' : ''}</button>`).join('');
         }
 
         function setActiveRole(r) { activeRole = r; document.getElementById('user-display-role').innerText = r; buildMenu(); renderView('dashboard', 'Inicio'); closeRoleModal(); showNotification("Perfil: " + r, "success"); }
@@ -456,35 +464,35 @@
 
         function renderIngresosView(container) {
             const now = new Date();
-            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full">
-                <div class="xl:col-span-5"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl">
-                    <form id="ingreso-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveIngreso();">
-                        <div class="grid grid-cols-2 gap-3">
-                            <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
-                            <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
+            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full text-left">
+                <div class="xl:col-span-5 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left text-left">
+                    <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
+                        <div class="grid grid-cols-2 gap-3 text-left">
+                            <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
+                            <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
                         </div>
-                        <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black uppercase text-[10px] outline-none">
+                        <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black uppercase text-[10px] outline-none text-left text-left">
                             <option value="" disabled selected>Perfil...</option>${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
                         </select>
-                        <div id="dyn-fields" class="space-y-3"></div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <select id="ing-sexo" class="px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black text-[10px] outline-none"><option value="">Género</option><option value="M">MASCULINO</option><option value="F">FEMENINO</option></select>
-                            <div class="flex gap-1" id="transport-options">
-                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl">🚶</button>
-                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl">🚗</button>
+                        <div id="dyn-fields" class="space-y-3 text-left"></div>
+                        <div class="grid grid-cols-2 gap-2 text-left">
+                            <select id="ing-sexo" class="px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black text-[10px] outline-none text-left"><option value="">Género</option><option value="M">MASCULINO</option><option value="F">FEMENINO</option></select>
+                            <div class="flex gap-1 text-left" id="transport-options">
+                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚶</button>
+                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚗</button>
                             </div>
                         </div>
-                        <div id="vehicle-fields" class="hidden space-y-1"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
-                        <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px]" placeholder="DESTINO / OBSERVACIONES"></textarea>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg active:scale-95 transition-transform">Registrar Ingreso</button>
+                        <div id="vehicle-fields" class="hidden space-y-1 text-left text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
+                        <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px] text-left" placeholder="DESTINO / OBSERVACIONES"></textarea>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg active:scale-95 transition-transform text-center">Registrar Ingreso</button>
                     </form></div></div>
-                <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col">
-                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest flex justify-between"><span>Recientes</span><span>OP: ${getOperatorID()}</span></div>
-                    <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-left text-[11px]"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
-                    <div class="p-2 border-t dark:border-slate-800 flex justify-center gap-2 pagination-controls">
-                         <button onclick="prevPage('ingresos')" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black">←</button>
-                         <span class="text-[9px] font-black uppercase pt-1.5" id="page-num-ingresos">Pág. 1</span>
-                         <button onclick="nextPage('ingresos')" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black">→</button>
+                <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col text-left">
+                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest flex justify-between text-left"><span>Recientes</span><span>OP: ${getOperatorID()}</span></div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left text-left"><table class="w-full text-left text-[11px] text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                    <div class="p-2 border-t dark:border-slate-800 flex justify-center gap-2 pagination-controls text-left">
+                         <button onclick="prevPage('ingresos')" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-center">←</button>
+                         <span class="text-[9px] font-black uppercase pt-1.5 text-left text-left" id="page-num-ingresos">Pág. 1</span>
+                         <button onclick="nextPage('ingresos')" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-center">→</button>
                     </div>
                 </div></div>`;
             window.updateIngresosTable();
@@ -514,14 +522,14 @@
             const b = document.getElementById('ingresos-table'); if (!b) return;
             const records = window.ingresosRecientes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
             const total = Math.ceil(window.ingresosRecientes.length / pageSize);
-            b.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left"><td class="px-5 py-4 font-mono text-blue-600 font-black text-sm">${i.hora}</td><td class="px-5 py-4"><div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left">${i.sujeto}</div><div class="text-[8px] text-slate-400 italic uppercase font-bold text-left text-left">${i.perfil} | ${i.modo} | OP: ${i.operador}</div></td></tr>`).join('');
+            b.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left text-left text-left"><td class="px-5 py-4 font-mono text-blue-600 font-black text-sm text-left">${i.hora}</td><td class="px-5 py-4 text-left"><div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left text-left">${i.sujeto}</div><div class="text-[8px] text-slate-400 italic uppercase font-bold text-left text-left">${i.perfil} | ${i.modo} | OP: ${i.operador}</div></td></tr>`).join('');
             if(document.getElementById('page-num-ingresos')) document.getElementById('page-num-ingresos').innerText = `Pág. ${currentPage} de ${total || 1}`;
         };
 
         function renderReportesView(container) {
-            container.innerHTML = `<div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 mb-6 animate-fade-in h-full flex flex-col">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 no-print"><h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Auditoría Acceso</h3><div class="flex gap-2 w-full md:w-auto"><button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-md">Excel</button><button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-md">PDF / Impresora</button></div></div>
-                <div class="flex-1 overflow-hidden flex flex-col"><div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl shadow-inner"><table class="w-full text-left text-[10px] md:text-[11px] print-table"><thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0"><tr><th class="px-5 py-4 border-b dark:border-slate-700">FECHA/HORA</th><th class="px-5 py-4 border-b dark:border-slate-700">SUJETO / ID</th><th class="px-5 py-4 border-b dark:border-slate-700">TRANSPORTE</th><th class="px-5 py-4 border-b dark:border-slate-700">OPERADOR</th></tr></thead><tbody id="report-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400"></tbody></table></div><div class="mt-4 flex justify-between items-center no-print"><p id="records-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest"></p><div class="flex gap-2 pagination-controls"><button onclick="prevPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs">←</button><span class="text-[10px] font-black uppercase pt-2" id="page-num-report">Pág. 1</span><button onclick="nextPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs">→</button></div></div></div></div>`;
+            container.innerHTML = `<div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 mb-6 animate-fade-in h-full flex flex-col text-left">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 no-print text-left"><h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left text-left">Auditoría Acceso</h3><div class="flex gap-2 w-full md:w-auto text-left"><button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-md text-center">Excel</button><button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-md text-center">PDF / Impresora</button></div></div>
+                <div class="flex-1 overflow-hidden flex flex-col text-left"><div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl shadow-inner text-left"><table class="w-full text-left text-[10px] md:text-[11px] print-table text-left"><thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0 text-left text-left"><tr><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left">FECHA/HORA</th><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left">SUJETO / ID</th><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left">TRANSPORTE</th><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left text-left">OPERADOR</th></tr></thead><tbody id="report-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400 text-left text-left text-left"></tbody></table></div><div class="mt-4 flex justify-between items-center no-print text-left text-left"><p id="records-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left text-left text-left"></p><div class="flex gap-2 pagination-controls text-left text-left"><button onclick="prevPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">←</button><span class="text-[10px] font-black uppercase pt-2 text-left text-left text-left" id="page-num-report">Pág. 1</span><button onclick="nextPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">→</button></div></div></div></div>`;
             currentPage = 1; window.updateReportTable();
         }
 
@@ -529,7 +537,7 @@
             const body = document.getElementById('report-table-body'); if (!body) return;
             const records = window.ingresosRecientes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
             const total = Math.ceil(window.ingresosRecientes.length / pageSize);
-            body.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left"><td class="px-5 py-4 leading-tight"><b>${i.fecha}</b><br><span class="font-mono text-blue-500">${i.hora}</span></td><td class="px-5 py-4 font-black uppercase text-slate-800 dark:text-white leading-none">${i.sujeto} <br> <span class="text-[8px] text-slate-400 font-bold uppercase text-left">${i.perfil}</span></td><td class="px-5 py-4 font-bold text-slate-500">${i.modo} ${i.dominio || i.nMovil}</td><td class="px-5 py-4 font-black text-blue-600 dark:text-blue-400">${i.operador}</td></tr>`).join('');
+            body.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left"><td class="px-5 py-4 leading-tight text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500 text-left">${i.hora}</span></td><td class="px-5 py-4 font-black uppercase text-slate-800 dark:text-white leading-none text-left text-left">${i.sujeto} <br> <span class="text-[8px] text-slate-400 font-bold uppercase text-left text-left">${i.perfil}</span></td><td class="px-5 py-4 font-bold text-slate-500 text-left text-left text-left text-left">${i.modo} ${i.dominio || i.nMovil}</td><td class="px-5 py-4 font-black text-blue-600 dark:text-blue-400 text-left text-left text-left text-left">${i.operador}</td></tr>`).join('');
             if(document.getElementById('records-count')) document.getElementById('records-count').innerText = `TOTAL: ${window.ingresosRecientes.length} REGISTROS`;
             if(document.getElementById('page-num-report')) document.getElementById('page-num-report').innerText = `Pág. ${currentPage} de ${total || 1}`;
         }
@@ -539,24 +547,24 @@
         function updateTable(type) { if(type === 'ingresos') window.updateIngresosTable(); else window.updateReportTable(); }
 
         function renderImportPersonalView(container) {
-            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
-                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div class="text-left flex-1">
-                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic">Importar Personal</h2>
-                        <div class="flex items-center gap-6 mt-4">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50">
-                                <span class="text-[10px] font-black text-blue-600 block mb-1 uppercase">Agentes en Base</span>
-                                <span id="total-personal" class="text-2xl font-black dark:text-white">${window.PERSONAL_DB.length}</span>
+            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left text-left">
+                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left text-left">
+                    <div class="text-left flex-1 text-left text-left text-left">
+                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left text-left text-left">Importar Personal</h2>
+                        <div class="flex items-center gap-6 mt-4 text-left text-left">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50 text-left text-left">
+                                <span class="text-[10px] font-black text-blue-600 block mb-1 uppercase text-left text-left">Agentes en Base</span>
+                                <span id="total-personal" class="text-2xl font-black dark:text-white text-left text-left">${window.PERSONAL_DB.length}</span>
                             </div>
-                            <button onclick="viewPersonalData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-md">👁️</button>
+                            <button onclick="viewPersonalData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-md text-center">👁️</button>
                         </div>
                     </div>
-                    <div class="w-full max-w-sm flex flex-col gap-4">
-                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all" onclick="document.getElementById('personal-file').click()">
+                    <div class="w-full max-w-sm flex flex-col gap-4 text-left text-left text-left">
+                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all text-center" onclick="document.getElementById('personal-file').click()">
                             <input type="file" id="personal-file" class="hidden" onchange="updateFileName('personal-file-label', this)">
                             <p id="personal-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center text-center">Seleccionar archivo .xlsx</p>
                         </div>
-                        <button onclick="processPersonalFile()" class="bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg">Actualizar Base</button>
+                        <button onclick="processPersonalFile()" class="bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center">Actualizar Base</button>
                     </div>
                 </div>
             </div>`;
@@ -566,6 +574,7 @@
 
         async function processPersonalFile() {
             const input = document.getElementById('personal-file'); if (!input || !input.files.length) return showNotification("Seleccione un archivo", "error");
+            const existingPersonal = new Map(window.PERSONAL_DB.map(p => [p.id, p]));
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
@@ -574,38 +583,43 @@
                     let id = "", nom = "", ape = "", jer = "AGENTE";
                     Object.keys(row).forEach(key => {
                         const ck = cleanStr(key);
-                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") id = row[key];
-                        if(ck === "NOMBRE" || ck === "NOMBRES") nom = row[key];
-                        if(ck === "APELLIDO" || ck === "APELLIDOS") ape = row[key];
-                        if(ck === "JERARQUIA" || ck === "CARGO") jer = row[key];
+                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") id = String(row[key]).split('.')[0].trim();
+                        if(ck === "NOMBRE" || ck === "NOMBRES") nom = String(row[key]).trim().toUpperCase();
+                        if(ck === "APELLIDO" || ck === "APELLIDOS") ape = String(row[key]).trim().toUpperCase();
+                        if(ck === "JERARQUIA" || ck === "CARGO") jer = String(row[key]).trim().toUpperCase();
                     });
-                    return { id: String(id).split('.')[0].trim(), nombre: String(nom).toUpperCase(), apellido: String(ape).toUpperCase(), cargo: String(jer).toUpperCase() };
-                }).filter(p => p.id && p.id.length > 1);
-                await fbUpdatePersonal(list);
-                showNotification(`Base actualizada: ${list.length} registros`, "success");
+                    return { id, nombre: nom, apellido: ape, cargo: jer };
+                }).filter(p => {
+                    if (!p.id || p.id.length < 2) return false;
+                    const existing = existingPersonal.get(p.id);
+                    return !existing || existing.nombre !== p.nombre || existing.apellido !== p.apellido || existing.cargo !== p.cargo;
+                });
+                if (list.length === 0) return showNotification("Sin cambios detectados", "error");
+                await window.fbUpdatePersonal(list);
+                showNotification(`Personal actualizado: ${list.length} cambios`, "success");
             };
             reader.readAsArrayBuffer(input.files[0]);
         }
 
         function renderPasesBodyView(container) {
-            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
-                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div class="text-left flex-1">
-                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic">Body Scan</h2>
-                        <div class="flex items-center gap-6 mt-4">
-                            <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50">
-                                <span class="text-[10px] font-black text-amber-600 block mb-1 uppercase">Pases en Base</span>
-                                <span id="total-body" class="text-2xl font-black dark:text-white">${window.pasesBodyData.length}</span>
+            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left text-left text-left">
+                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left text-left text-left">
+                    <div class="text-left flex-1 text-left text-left">
+                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left text-left text-left">Body Scan</h2>
+                        <div class="flex items-center gap-6 mt-4 text-left text-left text-left">
+                            <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50 text-left text-left text-left text-left">
+                                <span class="text-[10px] font-black text-amber-600 block mb-1 uppercase text-left text-left">Pases en Base</span>
+                                <span id="total-body" class="text-2xl font-black dark:text-white text-left text-left text-left text-left">${window.pasesBodyData.length}</span>
                             </div>
-                            <button onclick="viewBodyData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 hover:text-white transition-all shadow-md">👁️</button>
+                            <button onclick="viewBodyData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 hover:text-white transition-all shadow-md text-center">👁️</button>
                         </div>
                     </div>
-                    <div class="w-full max-w-sm flex flex-col gap-4">
-                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all" onclick="document.getElementById('body-file').click()">
+                    <div class="w-full max-w-sm flex flex-col gap-4 text-left text-left">
+                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all text-center" onclick="document.getElementById('body-file').click()">
                             <input type="file" id="body-file" class="hidden" onchange="updateFileName('body-file-label', this)">
-                            <p id="body-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center">Seleccionar archivo .xlsx</p>
+                            <p id="body-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center text-center text-center">Seleccionar archivo .xlsx</p>
                         </div>
-                        <button onclick="processBodyFile()" class="bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg">Sincronizar Body</button>
+                        <button onclick="processBodyFile()" class="bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center">Sincronizar Body</button>
                     </div>
                 </div>
             </div>`;
@@ -622,20 +636,14 @@
                     let mat = "", nom = "", fec = "", sec = "SCANNER";
                     Object.keys(row).forEach(key => {
                         const ck = cleanStr(key);
-                        if(ck === "MATRICULA" || ck === "AFILIADO") mat = row[key];
-                        if(ck === "NOMBRE" || ck === "SUJETO") nom = row[key];
-                        if(ck.includes("FECHA") || ck.includes("HORA")) fec = row[key];
-                        if(ck.includes("SECTOR")) sec = row[key];
+                        if(ck === "MATRICULA" || ck === "AFILIADO") mat = String(row[key]).split('.')[0].trim();
+                        if(ck === "NOMBRE" || ck === "SUJETO") nom = String(row[key]).trim().toUpperCase();
+                        if(ck.includes("FECHA") || ck.includes("HORA")) fec = String(row[key]).trim();
+                        if(ck.includes("SECTOR")) sec = String(row[key]).trim().toUpperCase();
                     });
-                    return { matricula: String(mat).split('.')[0].trim(), nombre: String(nom).toUpperCase(), fechaHora: String(fec), sector: String(sec).toUpperCase() };
-                }).filter(p => {
-                    const key = `${p.matricula}_${p.fechaHora}`;
-                    return p.matricula && p.matricula.length > 1 && !existingKeys.has(key);
-                });
-                if (list.length === 0) {
-                    showNotification("No hay registros nuevos para cargar", "error");
-                    return;
-                }
+                    return { matricula: mat, nombre: nom, fechaHora: fec, sector: sec };
+                }).filter(p => p.matricula && p.matricula.length >= 2 && !existingKeys.has(`${p.matricula}_${p.fechaHora}`));
+                if (list.length === 0) return showNotification("Sin registros nuevos de Body", "error");
                 await fbUpdateBody(list);
                 showNotification(`Body Scan sincronizado: ${list.length} pases nuevos`, "success");
             };
@@ -649,9 +657,9 @@
             const head = document.getElementById('modal-data-head');
             const body = document.getElementById('modal-data-body');
             document.getElementById('modal-data-title').innerText = title;
-            head.innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
-            body.innerHTML = rows.slice(0, 100).map(row => `<tr class="text-left">${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
-            if(rows.length > 100) body.innerHTML += `<tr><td colspan="${headers.length}" class="p-4 text-center font-black italic text-slate-400">Primeros 100 registros mostrados...</td></tr>`;
+            head.innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left text-left">${h}</th>`).join('')}</tr>`;
+            body.innerHTML = rows.slice(0, 100).map(row => `<tr class="text-left text-left text-left text-left">${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
+            if(rows.length > 100) body.innerHTML += `<tr><td colspan="${headers.length}" class="p-4 text-center font-black italic text-slate-400 text-center">Primeros 100 registros mostrados...</td></tr>`;
             modal.classList.remove('hidden');
         }
         function closeDataModal() { document.getElementById('modal-data').classList.add('hidden'); }
@@ -661,9 +669,26 @@
         }
         function updateFileName(labelId, input) { if(input.files.length) document.getElementById(labelId).innerText = input.files[0].name.toUpperCase(); }
         function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
-        function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10 text-left`; e.innerHTML = `<span class="font-black text-[9px] uppercase tracking-widest">${m}</span>`; c.appendChild(e); setTimeout(() => e.remove(), 4000); }
+        function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10 text-left text-left text-left text-left`; e.innerHTML = `<span class="font-black text-[9px] uppercase tracking-widest text-left text-left text-left text-left">${m}</span>`; c.appendChild(e); setTimeout(() => e.remove(), 4000); }
         function toggleTheme() { document.documentElement.classList.toggle('dark'); }
-        function toggleSidebar(f) { const sb = document.getElementById('sidebar'); if (f !== undefined) { if (f) sb.classList.remove('-translate-x-full'); else sb.classList.add('-translate-x-full'); } else sb.classList.toggle('-translate-x-full'); }
+
+        // LÓGICA DE SIDEBAR MEJORADA PARA MÓVIL
+        function toggleSidebar(force) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isClosing = force === false || (!force && !sidebar.classList.contains('-translate-x-full'));
+
+            if (isClosing) {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.replace('opacity-100', 'opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            } else {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.replace('opacity-0', 'opacity-100'), 10);
+                sidebar.classList.remove('-translate-x-full');
+            }
+        }
+
         function logout() { window.location.reload(); }
         function closeWarningModal() { document.getElementById('modal-warning').classList.add('hidden'); }
         function updateHeaderDate() { document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase(); }
@@ -671,17 +696,17 @@
         function updateDynamicFields(perfil) {
             const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
             if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
-                d.innerHTML = `<div class="space-y-3 animate-fade-in"><div class="flex gap-2">
-                        <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="MATRÍCULA">
-                        <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all">${SVG_BARCODE}</button>
-                    </div><div id="personal-preview" class="hidden p-3 bg-emerald-50 dark:bg-emerald-900/20 border rounded-xl text-left"><div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-[10px]"></div><div id="body-info" class="text-[8px] mt-1 font-bold"></div></div>
-                    ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center" placeholder="NRO UNIDAD">` : ''}</div>`;
+                d.innerHTML = `<div class="space-y-3 animate-fade-in text-left text-left"><div class="flex gap-2 text-left text-left">
+                        <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MATRÍCULA">
+                        <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center text-center">${SVG_BARCODE}</button>
+                    </div><div id="personal-preview" class="hidden p-3 bg-emerald-50 dark:bg-emerald-900/20 border rounded-xl text-left"><div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-[10px] text-left"></div><div id="body-info" class="text-[8px] mt-1 font-bold text-left"></div></div>
+                    ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center text-center text-center" placeholder="NRO UNIDAD">` : ''}</div>`;
             } else {
-                d.innerHTML = `<div class="space-y-3 animate-fade-in"><div class="flex gap-2">
-                        <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none" placeholder="DNI SIN PUNTOS">
-                        <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-left">${SVG_QR}</button>
-                    </div><input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="APELLIDO Y NOMBRE">
-                    ${perfil === 'ABOGADO' ? `<input type="text" id="ing-mat-pro" class="w-full px-4 py-2.5 border-2 border-blue-200 dark:border-blue-900 rounded-lg text-xs font-black uppercase outline-none" placeholder="MATRÍCULA PROFESIONAL">` : ''}</div>`;
+                d.innerHTML = `<div class="space-y-3 animate-fade-in text-left text-left"><div class="flex gap-2 text-left text-left">
+                        <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none text-left text-left" placeholder="DNI SIN PUNTOS">
+                        <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center text-center">${SVG_QR}</button>
+                    </div><input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="APELLIDO Y NOMBRE">
+                    ${perfil === 'ABOGADO' ? `<input type="text" id="ing-mat-pro" class="w-full px-4 py-2.5 border-2 border-blue-200 dark:border-blue-900 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MATRÍCULA PROFESIONAL text-left">` : ''}</div>`;
             }
         }
 
@@ -694,9 +719,9 @@
                 const infoEl = document.getElementById('body-info');
                 if (bodyHits.length > 0) {
                     const ult = bodyHits.sort((a,b) => String(b.fechaHora).localeCompare(String(a.fechaHora)))[0];
-                    infoEl.innerHTML = `✅ BODY OK: ${ult.fechaHora}`; infoEl.className = "text-[8px] text-emerald-600 font-bold uppercase mt-1";
+                    infoEl.innerHTML = `✅ BODY OK: ${ult.fechaHora}`; infoEl.className = "text-[8px] text-emerald-600 font-bold uppercase mt-1 text-left";
                 } else {
-                    infoEl.innerHTML = `⚠️ SIN PASES BODY SCAN`; infoEl.className = "text-[8px] text-red-500 font-bold uppercase mt-1";
+                    infoEl.innerHTML = `⚠️ SIN PASES BODY SCAN`; infoEl.className = "text-[8px] text-red-500 font-bold uppercase mt-1 text-left";
                 }
                 preview.classList.remove('hidden');
                 if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${p.apellido} ${p.nombre}`;
@@ -705,8 +730,8 @@
 
         function setMode(m) {
             document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl ${m==='PEATÓN'?'bg-blue-600 border-blue-600 shadow-lg text-white':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
-            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl ${m==='VEHÍCULO'?'bg-blue-600 border-blue-600 shadow-lg text-white':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
+            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center ${m==='PEATÓN'?'bg-blue-600 border-blue-600 shadow-lg text-white':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
+            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center ${m==='VEHÍCULO'?'bg-blue-600 border-blue-600 shadow-lg text-white':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
             if (m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden');
             else document.getElementById('vehicle-fields').classList.add('hidden');
         }
