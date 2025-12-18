@@ -55,7 +55,7 @@
             .compact-header { height: 3.5rem !important; }
         }
 
-        /* Scanner a pantalla completa en su contenedor */
+        /* Scanner optimizado para pantalla completa */
         #reader {
             width: 100% !important;
             border: none !important;
@@ -68,7 +68,6 @@
             height: 100% !important;
             object-fit: cover !important;
         }
-        /* Eliminar la superposición de sombreado del centro */
         #reader__scan_region {
             background: transparent !important;
         }
@@ -139,11 +138,11 @@
         </main>
     </div>
 
-    <!-- MODAL SCANNER (MEJORADO) -->
-    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center">
-        <div class="bg-white dark:bg-slate-900 w-full h-full md:h-auto md:max-w-xl md:rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-            <div class="p-4 bg-blue-600 text-white flex justify-between items-center shrink-0">
-                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic">Escaneando...</span>
+    <!-- MODAL SCANNER (MOTOR TURBO) -->
+    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center">
+        <div class="bg-white dark:bg-slate-900 w-full h-full md:h-auto md:max-w-xl md:rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+            <div class="p-4 bg-blue-600 text-white flex justify-between items-center shrink-0 z-20">
+                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic">Escaneo Activo</span>
                 <button onclick="stopScanner()" class="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -151,13 +150,16 @@
             
             <div class="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
                 <div id="reader" class="w-full h-full"></div>
-                <!-- Línea de escaneo animada -->
-                <div class="absolute inset-x-0 h-0.5 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse z-10" style="top: 50%;"></div>
+                <!-- Guía visual de escaneo -->
+                <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div class="w-64 h-64 border-2 border-white/20 rounded-3xl"></div>
+                    <div class="absolute w-full h-0.5 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.9)] animate-pulse" style="top: 50%;"></div>
+                </div>
             </div>
 
-            <div class="p-6 bg-white dark:bg-slate-900 text-center shrink-0">
-                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Apunte la cámara al código</p>
-                <p class="text-[9px] text-slate-400 italic">Detección automática de campo completo habilitada</p>
+            <div class="p-6 bg-white dark:bg-slate-900 text-center shrink-0 border-t dark:border-slate-800">
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Detección Automática de Campo Completo</p>
+                <p class="text-[8px] text-blue-500 font-black uppercase">Optimizado para DNI Argentino y Matrículas</p>
             </div>
         </div>
     </div>
@@ -216,23 +218,29 @@
             } catch (e) {}
         }
 
-        // --- FUNCIONES DE ESCANEO MEJORADAS ---
+        // --- MOTOR DE ESCANEO TURBO ---
         function startScanner(type) {
             const modal = document.getElementById('modal-scanner');
             const title = document.getElementById('scanner-title');
             modal.classList.remove('hidden');
-            title.innerText = type === 'BARCODE' ? "ESCANEANDO AFILIADO (BARRAS)" : "ESCANEANDO DOCUMENTO (QR)";
+            title.innerText = type === 'BARCODE' ? "LEYENDO MATRÍCULA..." : "LEYENDO DNI ARGENTINO...";
             
-            // Instanciar el escáner si no existe
             if (!html5QrCode) {
                 html5QrCode = new Html5Qrcode("reader");
             }
 
-            // Configuración optimizada para "campo completo"
+            // Configuración de Máximo Rendimiento
             const config = { 
-                fps: 20, 
-                aspectRatio: window.innerWidth / window.innerHeight,
-                // Al NO definir qrbox, el escáner busca en toda la imagen capturada
+                fps: 30, // Mayor frecuencia de frames para lectura rápida
+                videoConstraints: {
+                    facingMode: "environment",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                // Decodificación nativa si el hardware lo permite (Muy rápido)
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true
+                }
             };
 
             html5QrCode.start(
@@ -242,10 +250,9 @@
                     handleScanSuccess(decodedText, type);
                     stopScanner();
                 },
-                (errorMessage) => { /* Silenciar errores de detección de frames vacíos */ }
+                (errorMessage) => { /* Silencioso para no saturar memoria */ }
             ).catch(err => {
-                showNotification("No se pudo iniciar la cámara. Verifique permisos.", "error");
-                console.error("Scanner Error:", err);
+                showNotification("Error: Toque de nuevo para intentar.", "error");
                 stopScanner();
             });
         }
@@ -255,7 +262,6 @@
                 html5QrCode.stop().then(() => {
                     document.getElementById('modal-scanner').classList.add('hidden');
                 }).catch(err => {
-                    console.error("Stop Error:", err);
                     document.getElementById('modal-scanner').classList.add('hidden');
                 });
             } else {
@@ -265,6 +271,7 @@
 
         function handleScanSuccess(text, type) {
             playNotificationBeep();
+            
             if (type === 'BARCODE') {
                 const input = document.getElementById('ing-mat');
                 const sexInput = document.getElementById('ing-sexo');
@@ -275,36 +282,48 @@
                         if (text.startsWith('1')) sexInput.value = 'M';
                         else if (text.startsWith('2')) sexInput.value = 'F';
                     }
-                    showNotification("CÓDIGO DE BARRAS LEÍDO", "success");
+                    showNotification("MATRÍCULA DETECTADA", "success");
                 }
             } else {
-                // Lógica avanzada para DNI (Datos separados por @)
+                // LÓGICA REFINADA DNI ARGENTINO
                 const parts = text.split('@');
-                if (parts.length > 4) {
-                    const inputDni = document.getElementById('ing-dni');
-                    const inputNom = document.getElementById('ing-nom');
-                    const sexInput = document.getElementById('ing-sexo');
-                    
-                    let dni = "", nom = "", ape = "", sexo = "";
-
-                    // Los formatos de DNI varían, pero usualmente:
-                    // Formato Nuevo: num@ape@nom@sex@dni... (dni en index 4)
-                    // Formato Viejo: dni@ape@nom@sex... (dni en index 0)
-                    if (parts[4] && parts[4].length >= 7 && parts[4].length <= 9 && !isNaN(parts[4])) {
-                        dni = parts[4].trim(); ape = parts[1].trim(); nom = parts[2].trim(); sexo = parts[3].trim().toUpperCase();
-                    } else {
-                        dni = parts[0].trim(); ape = parts[1].trim(); nom = parts[2].trim(); sexo = parts[3].trim().toUpperCase();
-                    }
+                const inputDni = document.getElementById('ing-dni');
+                const inputNom = document.getElementById('ing-nom');
+                const sexInput = document.getElementById('ing-sexo');
+                
+                if (parts.length >= 8) {
+                    // FORMATO MODERNO (DNI en posición 4)
+                    const ape = parts[1].trim();
+                    const nom = parts[2].trim();
+                    const sexo = parts[3].trim().toUpperCase();
+                    const dni = parts[4].trim();
 
                     if (inputDni) inputDni.value = dni;
                     if (inputNom) inputNom.value = `${ape} ${nom}`.trim();
-                    if (sexInput) {
-                        if (sexo.startsWith('M')) sexInput.value = 'M';
-                        else if (sexo.startsWith('F')) sexInput.value = 'F';
+                    if (sexInput) sexInput.value = sexo.startsWith('M') ? 'M' : 'F';
+                    showNotification("DNI DETECTADO (FORMATO QR)", "success");
+                } 
+                else if (parts.length >= 4) {
+                    // FORMATO ANTIGUO O PDF417 (DNI en posición 0)
+                    const dni = parts[0].trim();
+                    const ape = parts[1].trim();
+                    const nom = parts[2].trim();
+                    const sexo = parts[3].trim().toUpperCase();
+
+                    if (inputDni) inputDni.value = dni;
+                    if (inputNom) inputNom.value = `${ape} ${nom}`.trim();
+                    if (sexInput) sexInput.value = sexo.startsWith('M') ? 'M' : 'F';
+                    showNotification("DNI DETECTADO (FORMATO BARRA)", "success");
+                }
+                else {
+                    // FALLBACK: Si no reconoce formato, buscar cualquier número de 7-9 cifras
+                    const probableDni = parts.find(p => p.length >= 7 && p.length <= 9 && !isNaN(p));
+                    if (probableDni) {
+                        if (inputDni) inputDni.value = probableDni;
+                        showNotification("ID DETECTADO", "success");
+                    } else {
+                        showNotification("CÓDIGO NO RECONOCIDO", "error");
                     }
-                    showNotification("DNI LEÍDO CORRECTAMENTE", "success");
-                } else {
-                    showNotification("QR NO RECONOCIDO COMO DNI", "error");
                 }
             }
         }
