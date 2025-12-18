@@ -184,6 +184,9 @@
         let currentUser = null;
         let html5QrCode = null;
 
+        const SVG_BARCODE = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg>`;
+        const SVG_QR = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v.01"/></svg>`;
+
         function init() {
             document.getElementById('login-box').innerHTML = LOGIN_HTML_BASE;
             attachLoginEvent();
@@ -200,7 +203,12 @@
                 <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic">Acceso Restringido</p>
             </div>
             <form id="login-form" class="space-y-4">
-                <input type="text" id="username" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA">
+                <div class="flex gap-2">
+                    <input type="text" id="username" class="flex-1 px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA">
+                    <button type="button" onclick="startScanner('LOGIN_BARCODE')" class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                        ${SVG_BARCODE}
+                    </button>
+                </div>
                 <input type="password" id="password" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="CONTRASEÑA">
                 <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px] hover:bg-black transition-all">Ingresar</button>
             </form>
@@ -223,7 +231,10 @@
             const modal = document.getElementById('modal-scanner');
             const title = document.getElementById('scanner-title');
             modal.classList.remove('hidden');
-            title.innerText = type === 'BARCODE' ? "LEYENDO MATRÍCULA..." : "LEYENDO DNI ARGENTINO...";
+            
+            if (type === 'LOGIN_BARCODE') title.innerText = "LOGIN: ESCANEE CREDENCIAL";
+            else if (type === 'BARCODE') title.innerText = "LEYENDO MATRÍCULA...";
+            else title.innerText = "LEYENDO DNI ARGENTINO...";
             
             if (!html5QrCode) {
                 html5QrCode = new Html5Qrcode("reader");
@@ -270,40 +281,42 @@
         function handleScanSuccess(text, type) {
             playNotificationBeep();
             
-            if (type === 'BARCODE') {
+            if (type === 'LOGIN_BARCODE') {
+                const input = document.getElementById('username');
+                if (input) {
+                    input.value = text.trim();
+                    showNotification("MATRÍCULA CARGADA", "success");
+                }
+            } else if (type === 'BARCODE') {
                 const input = document.getElementById('ing-mat');
                 if (input) {
                     input.value = text.trim();
-                    // Ejecutamos la búsqueda inmediatamente para traer Nombre y Apellido
                     searchPersonalInDB(input.value);
                     showNotification("MATRÍCULA VINCULADA", "success");
                 }
             } else {
-                // LÓGICA REFINADA DNI ARGENTINO (QR Y BARCODE)
+                // LÓGICA REFINADA DNI ARGENTINO (PARSEO EXACTO)
                 const parts = text.split('@');
                 const inputDni = document.getElementById('ing-dni');
                 const inputNom = document.getElementById('ing-nom');
                 const sexInput = document.getElementById('ing-sexo');
                 
-                // Formato Nuevo (QR): num_tramite@apellido@nombre@sexo@dni@...
-                // Formato Antiguo (PDF417): dni@apellido@nombre@sexo...
-                
                 let dni = "", nom = "", ape = "", sexo = "";
 
+                // Verificamos si es formato moderno QR (index 4 para DNI)
                 if (parts.length >= 8) {
-                    // Formato Moderno
                     dni = parts[4].trim();
                     ape = parts[1].trim();
                     nom = parts[2].trim();
                     sexo = parts[3].trim().toUpperCase();
                 } else if (parts.length >= 4) {
-                    // Formato Antiguo
+                    // Formato antiguo o barra (DNI en index 0)
                     dni = parts[0].trim();
                     ape = parts[1].trim();
                     nom = parts[2].trim();
                     sexo = parts[3].trim().toUpperCase();
                 } else {
-                    // Fallback
+                    // Fallback para códigos no estándar
                     dni = parts.find(p => p.length >= 7 && p.length <= 9 && !isNaN(p)) || "";
                 }
 
@@ -454,7 +467,7 @@
             const now = new Date();
             container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full">
                 <div class="xl:col-span-5"><div class="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[1.5rem] border dark:border-slate-800 shadow-sm compact-card">
-                    <h3 class="text-xs font-black mb-4 uppercase tracking-widest dark:text-white leading-none">Nueva Entrada</h3>
+                    <h3 class="text-xs font-black mb-4 uppercase tracking-widest dark:text-white leading-none text-left">Nueva Entrada</h3>
                     <form id="ingreso-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveIngreso();">
                         <div class="grid grid-cols-2 gap-3">
                             <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-lg font-bold dark:text-white text-[11px] outline-none">
@@ -494,9 +507,6 @@
             updateIngresosTable();
         }
 
-        const SVG_BARCODE = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg>`;
-        const SVG_QR = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v.01"/></svg>`;
-
         function updateDynamicFields(perfil) {
             const d = document.getElementById('dyn-fields'); const btnP = document.getElementById('btn-p'); const gridOpts = document.getElementById('transport-options');
             if (!d) return; d.innerHTML = '';
@@ -528,14 +538,15 @@
         }
 
         function toggleTheme() { document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
-        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }
         function toggleSidebar(f) { const sb = document.getElementById('sidebar'), ov = document.getElementById('sidebar-overlay'), op = f !== undefined ? f : sb.classList.contains('-translate-x-full'); if (op) { sb.classList.remove('-translate-x-full'); ov.classList.remove('hidden'); setTimeout(() => ov.classList.add('opacity-100'), 10); } else { sb.classList.add('-translate-x-full'); ov.classList.remove('opacity-100'); setTimeout(() => ov.classList.add('hidden'), 300); } }
         function updateHeaderDate() { const el = document.getElementById('current-date'); if(el) el.innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
         function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10`; e.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${t==='success'?'bg-emerald-400':'bg-white'}"></span><span class="font-black text-[9px] uppercase tracking-widest leading-none">${m}</span>`; c.appendChild(e); setTimeout(() => { e.style.opacity = '0'; setTimeout(() => e.remove(), 300); }, 3000); }
         function logout() { window.location.reload(); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         function setMode(m) {
-            document.getElementById('ing-modo').value = m; const bp = document.getElementById('btn-p'); const bv = document.getElementById('btn-v'); const vf = document.getElementById('vehicle-fields'); const p = document.getElementById('ing-perfil').value;
+            const bp = document.getElementById('btn-p'); const bv = document.getElementById('btn-v'); const vf = document.getElementById('vehicle-fields'); const p = document.getElementById('ing-perfil').value;
+            const modeInput = document.getElementById('ing-modo'); if(modeInput) modeInput.value = m;
             const act = "bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]"; const inact = "bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700";
             if (bp) bp.className = `py-2 border-2 rounded-lg font-black uppercase text-[8px] transition-all ${m==='PEATÓN'?act:inact}`;
             if (bv) bv.className = `py-2 border-2 rounded-lg font-black uppercase text-[8px] transition-all ${m==='VEHÍCULO'?act:inact}`;
@@ -561,7 +572,7 @@
             container.innerHTML = `<div class="max-w-2xl mx-auto animate-fade-in"><div class="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2rem] shadow-xl text-center relative border dark:border-slate-800">
                 <button onclick="openPasesModal()" class="absolute top-6 right-6 p-4 bg-slate-50 dark:bg-slate-800 hover:bg-amber-500 rounded-xl transition-all shadow-sm">👁️</button>
                 <div class="bg-amber-50 dark:bg-amber-900/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg text-amber-600 text-2xl font-black">🔍</div>
-                <h2 class="text-lg font-black uppercase mb-1 dark:text-white tracking-tighter leading-none">Importar Pases Body</h2><p class="text-slate-500 text-[9px] font-bold uppercase mb-8 tracking-widest italic leading-none">Carga de InformeBody.xlsx</p>
+                <h2 class="text-lg font-black uppercase mb-1 dark:text-white tracking-tighter leading-none text-left">Importar Pases Body</h2><p class="text-slate-500 text-[9px] font-bold uppercase mb-8 tracking-widest italic leading-none text-left">Carga de InformeBody.xlsx</p>
                 <div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-8 mb-8 bg-slate-50 dark:bg-slate-950 hover:bg-white cursor-pointer transition-all shadow-inner" onclick="document.getElementById('pases-input').click()">
                     <input type="file" id="pases-input" class="hidden" accept=".xlsx, .xls, .csv"><p id="pases-label" class="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none">Toque para seleccionar archivo</p></div>
                 <button onclick="handleProcessPasesBody()" class="w-full bg-amber-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-amber-700 transition-all">Sincronizar Base Body</button></div></div>`;
@@ -585,8 +596,8 @@
 
         function renderReportesView(container) {
             container.innerHTML = `<div class="bg-white dark:bg-slate-900 p-5 rounded-[2rem] shadow-sm border dark:border-slate-800 mb-6 animate-fade-in h-full flex flex-col">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0"><h3 class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic leading-none">Auditoría de Turno</h3><div class="flex gap-2 w-full md:w-auto"><button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">Excel</button><button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">PDF</button></div></div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 shrink-0">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 text-left"><h3 class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic leading-none">Auditoría de Turno</h3><div class="flex gap-2 w-full md:w-auto"><button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">Excel</button><button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">PDF</button></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 shrink-0 text-left">
                     <div class="md:col-span-2"><label class="text-[8px] font-black uppercase text-slate-400 px-2 mb-1 block text-left">Buscador Inteligente</label><input type="text" id="rep-search" oninput="this.value = this.value.toUpperCase(); applyFilters()" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-xl text-[11px] font-bold uppercase outline-none dark:text-white focus:border-blue-500" placeholder="NOMBRE, MATRÍCULA, DNI, PATENTE O PERFIL..."></div>
                     <div><label class="text-[8px] font-black uppercase text-slate-400 px-2 mb-1 block text-left">Desde</label><input type="date" id="rep-start" onchange="applyFilters()" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-xl text-[11px] font-bold dark:text-white"></div>
                     <div><label class="text-[8px] font-black uppercase text-slate-400 px-2 mb-1 block text-left">Hasta</label><input type="date" id="rep-end" onchange="applyFilters()" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 dark:border-slate-700 rounded-xl text-[11px] font-bold dark:text-white"></div>
@@ -603,7 +614,7 @@
                 const match = !search || String(i.sujeto || "").toUpperCase().includes(search) || String(i.matId || "").toUpperCase().includes(search) || String(i.perfil || "").toUpperCase().includes(search) || String(i.sub || "").toUpperCase().includes(search) || String(i.dominio || "").toUpperCase().includes(search) || String(i.nMovil || "").toUpperCase().includes(search) || String(i.obs || "").toUpperCase().includes(search);
                 return dateInRange && match;
             });
-            body.innerHTML = filtered.length ? filtered.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td class="px-5 py-2.5 leading-tight text-left"><div class="font-bold dark:text-white text-[10px]">${i.fecha}</div><div class="font-mono text-blue-500 text-[9px]">${i.hora}</div></td><td class="px-5 py-2.5 text-left"><span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[8px] font-black italic">${i.perfil}</span></td><td class="px-5 py-2.5 font-mono font-bold text-left">${i.matId || '-'}</td><td class="px-5 py-2.5 leading-tight text-left"><b>${i.sujeto} (${i.sexo || '-'})</b><br><span class="text-[8px] text-slate-400 italic">${i.sub}</span></td><td class="px-5 py-2.5 text-[9px] uppercase font-black leading-tight text-left">${i.modo}${i.nMovil?' ('+i.nMovil+')':''}${i.dominio?' - '+i.dominio:''}</td><td class="px-5 py-2.5 italic text-slate-400 text-[9px] max-w-[120px] truncate text-left">${i.obs || '-'}</td></tr>`).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-300 dark:text-slate-700 font-black uppercase text-[9px] italic">Sin registros coincidentes</td></tr>`;
+            body.innerHTML = filtered.length ? filtered.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td class="px-5 py-2.5 leading-tight text-left"><div class="font-bold dark:text-white text-[10px] text-left">${i.fecha}</div><div class="font-mono text-blue-500 text-[9px] text-left">${i.hora}</div></td><td class="px-5 py-2.5 text-left"><span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[8px] font-black italic">${i.perfil}</span></td><td class="px-5 py-2.5 font-mono font-bold text-left">${i.matId || '-'}</td><td class="px-5 py-2.5 leading-tight text-left"><b>${i.sujeto} (${i.sexo || '-'})</b><br><span class="text-[8px] text-slate-400 italic">${i.sub}</span></td><td class="px-5 py-2.5 text-[9px] uppercase font-black leading-tight text-left">${i.modo}${i.nMovil?' ('+i.nMovil+')':''}${i.dominio?' - '+i.dominio:''}</td><td class="px-5 py-2.5 italic text-slate-400 text-[9px] max-w-[120px] truncate text-left">${i.obs || '-'}</td></tr>`).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-300 dark:text-slate-700 font-black uppercase text-[9px] italic">Sin registros coincidentes</td></tr>`;
         }
 
         function resetFilters() { const s = document.getElementById('rep-start'); if(s) s.value = ''; const e = document.getElementById('rep-end'); if(e) e.value = ''; const h = document.getElementById('rep-search'); if(h) h.value = ''; applyFilters(); }
