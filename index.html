@@ -14,7 +14,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuración proporcionada por el usuario
         const firebaseConfig = {
             apiKey: "AIzaSyDik0zZfaJkFafWNusseanhWcQIL7DceW8",
             authDomain: "ucp-spc.firebaseapp.com",
@@ -24,23 +23,31 @@
             appId: "1:923709420150:web:130240994f5cc1a000a557"
         };
 
-        // Inicialización
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ucp-spc-v1';
 
-        // Variables Globales de Firebase para el resto del script
         window.fbDb = db;
         window.fbAppId = appId;
+        window.fbDoc = doc;
+        window.fbSetDoc = setDoc;
+        window.fbAddDoc = addDoc;
+        window.fbCollection = collection;
+        window.isFirebaseReady = false;
 
-        // Autenticación anónima para permitir Firestore
-        signInAnonymously(auth).catch((error) => console.error("Error Auth:", error));
+        const initFirebase = async () => {
+            try {
+                await signInAnonymously(auth);
+                window.isFirebaseReady = true;
+            } catch (error) {
+                console.error("Error Auth:", error);
+            }
+        };
+        initFirebase();
 
-        // Listeners para sincronización en tiempo real
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Escuchar Ingresos
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -48,18 +55,18 @@
                     if (window.updateIngresosTable) window.updateIngresosTable();
                 });
 
-                // Escuchar Personal
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push(doc.data()));
-                    window.PERSONAL_DB = data.length > 0 ? data : window.PERSONAL_DB;
+                    window.PERSONAL_DB = data;
+                    if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
                 });
 
-                // Escuchar Pases Body
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push(doc.data()));
                     window.pasesBodyData = data;
+                    if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                 });
             }
         });
@@ -82,14 +89,23 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #reader { width: 100% !important; border: none !important; border-radius: 0px; overflow: hidden; background: black; }
         #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+        
+        @media print {
+            aside, header, .no-print { display: none !important; }
+            main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .print-area { display: block !important; }
+            table { font-size: 10pt !important; border-collapse: collapse !important; width: 100% !important; }
+            th, td { border: 1px solid #ddd !important; padding: 8px !important; }
+            @page { size: auto; margin: 1cm; }
+        }
     </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden text-left">
 
-    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2"></div>
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 text-left"></div>
     <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity duration-300 opacity-0"></div>
 
-    <!-- LOGIN -->
+    <!-- PANTALLA LOGIN -->
     <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
         <div id="login-box" class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-2xl animate-fade-in"></div>
     </div>
@@ -97,12 +113,12 @@
     <!-- ESTRUCTURA PRINCIPAL -->
     <div id="app-container" class="hidden h-full flex overflow-hidden">
         <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col">
-            <div class="p-5 flex flex-col h-full">
+            <div class="p-5 flex flex-col h-full text-left">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="bg-blue-600 p-2 rounded-xl shadow-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        <span class="text-white font-black text-xs">UCP</span>
                     </div>
-                    <div>
+                    <div class="text-left">
                         <span class="font-black text-base tracking-tighter uppercase block leading-none">Portal U.C.P.</span>
                         <span class="text-[7px] text-blue-400 font-bold uppercase tracking-widest text-left">Seguridad Penitenciaria</span>
                     </div>
@@ -113,7 +129,7 @@
                 <div class="mt-auto pt-4 border-t border-slate-700/50">
                     <div class="flex items-center gap-3 mb-4 p-3 bg-slate-700/30 rounded-xl">
                         <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white">M</div>
-                        <div class="overflow-hidden">
+                        <div class="overflow-hidden text-left">
                             <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100">Usuario</p>
                             <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Rol</p>
                         </div>
@@ -123,16 +139,16 @@
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative">
-            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm">
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative overflow-hidden">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0">
                 <div class="flex items-center gap-4">
                     <button onclick="toggleSidebar()" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
-                    <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Inicio</h2>
+                    <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter text-left">Inicio</h2>
                 </div>
                 <div class="flex items-center gap-4">
-                    <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest"></div>
+                    <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest text-left"></div>
                     <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🌙</button>
                 </div>
             </header>
@@ -140,24 +156,41 @@
         </main>
     </div>
 
-    <!-- MODALES -->
+    <!-- MODAL REGISTROS -->
+    <div id="modal-data" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-4xl h-[80vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-6 bg-blue-600 text-white flex justify-between items-center">
+                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest">Registros Cargados</h3>
+                <button onclick="closeDataModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/40">✕</button>
+            </div>
+            <div class="flex-1 overflow-auto p-4 no-scrollbar">
+                <table class="w-full text-left text-[11px]">
+                    <thead id="modal-data-head" class="bg-slate-50 dark:bg-slate-800 sticky top-0"></thead>
+                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCANNER -->
     <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center">
-        <div class="bg-white dark:bg-slate-900 w-full h-full md:h-auto md:max-w-xl md:rounded-3xl overflow-hidden shadow-2xl relative">
+        <div class="bg-white dark:bg-slate-900 w-full h-full md:h-auto md:max-w-xl md:rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
             <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20">
                 <span id="scanner-title" class="font-black uppercase text-xs tracking-widest">Escaneo Activo</span>
                 <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full">✕</button>
             </div>
-            <div id="reader" class="w-full h-64 md:h-96"></div>
+            <div id="reader" class="flex-1"></div>
         </div>
     </div>
 
+    <!-- ALERTA ROJA -->
     <div id="modal-warning" class="hidden fixed inset-0 z-[150] bg-red-700/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
-        <div class="max-w-md w-full animate-fade-in">
-            <h2 class="text-3xl font-black text-white uppercase mb-4">DNI NO COMPATIBLE</h2>
-            <div class="bg-white/10 p-6 rounded-3xl border-2 border-white/20 mb-8 shadow-inner text-white font-black italic">
+        <div class="max-w-md w-full animate-fade-in text-center">
+            <h2 class="text-3xl font-black text-white uppercase mb-4 text-center">DNI NO COMPATIBLE</h2>
+            <div class="bg-white/10 p-6 rounded-3xl border-2 border-white/20 mb-8 shadow-inner text-white font-black italic text-center">
                 CARGAR MANUALMENTE Y MANIFESTAR A LA VISITA QUE ACTUALICE EL EJEMPLAR DE DNI
             </div>
-            <button onclick="closeWarningModal()" class="w-full bg-white text-red-700 py-5 rounded-2xl font-black uppercase">Entendido</button>
+            <button onclick="closeWarningModal()" class="w-full bg-white text-red-700 py-5 rounded-2xl font-black uppercase text-center">Entendido</button>
         </div>
     </div>
 
@@ -166,20 +199,12 @@
         const PROFILES = ['PERSONAL', 'MOVIL', 'MONOTRIBUTISTA', 'DOCENTE', 'ABOGADO', 'PASTORAL', 'VISITA', 'OTROS'];
         const USER_CREDENTIALS = { username: '136219951', password: 'Marquitos123', fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE' };
 
-        window.PERSONAL_DB = [
-            { id: '136604506', nombre: 'FERNANDO CLAUDIO', apellido: 'AMAYA', cargo: 'ADJUTOR' },
-            { id: '136219951', nombre: 'MARCOS MAGÍN', apellido: 'GUTIÉRREZ RUARTE', cargo: 'ADMINISTRADOR' }
-        ];
-
+        window.PERSONAL_DB = [];
         window.ingresosRecientes = [];
         window.pasesBodyData = []; 
         let currentUser = null;
         let html5QrCode = null;
-
-        const SVG_BARCODE = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/></svg>`;
-        const SVG_QR = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>`;
-        const SVG_PEATON = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`;
-        const SVG_VEHICULO = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4" /></svg>`;
+        let limitRecords = 50;
 
         function init() {
             document.getElementById('login-box').innerHTML = LOGIN_HTML_BASE;
@@ -189,53 +214,51 @@
 
         const LOGIN_HTML_BASE = `
             <div class="text-center mb-6">
-                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white">SP</div>
+                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white font-black">SP</div>
                 <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-1 text-center">Control U.C.P.</h1>
-                <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center text-center">Acceso Restringido</p>
+                <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center">Acceso Restringido</p>
             </div>
             <form id="login-form" class="space-y-4">
-                <div class="flex gap-2">
-                    <input type="text" id="username" class="flex-1 px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="MATRÍCULA">
-                    <button type="button" onclick="startScanner('LOGIN_BARCODE')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl">${SVG_BARCODE}</button>
-                </div>
+                <input type="text" id="username" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA">
                 <input type="password" id="password" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="CONTRASEÑA">
                 <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px]">Ingresar</button>
             </form>
         `;
 
-        // --- FUNCIONES FIREBASE ---
-
+        // --- FIREBASE OPS ---
         async function fbAddIngreso(data) {
+            if (!window.isFirebaseReady) return;
             try {
                 const db = window.fbDb;
                 const path = ['artifacts', window.fbAppId, 'public', 'data', 'ingresos'];
-                await addDoc(collection(db, ...path), { ...data, timestamp: Date.now() });
-            } catch (e) { console.error("Error guardando ingreso:", e); }
+                await window.fbAddDoc(window.fbCollection(db, ...path), { ...data, timestamp: Date.now() });
+            } catch (e) { console.error("Error ingreso:", e); }
         }
 
         async function fbUpdatePersonal(personalList) {
+            if (!window.isFirebaseReady) return;
             try {
                 const db = window.fbDb;
-                for (const person of personalList) {
-                    const docRef = doc(db, 'artifacts', window.fbAppId, 'public', 'data', 'personal', person.id);
-                    await setDoc(docRef, person);
+                for (const p of personalList) {
+                    const docRef = window.fbDoc(db, 'artifacts', window.fbAppId, 'public', 'data', 'personal', p.id);
+                    await window.fbSetDoc(docRef, p);
                 }
             } catch (e) { console.error("Error personal:", e); }
         }
 
         async function fbUpdateBody(bodyList) {
+            if (!window.isFirebaseReady) return;
             try {
                 const db = window.fbDb;
                 for (const p of bodyList) {
-                    const docId = `${p.matricula}_${p.fechaHora.replace(/[/:\s,]/g, '')}`;
-                    const docRef = doc(db, 'artifacts', window.fbAppId, 'public', 'data', 'pases_body', docId);
-                    await setDoc(docRef, p);
+                    const docId = `${p.matricula}_${String(p.fechaHora).replace(/[/:\s,]/g, '')}`;
+                    const docRef = window.fbDoc(db, 'artifacts', window.fbAppId, 'public', 'data', 'pases_body', docId);
+                    await window.fbSetDoc(docRef, p);
                 }
             } catch (e) { console.error("Error body:", e); }
         }
 
         // --- SCANNER ---
-
         function startScanner(type) {
             document.getElementById('modal-scanner').classList.remove('hidden');
             if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
@@ -251,13 +274,14 @@
 
         function handleScanSuccess(text, type) {
             if (text.includes('ILR:2.20') || text.includes('S/N: 0040') || (text.split('@').length > 15)) {
-                showWarningModal("CARGAR MANUALMENTE Y MANIFESTAR A LA VISITA QUE ACTUALICE EL EJEMPLAR DE DNI");
+                document.getElementById('modal-warning').classList.remove('hidden');
                 return;
             }
             if (type === 'LOGIN_BARCODE') { document.getElementById('username').value = text.trim(); }
             else if (type === 'BARCODE') { 
-                document.getElementById('ing-mat').value = text.trim(); 
-                searchPersonalInDB(text.trim());
+                const cleanVal = text.trim();
+                document.getElementById('ing-mat').value = cleanVal; 
+                searchPersonalInDB(cleanVal);
             } else {
                 const parts = text.split('@').map(p => p.trim());
                 let dni = "", nom = "", ape = "", sexo = "";
@@ -265,11 +289,12 @@
                 else if (parts.length >= 4) { dni = parts[0]; ape = parts[1]; nom = parts[2]; sexo = parts[3]; }
                 if (document.getElementById('ing-dni')) document.getElementById('ing-dni').value = dni;
                 if (document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${ape} ${nom}`.trim();
-                if (document.getElementById('ing-sexo')) document.getElementById('ing-sexo').value = sexo.startsWith('M') ? 'M' : 'F';
+                if (document.getElementById('ing-sexo')) {
+                    if (sexo.startsWith('M') || sexo === '1') document.getElementById('ing-sexo').value = 'M';
+                    else if (sexo.startsWith('F') || sexo === '2') document.getElementById('ing-sexo').value = 'F';
+                }
             }
         }
-
-        // --- INTERFAZ ---
 
         function attachLoginEvent() {
             document.getElementById('login-form')?.addEventListener('submit', (e) => {
@@ -277,17 +302,17 @@
                 const u = document.getElementById('username').value.trim();
                 const p = document.getElementById('password').value;
                 if (u === USER_CREDENTIALS.username && p === USER_CREDENTIALS.password) showRoleSelection();
-                else showNotification("Error", "error");
+                else showNotification("Usuario o contraseña incorrectos", "error");
             });
         }
 
         function showRoleSelection() {
             document.getElementById('login-box').innerHTML = `
-                <div class="text-center animate-fade-in">
+                <div class="text-center animate-fade-in text-left">
                     <h2 class="text-lg font-black mb-4 uppercase text-center">Seleccione Rol</h2>
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 text-left">
                         ${Object.values(ROLES).map(role => `
-                            <button onclick="startSession('${role}')" class="p-4 bg-slate-50 dark:bg-slate-900 border-2 rounded-xl font-black uppercase text-[10px] flex justify-between">
+                            <button onclick="startSession('${role}')" class="p-4 bg-slate-50 dark:bg-slate-900 border-2 rounded-xl font-black uppercase text-[10px] flex justify-between items-center text-left">
                                 <span>${role}</span><span>→</span>
                             </button>`).join('')}
                     </div>
@@ -308,7 +333,7 @@
             const items = [{ id: 'ingresos', label: 'REGISTRO DE INGRESOS', icon: '📝' }, { id: 'reportes', label: 'MÓDULO REPORTES', icon: '📊' }];
             if (currentUser.role !== ROLES.UCP) items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
             nav.innerHTML = items.map(item => `
-                <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700">
+                <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-colors text-left">
                     <span>${item.icon}</span> <span class="uppercase font-black text-left">${item.label}</span>
                 </button>`).join('');
         }
@@ -318,13 +343,22 @@
             const content = document.getElementById('content-area');
             if (viewId === 'dashboard') {
                 content.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in text-left">
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800">
-                        <p class="text-[8px] font-black uppercase text-slate-400">Hoy</p>
-                        <p class="text-2xl font-black text-blue-600">${window.ingresosRecientes.length}</p>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 text-left">
+                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Registros Hoy</p>
+                        <p class="text-2xl font-black text-blue-600 text-left">${window.ingresosRecientes.length}</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 text-left">
+                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Personal Base</p>
+                        <p class="text-2xl font-black text-emerald-600 text-left">${window.PERSONAL_DB.length}</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 text-left">
+                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Pases Body</p>
+                        <p class="text-2xl font-black text-amber-500 text-left">${window.pasesBodyData.length}</p>
                     </div>
                 </div><div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 text-center">
                     <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 mb-6">
-                    <h2 class="text-xl font-black uppercase italic dark:text-white">Unidad de Control Penitenciario</h2>
+                    <h2 class="text-xl font-black uppercase italic dark:text-white text-center leading-none">Unidad de Control Penitenciario</h2>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center mt-3">Portal de Gestión de Acceso</p>
                 </div>`;
             } else if (viewId === 'ingresos') renderIngresosView(content);
             else if (viewId === 'importar_personal') renderImportPersonalView(content);
@@ -335,30 +369,30 @@
         function renderIngresosView(container) {
             const now = new Date();
             container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full text-left">
-                <div class="xl:col-span-5"><div class="bg-white dark:bg-slate-900 p-6 rounded-[1.5rem] border dark:border-slate-800 shadow-sm">
-                    <form id="ingreso-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveIngreso();">
+                <div class="xl:col-span-5 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[1.5rem] border dark:border-slate-800 shadow-sm text-left">
+                    <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
                         <div class="grid grid-cols-2 gap-3 text-left">
-                            <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
-                            <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
+                            <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
+                            <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
                         </div>
                         <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black uppercase text-[10px] outline-none text-left">
                             <option value="" disabled selected>Perfil...</option>${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
                         </select>
-                        <div id="dyn-fields" class="space-y-3"></div>
+                        <div id="dyn-fields" class="space-y-3 text-left"></div>
                         <div class="grid grid-cols-2 gap-2 text-left">
-                            <select id="ing-sexo" class="px-4 py-2 border-2 rounded-lg font-black text-[10px] text-left"><option value="">Sexo</option><option value="M">MASCULINO</option><option value="F">FEMENINO</option></select>
+                            <select id="ing-sexo" class="px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black text-[10px] text-left outline-none text-left text-left"><option value="">Sexo</option><option value="M">MASCULINO</option><option value="F">FEMENINO</option></select>
                             <div class="flex gap-1" id="transport-options">
-                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-2 border-2 rounded-lg">${SVG_PEATON}</button>
-                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg">${SVG_VEHICULO}</button>
+                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl">🚶</button>
+                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl">🚗</button>
                             </div>
                         </div>
-                        <div id="vehicle-fields" class="hidden space-y-1 text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 rounded-lg text-lg font-black text-center" placeholder="PATENTE"></div>
-                        <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px]" placeholder="OBSERVACIONES..."></textarea>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px]">Registrar Ingreso</button>
+                        <div id="vehicle-fields" class="hidden space-y-1 text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
+                        <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px] text-left" placeholder="OBSERVACIONES..."></textarea>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg active:scale-95 transition-transform">Registrar Ingreso</button>
                     </form></div></div>
                 <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[1.5rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col text-left">
                     <div class="p-3 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest text-left">Ingresos de Hoy</div>
-                    <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-left text-[11px]"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800"></tbody></table></div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-left text-[11px]"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
                 </div></div>`;
             window.updateIngresosTable();
         }
@@ -368,33 +402,38 @@
             if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
                 d.innerHTML = `<div class="space-y-3 animate-fade-in text-left">
                     <div class="flex gap-2 text-left">
-                        <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="MATRÍCULA">
+                        <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MATRÍCULA">
                         <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-lg">${SVG_BARCODE}</button>
                     </div>
-                    <div id="personal-preview" class="hidden p-3 bg-emerald-50 dark:bg-emerald-900/20 border rounded-lg"><div id="prev-name" class="font-black uppercase text-left"></div><div id="body-info" class="text-[8px] text-left"></div></div>
+                    <div id="personal-preview" class="hidden p-3 bg-emerald-50 dark:bg-emerald-900/20 border rounded-lg text-left"><div id="prev-name" class="font-black uppercase text-left text-emerald-800 dark:text-emerald-400 text-[10px]"></div><div id="body-info" class="text-[8px] text-left text-emerald-600 dark:text-emerald-500 font-bold uppercase mt-1"></div></div>
                     ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center" placeholder="NRO UNIDAD">` : ''}
                 </div>`;
             } else {
                 d.innerHTML = `<div class="space-y-3 animate-fade-in text-left">
                         <div class="flex gap-2 text-left">
-                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none" placeholder="DNI / DOCUMENTO">
+                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none text-left" placeholder="DNI / DOCUMENTO">
                             <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-lg">${SVG_QR}</button>
                         </div>
-                        <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="APELLIDO Y NOMBRE">
-                        ${perfil === 'ABOGADO' ? `<input type="text" id="ing-mat-pro" class="w-full px-4 py-2.5 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="MP: MATRÍCULA">` : ''}
+                        <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="APELLIDO Y NOMBRE">
+                        ${perfil === 'ABOGADO' ? `<input type="text" id="ing-mat-pro" class="w-full px-4 py-2.5 border-2 border-blue-200 dark:border-blue-900 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MP: MATRÍCULA">` : ''}
                     </div>`;
             }
         }
 
         window.updateIngresosTable = function() {
             const b = document.getElementById('ingresos-table'); if (!b) return;
-            b.innerHTML = window.ingresosRecientes.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800"><td class="px-4 py-3 font-mono text-blue-600 font-black text-sm text-left">${i.hora}</td><td class="px-4 py-3 text-left"><div class="font-black text-[10px] text-left">${i.sujeto}</div><div class="text-[8px] text-slate-400 italic text-left">${i.perfil} | ${i.modo}</div></td></tr>`).join('');
+            const records = window.ingresosRecientes.slice(0, 50);
+            if (records.length === 0) {
+                b.innerHTML = `<tr><td class="p-8 text-center text-slate-400 font-black uppercase italic text-[9px] text-left">Sin registros hoy</td></tr>`;
+                return;
+            }
+            b.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left text-left"><td class="px-4 py-3 font-mono text-blue-600 font-black text-sm text-left">${i.hora}</td><td class="px-4 py-3 text-left"><div class="font-black text-[10px] text-left text-slate-800 dark:text-white uppercase leading-none mb-1 text-left text-left">${i.sujeto}</div><div class="text-[8px] text-slate-400 italic text-left uppercase font-bold text-left text-left">${i.perfil} | ${i.modo}</div></td></tr>`).join('');
         };
 
         function setMode(m) {
             document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg transition-all ${m==='PEATÓN'?'bg-blue-600 text-white':'bg-white text-slate-400'}`;
-            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg transition-all ${m==='VEHÍCULO'?'bg-blue-600 text-white':'bg-white text-slate-400'}`;
+            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl ${m==='PEATÓN'?'bg-blue-600 border-blue-600 shadow-lg':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
+            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl ${m==='VEHÍCULO'?'bg-blue-600 border-blue-600 shadow-lg':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
             if (m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden');
             else document.getElementById('vehicle-fields').classList.add('hidden');
         }
@@ -402,97 +441,227 @@
         async function handleSaveIngreso() {
             const perfil = document.getElementById('ing-perfil').value;
             const modo = document.getElementById('ing-modo').value;
-            if (!perfil || !modo) return showNotification("Faltan datos", "error");
+            if (!perfil || !modo) return showNotification("Faltan datos de perfil o transporte", "error");
             
             const data = {
                 fecha: document.getElementById('ing-fecha').value,
                 hora: document.getElementById('ing-hora').value,
                 perfil, modo,
-                sujeto: document.getElementById('ing-nom')?.value || document.getElementById('ing-mat')?.value || "",
+                sujeto: (document.getElementById('ing-nom')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
                 sexo: document.getElementById('ing-sexo').value,
                 obs: document.getElementById('ing-obs').value.toUpperCase(),
-                dominio: document.getElementById('ing-dominio')?.value || "",
-                nMovil: document.getElementById('ing-n-movil')?.value || ""
+                dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(),
+                nMovil: (document.getElementById('ing-n-movil')?.value || "").toUpperCase()
             };
 
             await fbAddIngreso(data);
-            showNotification("Registrado", "success");
+            showNotification("Registro sincronizado con éxito", "success");
             renderView('ingresos', 'REGISTRO DE INGRESOS');
         }
 
+        // --- IMPORTAR PERSONAL ---
         function renderImportPersonalView(container) {
-            container.innerHTML = `<div class="max-w-2xl mx-auto p-10 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 text-center text-left">
-                <h2 class="text-lg font-black uppercase mb-8 text-left">Importar Personal</h2>
-                <div class="border-2 border-dashed rounded-2xl p-10 mb-8 bg-slate-50 dark:bg-slate-950 cursor-pointer text-center" onclick="document.getElementById('personal-file').click()">
-                    <input type="file" id="personal-file" class="hidden" onchange="processPersonalFile(this)">
-                    <p id="personal-file-label" class="text-[10px] text-slate-400 font-black italic text-center">Toque para seleccionar archivo</p>
+            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border dark:border-slate-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="text-left">
+                        <h2 class="text-xl font-black uppercase mb-1">Importar Personal</h2>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Archivo Maestro IndicePersonal.csv / .xlsx</p>
+                        <div class="mt-4 flex items-center gap-4">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl">
+                                <span class="text-[10px] font-black text-blue-600 block">EN BASE</span>
+                                <span id="total-personal" class="text-lg font-black dark:text-white">${window.PERSONAL_DB.length}</span>
+                            </div>
+                            <button onclick="viewPersonalData()" class="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm">👁️</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 w-full max-w-sm">
+                        <div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-6 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all" onclick="document.getElementById('personal-file').click()">
+                            <input type="file" id="personal-file" class="hidden" onchange="updateFileName('personal-file-label', this)">
+                            <p id="personal-file-label" class="text-[10px] text-slate-400 font-black italic">Toque para seleccionar archivo</p>
+                        </div>
+                        <button onclick="processPersonalFile()" class="w-full mt-4 bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-blue-700">CARGAR PERSONAL</button>
+                    </div>
                 </div>
             </div>`;
         }
 
-        async function processPersonalFile(input) {
-            if (!input.files.length) return;
+        async function processPersonalFile() {
+            const input = document.getElementById('personal-file');
+            if (!input || !input.files.length) return showNotification("Seleccione un archivo primero", "error");
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const list = js.map(row => ({
-                    id: String(row['Matricula']||row['MATRICULA']||"").split('.')[0],
-                    nombre: (row['Nombre']||'').toUpperCase(),
-                    apellido: (row['Apellido']||'').toUpperCase(),
-                    cargo: (row['Jerarquia']||'').toUpperCase()
-                })).filter(p => p.id);
+                const list = js.map(row => {
+                    let id = row['Matricula'] || row['MATRICULA'] || row['Afiliado'] || "";
+                    let nom = row['Nombre'] || row['NOMBRE'] || "";
+                    let ape = row['Apellido'] || row['APELLIDO'] || "";
+                    let jer = row['Jerarquia'] || row['JERARQUIA'] || "AGENTE";
+                    return { id: String(id).split('.')[0].trim(), nombre: String(nom).toUpperCase(), apellido: String(ape).toUpperCase(), cargo: String(jer).toUpperCase() };
+                }).filter(p => p.id);
                 await fbUpdatePersonal(list);
-                showNotification("Personal actualizado", "success");
+                showNotification(`Se cargaron ${list.length} registros`, "success");
             };
             reader.readAsArrayBuffer(input.files[0]);
         }
 
+        function viewPersonalData() {
+            openDataModal("BASE DE PERSONAL", ["MATRÍCULA", "APELLIDO", "NOMBRE", "CARGO"], window.PERSONAL_DB.map(p => [p.id, p.apellido, p.nombre, p.cargo]));
+        }
+
+        // --- IMPORTAR PASES BODY ---
         function renderPasesBodyView(container) {
-            container.innerHTML = `<div class="max-w-2xl mx-auto p-10 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 text-center text-left">
-                <h2 class="text-lg font-black uppercase mb-8 text-left">Sincronizar Body</h2>
-                <div class="border-2 border-dashed rounded-2xl p-10 bg-slate-50 dark:bg-slate-950 cursor-pointer text-center" onclick="document.getElementById('body-file').click()">
-                    <input type="file" id="body-file" class="hidden" onchange="processBodyFile(this)">
-                    <p id="body-file-label" class="text-[10px] text-slate-400 font-black italic text-center">Toque para seleccionar Body Scan</p>
+            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border dark:border-slate-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="text-left">
+                        <h2 class="text-xl font-black uppercase mb-1">Pases Body Scan</h2>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">Archivo InformeBody.xlsx</p>
+                        <div class="mt-4 flex items-center gap-4">
+                            <div class="bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-xl">
+                                <span class="text-[10px] font-black text-amber-600 block">TOTAL PASES</span>
+                                <span id="total-body" class="text-lg font-black dark:text-white">${window.pasesBodyData.length}</span>
+                            </div>
+                            <button onclick="viewBodyData()" class="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm">👁️</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 w-full max-w-sm">
+                        <div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-6 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all" onclick="document.getElementById('body-file').click()">
+                            <input type="file" id="body-file" class="hidden" onchange="updateFileName('body-file-label', this)">
+                            <p id="body-file-label" class="text-[10px] text-slate-400 font-black italic">Toque para seleccionar archivo</p>
+                        </div>
+                        <button onclick="processBodyFile()" class="w-full mt-4 bg-amber-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-amber-700">CARGAR INFORME</button>
+                    </div>
                 </div>
             </div>`;
         }
 
-        async function processBodyFile(input) {
-            if (!input.files.length) return;
+        async function processBodyFile() {
+            const input = document.getElementById('body-file');
+            if (!input || !input.files.length) return showNotification("Seleccione un archivo primero", "error");
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const list = js.map(row => ({
-                    matricula: String(row['Matricula']||row['MATRICULA']||"").split('.')[0],
-                    nombre: row['Nombre']||"",
-                    fechaHora: row['Fecha y Hora de Escaneo']||"",
-                    sector: (row['Sector Marcado']||"").toUpperCase()
-                })).filter(x => x.matricula);
+                const list = js.map(row => {
+                    let mat = row['Matricula'] || row['MATRICULA'] || "";
+                    let nom = row['Nombre'] || row['NOMBRE'] || "";
+                    let fec = row['Fecha y Hora de Escaneo'] || "";
+                    let sec = row['Sector Marcado'] || "";
+                    return { matricula: String(mat).split('.')[0].trim(), nombre: String(nom).toUpperCase(), fechaHora: fec, sector: String(sec).toUpperCase() };
+                }).filter(p => p.matricula);
                 await fbUpdateBody(list);
-                showNotification("Base Body Sincronizada", "success");
+                showNotification(`Sincronizados ${list.length} pases`, "success");
             };
             reader.readAsArrayBuffer(input.files[0]);
         }
 
+        function viewBodyData() {
+            openDataModal("REGISTROS BODY SCAN", ["MATRÍCULA", "NOMBRE", "FECHA/HORA", "SECTOR"], window.pasesBodyData.map(p => [p.matricula, p.nombre, p.fechaHora, p.sector]));
+        }
+
+        // --- REPORTES ---
+        function renderReportesView(container) {
+            container.innerHTML = `<div class="bg-white dark:bg-slate-900 p-5 rounded-[2rem] shadow-sm border dark:border-slate-800 mb-6 animate-fade-in h-full flex flex-col text-left">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 no-print">
+                    <h3 class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic leading-none">Auditoría de Ingresos</h3>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">Excel</button>
+                        <button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-md">Exportar PDF</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-hidden flex flex-col">
+                    <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl">
+                        <table class="w-full text-left text-[10px] md:text-[11px] print-table">
+                            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0">
+                                <tr>
+                                    <th class="px-5 py-3 border-b dark:border-slate-700">FECHA/HORA</th>
+                                    <th class="px-5 py-3 border-b dark:border-slate-700">PERFIL</th>
+                                    <th class="px-5 py-3 border-b dark:border-slate-700">SUJETO</th>
+                                    <th class="px-5 py-3 border-b dark:border-slate-700">MODO</th>
+                                    <th class="px-5 py-3 border-b dark:border-slate-700">OBS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center no-print">
+                        <p id="records-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest"></p>
+                        <button id="btn-load-more" onclick="loadMoreRecords()" class="px-6 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg font-black text-[9px] uppercase hover:bg-blue-600 hover:text-white transition-all">Ver más registros</button>
+                    </div>
+                </div>
+            </div>`;
+            limitRecords = 50;
+            updateReportTable();
+        }
+
+        function updateReportTable() {
+            const body = document.getElementById('report-table-body');
+            const count = document.getElementById('records-count');
+            if (!body) return;
+            const records = window.ingresosRecientes.slice(0, limitRecords);
+            body.innerHTML = records.map(i => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <td class="px-5 py-3 leading-tight"><b>${i.fecha}</b><br><span class="font-mono text-blue-500">${i.hora}</span></td>
+                    <td class="px-5 py-3 font-black text-[9px] text-slate-400">${i.perfil}</td>
+                    <td class="px-5 py-3 font-black uppercase">${i.sujeto}</td>
+                    <td class="px-5 py-3 font-bold text-slate-400">${i.modo} ${i.dominio || i.nMovil}</td>
+                    <td class="px-5 py-3 text-[9px] italic text-slate-400 max-w-[150px] truncate">${i.obs || '-'}</td>
+                </tr>`).join('');
+            if (count) count.innerText = `MOSTRANDO ${records.length} DE ${window.ingresosRecientes.length}`;
+            const btn = document.getElementById('btn-load-more');
+            if (btn) btn.style.display = limitRecords >= window.ingresosRecientes.length ? 'none' : 'block';
+        }
+
+        function loadMoreRecords() {
+            limitRecords += 100;
+            updateReportTable();
+        }
+
+        // --- UTILIDADES ---
+        function updateFileName(labelId, input) {
+            const label = document.getElementById(labelId);
+            if(label && input.files.length) label.innerText = input.files[0].name.toUpperCase();
+        }
+
+        function openDataModal(title, headers, rows) {
+            const modal = document.getElementById('modal-data');
+            const head = document.getElementById('modal-data-head');
+            const body = document.getElementById('modal-data-body');
+            document.getElementById('modal-data-title').innerText = title;
+            head.innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-2 border-b dark:border-slate-700 font-black uppercase text-[9px]">${h}</th>`).join('')}</tr>`;
+            body.innerHTML = rows.slice(0, 100).map(row => `<tr>${row.map(cell => `<td class="px-4 py-2 uppercase border-b dark:border-slate-800">${cell}</td>`).join('')}</tr>`).join('');
+            if(rows.length > 100) body.innerHTML += `<tr><td colspan="${headers.length}" class="p-4 text-center font-black italic text-slate-400">... mostrando primeros 100 registros</td></tr>`;
+            modal.classList.remove('hidden');
+        }
+
+        function closeDataModal() { document.getElementById('modal-data').classList.add('hidden'); }
+        function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10`; e.innerHTML = `<span class="font-black text-[9px] uppercase tracking-widest">${m}</span>`; c.appendChild(e); setTimeout(() => e.remove(), 4000); }
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+        function toggleSidebar(f) { const sb = document.getElementById('sidebar'); if (f !== undefined) { if (f) sb.classList.remove('-translate-x-full'); else sb.classList.add('-translate-x-full'); } else sb.classList.toggle('-translate-x-full'); }
+        function logout() { window.location.reload(); }
+        function closeWarningModal() { document.getElementById('modal-warning').classList.add('hidden'); }
+        function exportToExcel() { const ws = XLSX.utils.json_to_sheet(window.ingresosRecientes); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Ingresos"); XLSX.writeFile(wb, `Reporte_UCP_${new Date().toISOString().split('T')[0]}.xlsx`); }
+        function updateHeaderDate() { document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase(); }
         function searchPersonalInDB(val) {
             const p = window.PERSONAL_DB.find(x => x.id === val.trim());
             const preview = document.getElementById('personal-preview');
             if (p) {
                 document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre}`;
+                const bodyHits = window.pasesBodyData.filter(b => b.matricula === val.trim());
+                const infoEl = document.getElementById('body-info');
+                if (bodyHits.length > 0) {
+                    const ult = bodyHits.sort((a,b) => String(b.fechaHora).localeCompare(String(a.fechaHora)))[0];
+                    infoEl.innerHTML = `✅ ÚLTIMO BODY: ${ult.fechaHora}`;
+                    infoEl.className = "text-[8px] text-emerald-600 font-bold uppercase mt-1";
+                } else {
+                    infoEl.innerHTML = `⚠️ SIN REGISTROS DE BODY`;
+                    infoEl.className = "text-[8px] text-red-500 font-bold uppercase mt-1";
+                }
                 preview.classList.remove('hidden');
-                document.getElementById('ing-nom').value = `${p.apellido} ${p.nombre}`;
+                if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${p.apellido} ${p.nombre}`;
             } else if (preview) preview.classList.add('hidden');
         }
 
-        function updateHeaderDate() { document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase(); }
-        function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10`; e.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${t==='success'?'bg-emerald-400':'bg-white'}"></span><span class="font-black text-[9px] uppercase tracking-widest leading-none text-left text-left">${m}</span>`; c.appendChild(e); setTimeout(() => e.remove(), 3000); }
-        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
-        function toggleSidebar(f) { const sb = document.getElementById('sidebar'); if (f !== undefined) { if (f) sb.classList.remove('-translate-x-full'); else sb.classList.add('-translate-x-full'); } else sb.classList.toggle('-translate-x-full'); }
-        function logout() { window.location.reload(); }
-        function closeWarningModal() { document.getElementById('modal-warning').classList.add('hidden'); }
-        
         window.onload = init;
     </script>
 </body>
