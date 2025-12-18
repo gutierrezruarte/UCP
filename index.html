@@ -295,36 +295,45 @@
                     showNotification("MATRÍCULA VINCULADA", "success");
                 }
             } else {
-                // LÓGICA REFINADA DNI ARGENTINO (PARSEO EXACTO)
-                const parts = text.split('@');
+                // LÓGICA REFINADA DNI ARGENTINO (PARSEO EXACTO SEGÚN EJEMPLO)
+                // Ejemplo: @38329788 @A@1@TURCHI@MARIA ANTONELLA@ARGENTINA@05/07/1994@F@...
+                const parts = text.split('@').map(p => p.trim());
                 const inputDni = document.getElementById('ing-dni');
                 const inputNom = document.getElementById('ing-nom');
                 const sexInput = document.getElementById('ing-sexo');
                 
                 let dni = "", nom = "", ape = "", sexo = "";
 
-                // Verificamos si es formato moderno QR (index 4 para DNI)
-                if (parts.length >= 8) {
-                    dni = parts[4].trim();
-                    ape = parts[1].trim();
-                    nom = parts[2].trim();
-                    sexo = parts[3].trim().toUpperCase();
+                if (parts.length > 10) { 
+                    // FORMATO ESPECÍFICO DEL USUARIO (basado en split por @)
+                    // parts[0] = "" (si empieza con @)
+                    // parts[1] = 38329788 (DNI)
+                    // parts[4] = TURCHI (Ape)
+                    // parts[5] = MARIA ANTONELLA (Nom)
+                    // parts[8] = F (Sexo)
+                    dni = parts[1];
+                    ape = parts[4];
+                    nom = parts[5];
+                    sexo = parts[8];
+                } else if (parts.length >= 8) {
+                    // Formato Moderno Estándar (QR)
+                    dni = parts[4];
+                    ape = parts[1];
+                    nom = parts[2];
+                    sexo = parts[3];
                 } else if (parts.length >= 4) {
-                    // Formato antiguo o barra (DNI en index 0)
-                    dni = parts[0].trim();
-                    ape = parts[1].trim();
-                    nom = parts[2].trim();
-                    sexo = parts[3].trim().toUpperCase();
-                } else {
-                    // Fallback para códigos no estándar
-                    dni = parts.find(p => p.length >= 7 && p.length <= 9 && !isNaN(p)) || "";
+                    // Formato Antiguo o Barra
+                    dni = parts[0];
+                    ape = parts[1];
+                    nom = parts[2];
+                    sexo = parts[3];
                 }
 
                 if (inputDni) inputDni.value = dni;
                 if (inputNom) inputNom.value = `${ape} ${nom}`.trim();
                 if (sexInput) {
-                    if (sexo.startsWith('M')) sexInput.value = 'M';
-                    else if (sexo.startsWith('F')) sexInput.value = 'F';
+                    if (sexo && (sexo.startsWith('M') || sexo === '1')) sexInput.value = 'M';
+                    else if (sexo && (sexo.startsWith('F') || sexo === '2')) sexInput.value = 'F';
                 }
                 showNotification("DATOS DNI CARGADOS", "success");
             }
@@ -388,9 +397,9 @@
             if (window.innerWidth < 1024) toggleSidebar(false);
             if (viewId === 'dashboard') {
                 content.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in">
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none">Ingresos</h3><p class="text-2xl font-black text-blue-600 leading-none">${ingresosRecientes.length}</p></div>
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none">Personal</h3><p class="text-2xl font-black text-emerald-600 leading-none">${PERSONAL_DB.length}</p></div>
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none">Pases Body</h3><p class="text-2xl font-black text-amber-500 leading-none">${pasesBodyData.length}</p></div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none text-left">Ingresos</h3><p class="text-2xl font-black text-blue-600 leading-none text-left">${ingresosRecientes.length}</p></div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none text-left">Personal</h3><p class="text-2xl font-black text-emerald-600 leading-none text-left">${PERSONAL_DB.length}</p></div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800"><h3 class="text-[8px] font-black text-slate-400 uppercase mb-0.5 tracking-widest italic leading-none text-left">Pases Body</h3><p class="text-2xl font-black text-amber-500 leading-none text-left">${pasesBodyData.length}</p></div>
                 </div><div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[2rem] text-center border dark:border-slate-800 animate-fade-in shrink-0">
                     <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 md:w-40 mb-6 drop-shadow-xl brightness-110">
                     <h2 class="text-lg md:text-xl font-black uppercase italic leading-none mb-1 dark:text-white">Unidad de Control Penitenciario</h2>
@@ -618,7 +627,7 @@
         }
 
         function resetFilters() { const s = document.getElementById('rep-start'); if(s) s.value = ''; const e = document.getElementById('rep-end'); if(e) e.value = ''; const h = document.getElementById('rep-search'); if(h) h.value = ''; applyFilters(); }
-        function renderImportPersonalView(container) { container.innerHTML = `<div class="max-w-2xl mx-auto animate-fade-in shrink-0"><div class="bg-white dark:bg-slate-900 p-10 rounded-[2rem] shadow-xl text-center border dark:border-slate-800"><div class="bg-blue-50 dark:bg-blue-900/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg text-blue-600 text-2xl font-black">📥</div><h2 class="text-lg font-black uppercase mb-1 dark:text-white tracking-tighter leading-none">Importar Personal</h2><p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest mb-8 italic leading-none">Archivo Maestro IndicePersonal.csv</p><div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-10 mb-8 bg-slate-50 dark:bg-slate-950 hover:bg-white cursor-pointer transition-all shadow-inner" onclick="document.getElementById('excel-input').click()"><input type="file" id="excel-input" class="hidden"><p id="file-label" class="text-[10px] text-slate-400 font-black uppercase italic tracking-widest leading-none">Vincular Base Institucional</p></div><button onclick="handleProcessFile()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg hover:bg-blue-700 transition-all">Actualizar Personal</button></div></div>`; document.getElementById('excel-input')?.addEventListener('change', e => { if(e.target.files.length) document.getElementById('file-label').innerText = e.target.files[0].name.toUpperCase(); }); }
+        function renderImportPersonalView(container) { container.innerHTML = `<div class="max-w-2xl mx-auto animate-fade-in shrink-0"><div class="bg-white dark:bg-slate-900 p-10 rounded-[2rem] shadow-xl text-center border dark:border-slate-800"><div class="bg-blue-50 dark:bg-blue-900/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg text-blue-600 text-2xl font-black">📥</div><h2 class="text-lg font-black uppercase mb-1 dark:text-white tracking-tighter leading-none text-left">Importar Personal</h2><p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest mb-8 italic leading-none text-left">Archivo Maestro IndicePersonal.csv</p><div class="border-2 border-dashed dark:border-slate-700 rounded-2xl p-10 mb-8 bg-slate-50 dark:bg-slate-950 hover:bg-white cursor-pointer transition-all shadow-inner" onclick="document.getElementById('excel-input').click()"><input type="file" id="excel-input" class="hidden"><p id="file-label" class="text-[10px] text-slate-400 font-black uppercase italic tracking-widest leading-none">Vincular Base Institucional</p></div><button onclick="handleProcessFile()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg hover:bg-blue-700 transition-all">Actualizar Personal</button></div></div>`; document.getElementById('excel-input')?.addEventListener('change', e => { if(e.target.files.length) document.getElementById('file-label').innerText = e.target.files[0].name.toUpperCase(); }); }
         async function handleProcessFile() { const i = document.getElementById('excel-input'); if (!i.files.length) return; const r = new FileReader(); r.onload = (e) => { const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); const js = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); js.forEach(row => { let mat = String(row['Matricula']||row['MATRICULA']||"").split('.')[0].trim(); if (mat) { const entry = { id: mat, nombre: (row['Nombre']||'').toUpperCase(), apellido: (row['Apellido']||'').toUpperCase(), cargo: (row['Jerarquia']||'AGENTE').toUpperCase() }; const idx = PERSONAL_DB.findIndex(p => p.id === mat); if (idx !== -1) PERSONAL_DB[idx] = entry; else PERSONAL_DB.push(entry); } }); showNotification("Personal actualizado", "success"); renderDashboard(); }; r.readAsArrayBuffer(i.files[0]); }
         function openPasesModal() { const modal = document.getElementById('modal-view-pases'), body = document.getElementById('modal-pases-table-body'); body.innerHTML = pasesBodyData.map(p => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td class="px-4 py-2 font-mono text-blue-600 dark:text-blue-400 font-black text-[10px] text-left">${p.matricula}</td><td class="px-4 py-2 uppercase font-bold dark:text-slate-200 text-[10px] text-left">${p.nombre}</td><td class="px-4 py-2 font-bold text-slate-500 text-[10px] text-left">${p.fechaHora}</td><td class="px-4 py-2 text-left"><span class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-tighter">${p.sector}</span></td></tr>`).join(''); modal.classList.remove('hidden'); }
         function exportToExcel() { const ws = XLSX.utils.json_to_sheet(ingresosRecientes); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Ingresos"); XLSX.writeFile(wb, `Reporte_UCP_${new Date().toISOString().split('T')[0]}.xlsx`); }
