@@ -12,7 +12,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDik0zZfaJkFafWNusseanhWcQIL7DceW8",
@@ -45,7 +45,7 @@
                 const loader = document.getElementById('global-loader');
                 if (loader) {
                     loader.classList.add('opacity-0');
-                    setTimeout(() => loader.remove(), 500);
+                    setTimeout(() => loader.remove(), 400);
                 }
             }
         };
@@ -53,6 +53,7 @@
         const initFirebase = async () => {
             try {
                 await signInAnonymously(auth);
+                // Solo se registra el admin si no existe o para actualizar datos clave una vez
                 const adminRef = doc(db, 'artifacts', appId, 'users', '136219951');
                 await setDoc(adminRef, {
                     username: '136219951',
@@ -65,6 +66,7 @@
         };
         initFirebase();
 
+        // Suscripciones optimizadas
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
@@ -75,7 +77,7 @@
                     if (window.updateReportTable) window.updateReportTable();
                     dataLoaded.ingresos = true;
                     checkLoadingStatus();
-                }, (err) => { dataLoaded.ingresos = true; checkLoadingStatus(); });
+                });
 
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                     const data = [];
@@ -84,15 +86,15 @@
                     if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
                     dataLoaded.personal = true;
                     checkLoadingStatus();
-                }, (err) => { dataLoaded.personal = true; checkLoadingStatus(); });
+                });
 
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                     const data = [];
-                    snapshot.forEach(doc => data.push(doc.data()));
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
                     window.pasesBodyData = data;
                     dataLoaded.body = true;
                     checkLoadingStatus();
-                }, (err) => { dataLoaded.body = true; checkLoadingStatus(); });
+                });
 
                 onSnapshot(collection(db, 'artifacts', appId, 'users'), (snapshot) => {
                     const data = [];
@@ -101,7 +103,7 @@
                     if (window.refreshUsersList) window.refreshUsersList();
                     dataLoaded.users = true;
                     checkLoadingStatus();
-                }, (err) => { dataLoaded.users = true; checkLoadingStatus(); });
+                });
             }
         });
 
@@ -114,7 +116,7 @@
                 const batch = writeBatch(db);
                 chunk.forEach(p => batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'personal', p.id), p, { merge: true }));
                 await batch.commit();
-                await sleep(300);
+                await sleep(250);
             }
         };
 
@@ -125,14 +127,14 @@
                 const batch = writeBatch(db);
                 chunk.forEach(p => batch.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body')), p));
                 await batch.commit();
-                await sleep(300);
+                await sleep(250);
             }
         };
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.2s ease; }
+        body { font-family: 'Inter', sans-serif; }
         .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -141,9 +143,11 @@
         #reader { width: 100% !important; border: none !important; min-height: 250px; background: #000; overflow: hidden; }
         #reader video { object-fit: cover !important; }
         @media print {
-            aside, header, .no-print, .pagination-controls { display: none !important; }
+            aside, header, .no-print, .pagination-controls, .search-container { display: none !important; }
             main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .print-table { display: table !important; width: 100% !important; font-size: 8pt !important; }
+            .print-table { display: table !important; width: 100% !important; font-size: 7pt !important; line-height: 1 !important; border-collapse: collapse; }
+            th, td { padding: 2px 4px !important; border: 1px solid #e2e8f0; }
+            .print-header { display: block !important; margin-bottom: 10px; font-size: 8pt; font-weight: bold; }
         }
     </style>
 </head>
@@ -151,11 +155,11 @@
 
     <div id="global-loader" class="fixed inset-0 z-[1000] bg-slate-900 flex flex-col items-center justify-center text-center">
         <div class="mb-6 relative">
-            <div class="w-20 h-20 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+            <div class="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
             <div class="absolute inset-0 flex items-center justify-center font-black text-blue-600 text-xs text-center">UCP</div>
         </div>
-        <h2 class="text-white font-black uppercase italic tracking-tighter text-xl mb-2 text-center">U.C.P. - ANALYTICS</h2>
-        <p class="text-slate-500 font-bold uppercase text-[9px] tracking-[0.3em] animate-pulse text-center">Estableciendo conexión segura...</p>
+        <h2 class="text-white font-black uppercase tracking-tighter text-lg mb-1">Cargando Portal...</h2>
+        <p class="text-slate-500 font-bold uppercase text-[8px] tracking-widest animate-pulse">Sincronización de alta velocidad</p>
     </div>
 
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2"></div>
@@ -170,7 +174,7 @@
             <div class="p-5 flex flex-col h-full text-left">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="bg-blue-600 p-2 rounded-xl font-black text-xs text-center">UCP</div>
-                    <div class="text-left">
+                    <div class="text-left text-white">
                         <span class="font-black text-base tracking-tighter uppercase block leading-none">Portal U.C.P.</span>
                         <span class="text-[7px] text-blue-400 font-bold uppercase tracking-widest">Seguridad Penitenciaria</span>
                     </div>
@@ -184,10 +188,7 @@
                             <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Rol</p>
                         </div>
                     </div>
-                    <div class="flex gap-2 items-center">
-                        <button id="btn-role-switch" onclick="openRoleSwitcher()" class="hidden p-2.5 bg-slate-700/50 hover:bg-blue-600 rounded-lg transition-all text-center">🔄</button>
-                        <button onclick="logout()" class="flex-1 py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-widest border border-red-500/20 text-center">Cerrar Sesión</button>
-                    </div>
+                    <button onclick="logout()" class="w-full py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-widest border border-red-500/20 text-center">Cerrar Sesión</button>
                 </div>
             </div>
         </aside>
@@ -200,16 +201,14 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest"></div>
-                    <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                        <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-center">🌙</button>
-                    </div>
+                    <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all">🌙</button>
                 </div>
             </header>
             <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar"></div>
         </main>
     </div>
 
-    <!-- MODAL DE BASES (MODAL-DATA) -->
+    <!-- MODAL DE BASES -->
     <div id="modal-data" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-5xl h-[85vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
             <div class="p-5 bg-blue-600 text-white flex justify-between items-center shrink-0">
@@ -233,6 +232,7 @@
         </div>
     </div>
 
+    <!-- MODAL ESCANEO -->
     <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
         <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
             <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20">
@@ -240,17 +240,14 @@
                 <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center">✕</button>
             </div>
             <div id="reader"></div>
-            <div class="p-4 bg-slate-50 dark:bg-slate-800 border-t dark:border-slate-700">
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Inicie el proceso de escaneo</p>
-            </div>
         </div>
     </div>
 
-    <!-- MODAL CALENDARIO / TOTALES -->
+    <!-- MODAL CALENDARIO -->
     <div id="modal-calendar" class="hidden fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl flex flex-col text-center">
             <div class="p-5 bg-blue-600 text-white font-black uppercase text-sm tracking-widest italic flex justify-between">
-                <span>Resumen de Totales</span>
+                <span>Resumen por Fecha</span>
                 <button onclick="document.getElementById('modal-calendar').classList.add('hidden')" class="text-white text-lg">✕</button>
             </div>
             <div class="p-4 overflow-y-auto max-h-[60vh] no-scrollbar">
@@ -275,7 +272,6 @@
         const pageSize = 50;
         let editingId = null;
 
-        // Variables Modal Bases
         let modalFullData = [];
         let modalHeaders = [];
         let modalPage = 1;
@@ -299,9 +295,9 @@
                 <div class="text-center mb-6">
                     <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white font-black text-xl text-center">SP</div>
                     <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-1 text-center">Control U.C.P.</h1>
-                    <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center text-center">Acceso Restringido</p>
+                    <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center">Inicie Sesión</p>
                 </div>
-                <form id="login-form" class="space-y-4 text-center" onsubmit="event.preventDefault(); handleLogin();">
+                <form id="login-form" class="space-y-4" onsubmit="event.preventDefault(); handleLogin();">
                     <div class="flex gap-2">
                         <input type="text" id="username" class="flex-1 px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA / DNI">
                         <button type="button" onclick="startScanner('LOGIN')" class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
@@ -331,14 +327,14 @@
             document.getElementById('user-display-name').innerText = currentUser.fullName;
             document.getElementById('user-display-role').innerText = activeRole;
             document.getElementById('user-initial').innerText = currentUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            if(currentUser.multiRole || activeRole === ROLES.ADMIN) document.getElementById('btn-role-switch').classList.remove('hidden');
             buildMenu(); renderView('dashboard', 'Inicio');
         }
 
         function buildMenu() {
             const nav = document.getElementById('sidebar-nav');
-            const items = [{ id: 'ingresos', label: 'REGISTRO DE INGRESOS', icon: '📝' }, { id: 'reportes', label: 'MÓDULO REPORTES', icon: '📊' }, { id: 'users_admin', label: 'GESTIÓN DE USUARIOS', icon: '👥' }];
+            const items = [{ id: 'ingresos', label: 'REGISTRO DE INGRESOS', icon: '📝' }, { id: 'reportes', label: 'MÓDULO REPORTES', icon: '📊' }];
             if (activeRole !== ROLES.UCP) items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
+            items.push({ id: 'users_admin', label: 'GESTIÓN DE USUARIOS', icon: '👥' });
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left uppercase">
                     <span class="text-base">${item.icon}</span> <span class="font-black">${item.label}</span>
@@ -368,9 +364,9 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm">
-                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 mb-6 drop-shadow-lg mx-auto text-center">
+                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-24 mb-6 mx-auto text-center">
                     <h2 class="text-xl font-black uppercase italic dark:text-white leading-none text-center">Unidad de Control Penitenciario</h2>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-3 text-center">Portal de Gestión y Auditoría de Acceso</p>
+                    <p class="text-[8px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-3 text-center">Gestión Inteligente de Acceso</p>
                 </div>`;
             } else if (viewId === 'ingresos') renderIngresosView(content);
             else if (viewId === 'reportes') renderReportesView(content);
@@ -386,7 +382,7 @@
                 <div class="xl:col-span-5 text-left">
                     <div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
                         <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
-                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic">Nuevo Registro Acceso</h3>
+                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic">Registro de Acceso</h3>
                             <div class="grid grid-cols-2 gap-3 text-left">
                                 <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
                                 <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
@@ -402,14 +398,14 @@
                                     <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚗</button>
                                 </div>
                             </div>
-                            <div id="vehicle-fields" class="hidden space-y-1 text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
+                            <div id="vehicle-fields" class="hidden text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
                             <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px] text-left" placeholder="DESTINO / OBSERVACIONES"></textarea>
-                            <button type="submit" id="btn-submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg text-center">Registrar Ingreso</button>
+                            <button type="submit" id="btn-submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg text-center">Finalizar Registro</button>
                         </form>
                     </div>
                 </div>
                 <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col text-left">
-                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest flex justify-between"><span>Control Reciente</span><span>ID OPERADOR: ${getOperatorID()}</span></div>
+                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest flex justify-between"><span>Movimientos Recientes</span><span>OP: ${getOperatorID()}</span></div>
                     <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-left text-[11px]"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
                 </div>
             </div>`;
@@ -424,7 +420,8 @@
                 fecha: document.getElementById('ing-fecha').value,
                 hora: document.getElementById('ing-hora').value,
                 perfil, modo,
-                sujeto: (document.getElementById('ing-nom')?.value || document.getElementById('ing-mat')?.value || document.getElementById('ing-dni')?.value || "S/D").toUpperCase(),
+                sujeto: (document.getElementById('ing-dni')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
+                nomSujeto: (document.getElementById('ing-nom')?.value || "").toUpperCase(),
                 sexo: document.getElementById('ing-sexo').value,
                 obs: document.getElementById('ing-obs').value.toUpperCase(),
                 dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(),
@@ -435,7 +432,7 @@
             try {
                 if (editingId) await window.fbUpdateDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', editingId), data);
                 else await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
-                playBeep(660, 200); renderView('ingresos', 'REGISTRO DE INGRESOS');
+                playBeep(660, 180); renderView('ingresos', 'REGISTRO DE INGRESOS');
             } catch (e) { alert("Error al guardar"); }
         }
 
@@ -446,8 +443,8 @@
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
                     <td class="px-5 py-4 font-mono text-blue-600 font-black text-sm">${i.hora}</td>
                     <td class="px-5 py-4">
-                        <div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left">${i.sujeto}</div>
-                        <div class="text-[8px] text-slate-400 italic uppercase font-bold text-left">${i.perfil} | ${i.modo}</div>
+                        <div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left">${i.nomSujeto || i.sujeto}</div>
+                        <div class="text-[8px] text-slate-400 font-bold text-left">${i.perfil} | ${i.modo}</div>
                     </td>
                     <td class="px-5 py-4 text-right">
                         ${(activeRole === ROLES.UCP || activeRole === ROLES.ADMIN) ? `<button onclick="editIngreso('${i.id}')" class="text-blue-500 mr-2">✏️</button>` : ''}
@@ -466,8 +463,8 @@
             document.getElementById('ing-perfil').value = rec.perfil;
             updateDynamicFields(rec.perfil);
             if(document.getElementById('ing-mat')) document.getElementById('ing-mat').value = rec.sujeto;
-            if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = rec.sujeto;
             if(document.getElementById('ing-dni')) document.getElementById('ing-dni').value = rec.sujeto;
+            if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = rec.nomSujeto || "";
             document.getElementById('ing-sexo').value = rec.sexo; setMode(rec.modo);
             if(rec.dominio) document.getElementById('ing-dominio').value = rec.dominio;
             if(rec.nMovil) document.getElementById('ing-n-movil').value = rec.nMovil;
@@ -476,31 +473,28 @@
         }
 
         async function deleteIngreso(id) {
-            if(confirm("¿Eliminar registro permanentemente?")) {
+            if(confirm("¿Eliminar registro? Solo DIP autorizado.")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', id));
             }
         }
 
-        // --- REPORTES CON BÚSQUEDA INTELIGENTE, FILTROS Y CALENDARIO ---
-        let reportSortCol = 'timestamp';
-        let reportSortDir = 'desc';
-
+        // --- REPORTES INTELIGENTES Y COMPRIMIDOS ---
         function renderReportesView(container) {
-            const today = new Date().toISOString().split('T')[0];
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 h-full flex flex-col text-left">
+                <div class="print-header hidden">INFORME DE CONTROL U.C.P. - FILTRADO POR: <span id="print-filter-text">TODOS</span></div>
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 no-print text-left">
                     <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left">Auditoría Inteligente</h3>
                     <div class="flex gap-2 w-full md:w-auto text-left">
-                        <button onclick="viewCalendarTotals()" class="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center">📅</button>
+                        <button onclick="viewCalendarTotals('ingresos')" class="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center">📅</button>
                         <button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">Excel</button>
-                        <button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">Imprimir</button>
+                        <button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">PDF Comprimido</button>
                     </div>
                 </div>
                 
                 <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 no-print text-left">
                     <div class="md:col-span-2 text-left">
-                        <input type="text" id="report-search" oninput="updateReportTable()" placeholder="BÚSQUEDA INTELIGENTE (NOMBRE, ID, DOMINIO, OPERADOR...)" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase">
+                        <input type="text" id="report-search" oninput="updateReportTable()" placeholder="BÚSQUEDA INTELIGENTE..." class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase">
                     </div>
                     <div class="flex gap-2 text-left">
                         <input type="date" id="report-from" onchange="updateReportTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none">
@@ -513,12 +507,12 @@
                         <table class="w-full text-left text-[11px] print-table text-left">
                             <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0 text-left">
                                 <tr>
-                                    <th class="px-4 py-4 border-b dark:border-slate-700 cursor-pointer text-left" onclick="sortReport('timestamp')">FECHA/HORA ↕</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 text-left">FECHA/HORA</th>
                                     <th class="px-4 py-4 border-b dark:border-slate-700 text-left">IDENTIDAD / PERFIL</th>
                                     <th class="px-4 py-4 border-b dark:border-slate-700 text-left">PERSONAL / CARGO</th>
                                     <th class="px-4 py-4 border-b dark:border-slate-700 text-left">MODO / DOMINIO</th>
                                     <th class="px-4 py-4 border-b dark:border-slate-700 text-left">OPERADOR</th>
-                                    <th class="px-4 py-4 border-b dark:border-slate-700 no-print text-left">ACCIONES</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 no-print text-left">OPC</th>
                                 </tr>
                             </thead>
                             <tbody id="report-table-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400 text-left"></tbody>
@@ -527,19 +521,13 @@
                     <div class="mt-4 flex justify-between items-center no-print text-left">
                         <p id="records-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left"></p>
                         <div class="flex gap-2 text-left">
-                            <button onclick="prevPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">←</button>
+                            <button onclick="prevPage()" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">←</button>
                             <span class="text-[10px] font-black uppercase pt-2 text-left" id="page-num-report">Pág. 1</span>
-                            <button onclick="nextPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">→</button>
+                            <button onclick="nextPage()" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">→</button>
                         </div>
                     </div>
                 </div>
             </div>`;
-            updateReportTable();
-        }
-
-        function sortReport(col) {
-            if(reportSortCol === col) reportSortDir = reportSortDir === 'asc' ? 'desc' : 'asc';
-            else { reportSortCol = col; reportSortDir = 'desc'; }
             updateReportTable();
         }
 
@@ -556,92 +544,142 @@
                 return matchesSearch && matchesFrom && matchesTo;
             });
 
-            // Sorting
-            filtered.sort((a,b) => {
-                let valA = a[reportSortCol], valB = b[reportSortCol];
-                if(reportSortDir === 'asc') return valA > valB ? 1 : -1;
-                return valA < valB ? 1 : -1;
-            });
-
-            const records = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+            document.getElementById('print-filter-text').innerText = `${search || 'TODOS'} | PERIODO: ${from || 'INICIO'} - ${to || 'FIN'}`;
             const total = Math.ceil(filtered.length / pageSize);
+            const records = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
             body.innerHTML = records.map(i => {
                 const p = window.PERSONAL_DB.find(x => x.id === i.sujeto);
-                const jerarquia = p ? p.cargo : "EXTERNO";
-                const nomCompleto = p ? `${p.apellido} ${p.nombre}` : (i.matPro ? "ABOGADO" : "VISITA/OTROS");
+                const ident = i.sujeto;
+                const nomYcargo = p ? `<div class="font-black text-slate-700 dark:text-slate-300 leading-none">${p.apellido} ${p.nombre}</div><div class="text-[7px] text-blue-400">${p.cargo}</div>` : `<div class="font-black text-slate-700 dark:text-slate-300 leading-none">${i.nomSujeto || 'NO IDENTIFICADO'}</div><div class="text-[7px] text-slate-400">${i.perfil}</div>`;
                 return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
-                    <td class="px-4 py-3 text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500">${i.hora}</span></td>
-                    <td class="px-4 py-3 text-left font-black text-slate-800 dark:text-white leading-none">${i.sujeto}<br><span class="text-[8px] text-slate-400 font-bold">${i.perfil}</span></td>
-                    <td class="px-4 py-3 text-left"><div class="font-black text-slate-700 dark:text-slate-300 leading-none">${nomCompleto}</div><div class="text-[8px] text-blue-400 italic">${jerarquia}</div></td>
-                    <td class="px-4 py-3 text-left">${i.modo} ${i.dominio || i.nMovil}</td>
-                    <td class="px-4 py-3 text-left font-black text-blue-600">${i.operador}</td>
-                    <td class="px-4 py-3 text-left no-print"><div class="flex gap-2">
-                        ${(activeRole === ROLES.UCP || activeRole === ROLES.ADMIN) ? `<button onclick="editIngreso('${i.id}')">✏️</button>` : ''}
-                        ${(activeRole === ROLES.DIP || activeRole === ROLES.ADMIN) ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}
-                    </div></td>
+                    <td class="px-3 py-2 leading-tight"><b>${i.fecha}</b><br><span class="font-mono text-blue-500">${i.hora}</span></td>
+                    <td class="px-3 py-2 font-black text-slate-800 dark:text-white leading-none">${ident}<br><span class="text-[7px] text-slate-400">${i.perfil}</span></td>
+                    <td class="px-3 py-2">${nomYcargo}</td>
+                    <td class="px-3 py-2 text-[9px]">${i.modo} ${i.dominio || i.nMovil}</td>
+                    <td class="px-3 py-2 font-black text-blue-600">${i.operador}</td>
+                    <td class="px-3 py-2 no-print">
+                        <div class="flex gap-2">
+                        ${activeRole === ROLES.DIP || activeRole === ROLES.ADMIN ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}
+                        </div>
+                    </td>
                 </tr>`;
             }).join('');
-            document.getElementById('records-count').innerText = `TOTAL FILTRADO: ${filtered.length} REGISTROS`;
+            document.getElementById('records-count').innerText = `ENCONTRADOS: ${filtered.length} REGISTROS`;
             document.getElementById('page-num-report').innerText = `Pág. ${currentPage} de ${total || 1}`;
         };
 
-        function viewCalendarTotals() {
+        // --- GESTIÓN DE BODY SCAN Y BASES ---
+        function renderPasesBodyView(container) {
+            container.innerHTML = `
+            <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
+                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
+                    <div class="text-left flex-1 text-left">
+                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Base Body Scan</h2>
+                        <div class="flex items-center gap-6 mt-4 text-left">
+                            <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50 text-left">
+                                <span class="text-[10px] font-black text-amber-600 block mb-1 uppercase text-left">Registros en Base</span>
+                                <span id="total-body" class="text-2xl font-black dark:text-white text-left">${window.pasesBodyData.length}</span>
+                            </div>
+                            <button onclick="viewCalendarTotals('body')" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 transition-all text-center">📅</button>
+                            <button onclick="viewBodyData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 transition-all text-center">👁️</button>
+                        </div>
+                    </div>
+                    <div class="w-full max-w-sm flex flex-col gap-4 text-left">
+                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white transition-all text-center" onclick="document.getElementById('body-file').click()">
+                            <input type="file" id="body-file" class="hidden" onchange="updateFileName('body-file-label', this)">
+                            <p id="body-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center">Importar Excel de Body</p>
+                        </div>
+                        <button onclick="processBodyFile()" class="bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center">Sincronizar Nuevos</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function processBodyFile() {
+            const input = document.getElementById('body-file'); if (!input || !input.files.length) return alert("Seleccione un archivo");
+            const existingKeys = new Set(window.pasesBodyData.map(p => `${p.matricula}_${p.fechaHora}`));
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const list = js.map(row => {
+                    let mat = "", nom = "", fec = "", sec = "SCANNER";
+                    Object.keys(row).forEach(key => {
+                        const ck = key.toUpperCase().trim();
+                        if(ck === "MATRICULA" || ck === "AFILIADO") mat = String(row[key]).split('.')[0].trim();
+                        if(ck === "NOMBRE" || ck === "SUJETO") nom = String(row[key]).trim().toUpperCase();
+                        if(ck.includes("FECHA") || ck.includes("HORA")) fec = String(row[key]).trim();
+                        if(ck.includes("SECTOR")) sec = String(row[key]).trim().toUpperCase();
+                    });
+                    return { matricula: mat, nombre: nom, fechaHora: fec, sector: sec };
+                }).filter(p => p.matricula && !existingKeys.has(`${p.matricula}_${p.fechaHora}`));
+                
+                if (list.length === 0) return alert("Sin registros nuevos encontrados.");
+                await fbUpdateBody(list);
+                alert(`${list.length} registros nuevos subidos.`);
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        }
+
+        function viewCalendarTotals(type) {
             const counts = {};
-            window.ingresosRecientes.forEach(i => counts[i.fecha] = (counts[i.fecha] || 0) + 1);
-            const sortedDates = Object.keys(counts).sort((a,b) => b.localeCompare(a));
-            document.getElementById('calendar-list').innerHTML = sortedDates.map(d => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700">
-                    <span class="font-black text-[10px] text-slate-500">${d}</span>
-                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs">${counts[d]}</span>
-                </div>`).join('');
+            const data = type === 'ingresos' ? window.ingresosRecientes : window.pasesBodyData;
+            data.forEach(i => {
+                const d = type === 'ingresos' ? i.fecha : i.fechaHora.split(' ')[0];
+                counts[d] = (counts[d] || 0) + 1;
+            });
+            const sorted = Object.keys(counts).sort((a,b) => b.localeCompare(a));
+            const now = new Date();
+            const sixtyDays = 60 * 24 * 60 * 60 * 1000;
+
+            document.getElementById('calendar-list').innerHTML = sorted.map(d => {
+                const parts = d.split('/');
+                const dateObj = parts.length === 3 ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`) : new Date(d);
+                const canDelete = (now - dateObj) > sixtyDays && type === 'body';
+                return `
+                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left">
+                    <span class="font-black text-[9px] uppercase text-slate-500">${d}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center">${counts[d]}</span>
+                        ${canDelete ? `<button onclick="deleteBodyByDate('${d}')" class="p-1 bg-red-100 text-red-600 rounded text-[8px] font-black text-center">BORRAR</button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
             document.getElementById('modal-calendar').classList.remove('hidden');
         }
 
-        // --- BASES CON BÚSQUEDA Y PAGINACIÓN ---
-        function openDataModal(title, headers, rows) {
-            modalFullData = rows; modalHeaders = headers; modalPage = 1;
-            document.getElementById('modal-data-title').innerText = title;
-            document.getElementById('modal-search').value = "";
-            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
-            updateModalTable();
-            document.getElementById('modal-data').classList.remove('hidden');
+        async function deleteBodyByDate(dateStr) {
+            if(!confirm(`¿Eliminar todos los registros de Body Scan del ${dateStr}? Esta acción es irreversible.`)) return;
+            const toDelete = window.pasesBodyData.filter(p => p.fechaHora.split(' ')[0] === dateStr);
+            const batch = writeBatch(window.fbDb);
+            toDelete.forEach(p => batch.delete(doc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'pases_body', p.id)));
+            await batch.commit();
+            alert("Eliminado con éxito.");
         }
 
-        function updateModalTable() {
-            const query = document.getElementById('modal-search').value.toUpperCase();
-            const filtered = modalFullData.filter(row => row.some(cell => String(cell).toUpperCase().includes(query)));
-            const total = Math.ceil(filtered.length / modalPageSize);
-            const slice = filtered.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
-            document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${total || 1}`;
-        }
-        function nextModalPage() { modalPage++; updateModalTable(); }
-        function prevModalPage() { if(modalPage > 1) { modalPage--; updateModalTable(); } }
-        function closeDataModal() { document.getElementById('modal-data').classList.add('hidden'); }
-
-        // --- DINAMISMO Y LÓGICA DE AGENTE (BODY SCAN 60 DÍAS) ---
+        // --- DINAMISMO Y ESCANEO QR MEJORADO ---
         function updateDynamicFields(perfil) {
             const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
             if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
                 d.innerHTML = `
                     <div class="space-y-3 animate-fade-in text-left">
                         <div class="flex gap-2">
-                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="MATRÍCULA / AFILIADO">
+                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="AFILIADO / MATRÍCULA">
                             <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
                         </div>
                         <div id="personal-preview" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-900/50 rounded-2xl text-left">
                             <div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-xs mb-2"></div>
-                            <div id="body-analytics" class="space-y-2 border-t dark:border-emerald-900/50 pt-2 text-left"></div>
+                            <div id="body-analytics" class="space-y-2 border-t dark:border-emerald-900/50 pt-2"></div>
                         </div>
-                        ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center" placeholder="NRO UNIDAD">` : ''}
+                        ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center" placeholder="NRO UNIDAD text-center">` : ''}
                     </div>`;
             } else {
                 d.innerHTML = `
                     <div class="space-y-3 animate-fade-in text-left">
-                        <div class="flex gap-2">
-                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none" placeholder="DNI SIN PUNTOS">
+                        <div class="flex gap-2 text-left">
+                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none" placeholder="DNI">
                             <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📸</button>
                         </div>
                         <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="APELLIDO Y NOMBRE">
@@ -650,60 +688,77 @@
             }
         }
 
+        function handleScanSuccess(text, type) {
+            playBeep(440, 150); stopScanner();
+            if (type === 'QR') {
+                const parts = text.split('@').map(s => s.trim());
+                if (parts.length >= 8) { // Formato Argentina
+                    document.getElementById('ing-dni').value = parts[4];
+                    document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
+                } else if (parts.length >= 4) {
+                    document.getElementById('ing-dni').value = parts[0];
+                    document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
+                } else {
+                    document.getElementById('ing-dni').value = text;
+                }
+            } else if (type === 'BARCODE') {
+                document.getElementById('ing-mat').value = text;
+                searchPersonalInDB(text);
+            } else if (type === 'LOGIN') {
+                document.getElementById('username').value = text;
+            }
+        }
+
         function searchPersonalInDB(val) {
             const id = val.trim(); const p = window.PERSONAL_DB.find(x => x.id === id);
             const preview = document.getElementById('personal-preview'); if (!p) { if(preview) preview.classList.add('hidden'); return; }
-            
             document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
             
-            // Cálculo de 60 días
-            const now = new Date(); const sixtyDaysAgo = new Date(); sixtyDaysAgo.setDate(now.getDate() - 60);
-            
+            const now = new Date(); const limit = new Date(now - 60 * 24 * 60 * 60 * 1000);
             const pases = window.pasesBodyData.filter(b => {
                 if (b.matricula !== id) return false;
-                const [d, m, y] = b.fechaHora.split(' ')[0].split('/');
-                const dateB = new Date(`${y}-${m}-${d}`);
-                return dateB >= sixtyDaysAgo;
+                const parts = b.fechaHora.split(' ')[0].split('/');
+                const dateP = parts.length === 3 ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`) : new Date(b.fechaHora);
+                return dateP >= limit;
             }).sort((a,b) => String(b.fechaHora).localeCompare(String(a.fechaHora)));
 
-            const analytics = document.getElementById('body-analytics');
-            analytics.innerHTML = `
-                <div class="flex justify-between items-center mb-1 text-left">
-                    <span class="text-[9px] font-black uppercase text-slate-500">Pases Body (60d)</span>
-                    <span class="px-2 py-0.5 bg-blue-600 text-white rounded-lg text-[10px] font-black">${pases.length}</span>
-                </div>
-                <div class="max-h-24 overflow-y-auto text-[8px] font-bold text-slate-400 space-y-1 no-scrollbar text-left">
-                    ${pases.map(pase => `<div>• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic">SIN REGISTROS RECIENTES</div>'}
+            document.getElementById('body-analytics').innerHTML = `
+                <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-black text-slate-500">PASES BODY (60D)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
+                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar">
+                    ${pases.map(pase => `<div>• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic">SIN REGISTROS</div>'}
                 </div>`;
             preview.classList.remove('hidden');
             if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${p.apellido} ${p.nombre}`;
         }
 
-        // --- AUXILIARES ---
+        // --- FUNCIONALIDADES GENERALES ---
+        function openDataModal(title, headers, rows) {
+            modalFullData = rows; modalHeaders = headers; modalPage = 1;
+            document.getElementById('modal-data-title').innerText = title;
+            document.getElementById('modal-search').value = "";
+            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
+            updateModalTable(); document.getElementById('modal-data').classList.remove('hidden');
+        }
+        function updateModalTable() {
+            const q = document.getElementById('modal-search').value.toUpperCase();
+            const filt = modalFullData.filter(r => r.some(c => String(c).toUpperCase().includes(q)));
+            const total = Math.ceil(filt.length / modalPageSize);
+            const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${total || 1}`;
+        }
+        function nextModalPage() { if(modalPage * modalPageSize < modalFullData.length) { modalPage++; updateModalTable(); } }
+        function prevModalPage() { if(modalPage > 1) { modalPage--; updateModalTable(); } }
+        function closeDataModal() { document.getElementById('modal-data').classList.add('hidden'); }
         function startScanner(type) {
-            document.getElementById('scanner-title').innerText = type === 'QR' ? "ESCANEO DNI" : "ESCANEO CREDENCIAL";
+            document.getElementById('scanner-title').innerText = type;
             document.getElementById('modal-scanner').classList.remove('hidden');
             if(html5QrCode) html5QrCode.clear(); html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 30, aspectRatio: 1.0 }, (text) => {
-                playBeep(440, 150); stopScanner();
-                if(type==='LOGIN') document.getElementById('username').value = text;
-                else if(type==='BARCODE') { document.getElementById('ing-mat').value = text; searchPersonalInDB(text); }
-                else if(type==='QR') {
-                    const parts = text.split('@').map(s => s.trim());
-                    if(parts.length >= 4) {
-                        document.getElementById('ing-dni').value = parts[0].length > 10 ? parts[4] : parts[0];
-                        document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
-                    }
-                }
-            }).catch(() => stopScanner());
+            html5QrCode.start({ facingMode: "environment" }, { fps: 30, aspectRatio: 1.0 }, (t) => handleScanSuccess(t, type)).catch(() => stopScanner());
         }
         function stopScanner() { if(html5QrCode) html5QrCode.stop().finally(() => { html5QrCode.clear(); document.getElementById('modal-scanner').classList.add('hidden'); }); }
         function getOperatorID() { return currentUser ? `${currentUser.fullName.split(' ').map(n=>n[0]).join('')}-${currentUser.username.slice(-3)}` : "S/D"; }
-        function toggleSidebar(f) {
-            const s = document.getElementById('sidebar'), o = document.getElementById('sidebar-overlay');
-            if(f === false || (!f && !s.classList.contains('-translate-x-full'))) { s.classList.add('-translate-x-full'); o.classList.add('hidden'); }
-            else { s.classList.remove('-translate-x-full'); o.classList.remove('hidden'); }
-        }
+        function toggleSidebar(f) { const s = document.getElementById('sidebar'), o = document.getElementById('sidebar-overlay'); if(f === false || (!f && !s.classList.contains('-translate-x-full'))) { s.classList.add('-translate-x-full'); o.classList.add('hidden'); } else { s.classList.remove('-translate-x-full'); o.classList.remove('hidden'); } }
         function toggleTheme() { document.documentElement.classList.toggle('dark'); }
         function logout() { window.location.reload(); }
         function updateHeaderDate() { document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase(); }
@@ -713,19 +768,64 @@
             document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg text-xl text-center ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-lg':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
             if (m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
         }
-        function viewPersonalData() { openDataModal("BASE DE PERSONAL", ["ID/MATRÍCULA", "APELLIDO", "NOMBRE", "JERARQUÍA"], window.PERSONAL_DB.map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
-        function viewBodyData() { openDataModal("HISTORIAL BODY SCAN", ["MATRÍCULA", "NOMBRE", "FECHA/HORA", "SECTOR"], window.pasesBodyData.map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
+        function viewPersonalData() { openDataModal("BASE PERSONAL", ["MATRÍCULA", "APELLIDO", "NOMBRE", "JERARQUÍA"], window.PERSONAL_DB.map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
+        function viewBodyData() { openDataModal("HISTORIAL BODY SCAN", ["ID", "NOMBRE", "FECHA/HORA", "SECTOR"], window.pasesBodyData.map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
         function exportToExcel() {
-            const data = window.ingresosRecientes.map(i => {
-                const p = window.PERSONAL_DB.find(x => x.id === i.sujeto);
-                return { Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, ID: i.sujeto, Nombre: p ? `${p.apellido} ${p.nombre}` : (i.matPro ? "ABOGADO" : "OTRO"), Cargo: p ? p.cargo : "-", Modo: i.modo, Operador: i.operador };
-            });
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "UCP"); XLSX.writeFile(wb, `Reporte_UCP.xlsx`);
+            const data = window.ingresosRecientes.map(i => ({ Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, Sujeto: i.sujeto, Nombre: i.nomSujeto, Modo: i.modo, Operador: i.operador, Observaciones: i.obs }));
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Auditoria"); XLSX.writeFile(wb, `Reporte_UCP.xlsx`);
         }
+        function updateFileName(id, input) { if(input.files.length) document.getElementById(id).innerText = input.files[0].name.toUpperCase(); }
         function prevPage() { if(currentPage > 1) { currentPage--; updateReportTable(); } }
-        function nextPage() { if(currentPage < Math.ceil(window.ingresosRecientes.length / pageSize)) { currentPage++; updateReportTable(); } }
+        function nextPage() { if(currentPage * pageSize < window.ingresosRecientes.length) { currentPage++; updateReportTable(); } }
 
-        // Mantenemos la gestión de usuarios
+        function renderImportPersonalView(container) {
+            container.innerHTML = `
+            <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
+                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
+                    <div class="text-left flex-1">
+                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Importar Personal</h2>
+                        <div class="flex items-center gap-6 mt-4 text-left">
+                            <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50 text-left">
+                                <span class="text-[10px] font-black text-blue-600 block mb-1 uppercase text-left">Agentes en Base</span>
+                                <span id="total-personal" class="text-2xl font-black dark:text-white text-left">${window.PERSONAL_DB.length}</span>
+                            </div>
+                            <button onclick="viewPersonalData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-blue-600 transition-all text-center">👁️</button>
+                        </div>
+                    </div>
+                    <div class="w-full max-w-sm flex flex-col gap-4 text-left">
+                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white transition-all text-center" onclick="document.getElementById('personal-file').click()">
+                            <input type="file" id="personal-file" class="hidden" onchange="updateFileName('personal-file-label', this)">
+                            <p id="personal-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center">Seleccionar archivo .xlsx</p>
+                        </div>
+                        <button onclick="processPersonalFile()" class="bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center">Actualizar Base</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function processPersonalFile() {
+            const input = document.getElementById('personal-file'); if (!input || !input.files.length) return alert("Seleccione un archivo");
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const list = js.map(row => {
+                    let id = "", nom = "", ape = "", jer = "AGENTE";
+                    Object.keys(row).forEach(key => {
+                        const ck = key.toUpperCase().trim();
+                        if(ck === "MATRICULA" || ck === "AFILIADO") id = String(row[key]).split('.')[0].trim();
+                        if(ck === "NOMBRE" || ck === "NOMBRES") nom = String(row[key]).trim().toUpperCase();
+                        if(ck === "APELLIDO" || ck === "APELLIDOS") ape = String(row[key]).trim().toUpperCase();
+                        if(ck === "JERARQUIA" || ck === "CARGO") jer = String(row[key]).trim().toUpperCase();
+                    });
+                    return { id, nombre: nom, apellido: ape, cargo: jer };
+                }).filter(p => p.id);
+                await window.fbUpdatePersonal(list);
+                alert("Base de personal actualizada con éxito.");
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        }
+
         function renderUsersAdminView(container) {
             container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
                 <div class="xl:col-span-4 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
@@ -746,7 +846,7 @@
         }
         window.refreshUsersList = function() {
             const body = document.getElementById('users-list-body'); if (!body) return;
-            body.innerHTML = window.SYSTEM_USERS.map(u => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left"><td class="px-5 py-4 text-left"><div class="font-black uppercase">${u.fullName}</div><div class="text-[8px] text-slate-400 font-bold uppercase">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right">${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
+            body.innerHTML = window.SYSTEM_USERS.map(u => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left"><td class="px-5 py-4 text-left"><div class="font-black uppercase text-left">${u.fullName}</div><div class="text-[8px] text-slate-400 font-bold uppercase text-left">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right">${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
         };
         async function handleSaveUser() {
             const u = document.getElementById('u-user').value.trim(), n = document.getElementById('u-name').value.trim(), p = document.getElementById('u-pass').value, r = document.getElementById('u-role').value;
