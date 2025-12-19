@@ -102,7 +102,7 @@
                     // Escucha de Usuarios del Sistema
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
-                        snapshot.forEach(doc => data.push(doc.data()));
+                        snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
                         if (data.length > 0) window.SYSTEM_USERS = data;
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
@@ -110,11 +110,10 @@
                     // Escucha de Base de Personal
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                         const data = [];
-                        snapshot.forEach(doc => data.push(doc.data()));
+                        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
                         window.PERSONAL_DB = data;
                         if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
                         if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
-                        // Forzar actualización de reportes ya que dependen de los nombres en la base de personal
                         if (window.updateReportTable) window.updateReportTable();
                         if (window.updateIngresosTable) window.updateIngresosTable();
                     }, errorLog);
@@ -860,9 +859,9 @@
             if (p) { document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`; }
             else { document.getElementById('prev-name').innerText = "SUJETO NO EN BASE PERSONAL"; }
             document.getElementById('body-analytics').innerHTML = `
-                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center text-center">${pases.length}</span></div>
-                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left text-left">
-                    ${pases.map(pase => `<div class="text-left text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left text-left">SIN REGISTROS RECIENTES</div>'}
+                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
+                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
+                    ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
                 </div>`;
             preview.classList.remove('hidden');
         }
@@ -959,9 +958,9 @@
             data.forEach(i => { const d = type === 'ingresos' ? i.fecha : i.fechaHora.split(' ')[0]; counts[d] = (counts[d] || 0) + 1; });
             const sorted = Object.keys(counts).sort((a,b) => b.localeCompare(a));
             document.getElementById('calendar-list').innerHTML = sorted.map(d => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left text-left">
-                    <span class="font-black text-[9px] uppercase text-slate-500 text-left text-left">${d}</span>
-                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center text-center text-center">${counts[d]}</span>
+                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left">
+                    <span class="font-black text-[9px] uppercase text-slate-500 text-left">${d}</span>
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center">${counts[d]}</span>
                 </div>`).join('');
             document.getElementById('modal-calendar').classList.remove('hidden');
         }
@@ -990,14 +989,14 @@
         function openDataModal(title, headers, rows) {
             modalFullData = rows; modalHeaders = headers; modalPage = 1;
             document.getElementById('modal-data-title').innerText = title;
-            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left text-left text-left">${h}</th>`).join('')}</tr>`;
+            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
             updateModalTable(); document.getElementById('modal-data').classList.remove('hidden');
         }
         function updateModalTable() {
             const q = document.getElementById('modal-search').value.toUpperCase();
             const filt = (modalFullData || []).filter(r => r.some(c => String(c).toUpperCase().includes(q)));
             const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
             document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
         }
         function exportToExcel() {
