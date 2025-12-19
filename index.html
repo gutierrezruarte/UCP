@@ -6,7 +6,6 @@
     <title>U.C.P. - Portal de Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Configuración necesaria para que Tailwind detecte la clase 'dark' manualmente
         tailwind.config = {
             darkMode: 'class'
         }
@@ -18,9 +17,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Manejo seguro de la configuración para evitar bloqueos en entornos externos (GitHub/Local)
         let firebaseConfig = {};
         try {
             firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
@@ -41,7 +39,6 @@
         window.fbUpdateDoc = updateDoc;
         window.fbGetDocs = getDocs;
 
-        // Inicializamos con el admin por defecto para permitir login instantáneo
         window.SYSTEM_USERS = [{
             username: '136219951',
             password: 'Marquitos123',
@@ -60,7 +57,6 @@
             };
 
             if (!auth) {
-                console.error("Firebase Auth not initialized. Check configuration.");
                 hideLoader();
                 return;
             }
@@ -72,13 +68,12 @@
                     await signInAnonymously(auth);
                 }
                 
-                // Registro de admin en segundo plano
                 const ensureAdmin = async () => {
                     if (!db) return;
                     try {
                         const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
                         await setDoc(adminRef, window.SYSTEM_USERS[0], { merge: true });
-                    } catch (e) { /* Deferred silently */ }
+                    } catch (e) { }
                 };
                 ensureAdmin();
 
@@ -94,10 +89,13 @@
                 if (user) {
                     const errorLog = (err) => console.warn("Firestore Error:", err);
 
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), orderBy('timestamp', 'desc'), limit(200)), (snapshot) => {
-                        const data = [];
+                    // Consultas simples para evitar errores de índices (Regla 2)
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
+                        let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        window.ingresosRecientes = data;
+                        // Ordenamiento en memoria
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        window.ingresosRecientes = data.slice(0, 300); 
                         if (window.updateIngresosTable) window.updateIngresosTable();
                         if (window.updateReportTable) window.updateReportTable();
                     }, errorLog);
@@ -105,7 +103,6 @@
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push(doc.data()));
-                        // Si hay datos en la DB, actualizamos la lista (pero mantenemos el admin local si la DB falla)
                         if (data.length > 0) window.SYSTEM_USERS = data;
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
@@ -124,10 +121,11 @@
                         if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                     }, errorLog);
 
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), orderBy('timestamp', 'desc'), limit(300)), (snapshot) => {
-                        const data = [];
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
+                        let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        window.activityLogs = data;
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        window.activityLogs = data.slice(0, 500);
                         if (window.updateActivityLogsTable) window.updateActivityLogsTable();
                     }, errorLog);
                     
@@ -166,6 +164,7 @@
         };
 
         window.fbUpdatePersonal = async (list) => {
+            if(!db) return;
             const chunks = [];
             for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
@@ -178,6 +177,7 @@
         };
 
         window.fbUpdateBody = async (list) => {
+            if(!db) return;
             const chunks = [];
             for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
@@ -216,7 +216,7 @@
                 try {
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), data);
                     successful.push(data.timestamp);
-                } catch (e) { /* Keep pending */ }
+                } catch (e) { }
             }
             const remaining = pending.filter(p => !successful.includes(p.timestamp));
             localStorage.setItem('PENDING_INGRESOS', JSON.stringify(remaining));
@@ -401,9 +401,7 @@
             if (!('wakeLock' in navigator)) return;
             try {
                 wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {
-                console.warn("Wake Lock no disponible.");
-            }
+            } catch (err) { }
         }
 
         function initUI() {
@@ -424,10 +422,7 @@
         async function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
-            
-            // Validamos contra la lista disponible (que siempre tiene al menos el admin fallback)
             const user = window.SYSTEM_USERS.find(x => x.username === u && x.password === p);
-            
             if (user) {
                 playBeep(880, 100);
                 currentUser = user;
@@ -558,7 +553,6 @@
         function renderReportesView(container) {
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 h-full flex flex-col text-left">
-                <div class="print-header hidden text-left">INFORME U.C.P. - FILTRADO: <span id="print-filter-text">TODOS</span></div>
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 shrink-0 no-print text-left">
                     <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left">Auditoría Acceso</h3>
                     <div class="flex gap-2 w-full md:w-auto text-center">
@@ -973,7 +967,8 @@
             }
 
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), data);
+                if(!window.fbDb) throw new Error("Offline");
+                await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
                 await logActivity("NUEVO INGRESO: " + data.sujeto + " - " + data.perfil);
                 playBeep(660, 150); showMessage("Registro Guardado", "success");
             } catch (e) {
@@ -1027,7 +1022,7 @@
 
         async function processBodyFile() {
             const input = document.getElementById('body-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
-            const existingKeys = new Set(window.pasesBodyData.map(p => `${p.matricula}_${p.fechaHora}`));
+            const existingKeys = new Set((window.pasesBodyData || []).map(p => `${p.matricula}_${p.fechaHora}`));
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
@@ -1083,7 +1078,7 @@
         function stopScanner() { if(html5QrCode) html5QrCode.stop().finally(() => { html5QrCode.clear(); document.getElementById('modal-scanner').classList.add('hidden'); }); }
         function updateFileName(id, input) { if(input.files.length) document.getElementById(id).innerText = input.files[0].name.toUpperCase(); }
         function prevModalPage() { if(modalPage > 1) { modalPage--; updateModalTable(); } }
-        function nextModalPage() { if(modalPage * modalPageSize < modalFullData.length) { modalPage++; updateModalTable(); } }
+        function nextModalPage() { if(modalPage * modalPageSize < (modalFullData || []).length) { modalPage++; updateModalTable(); } }
         function viewPersonalData() { openDataModal("BASE PERSONAL", ["ID", "APELLIDO", "NOMBRE", "CARGO"], (window.PERSONAL_DB || []).map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
         function viewBodyData() { openDataModal("HISTORIAL BODY SCAN", ["ID", "NOMBRE", "FECHA/HORA", "SECTOR"], (window.pasesBodyData || []).map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
         function openDataModal(title, headers, rows) {
@@ -1094,9 +1089,9 @@
         }
         function updateModalTable() {
             const q = document.getElementById('modal-search').value.toUpperCase();
-            const filt = modalFullData.filter(r => r.some(c => String(c).toUpperCase().includes(q)));
+            const filt = (modalFullData || []).filter(r => r.some(c => String(c).toUpperCase().includes(q)));
             const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
             document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
         }
         function exportToExcel() {
