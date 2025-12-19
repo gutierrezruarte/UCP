@@ -14,15 +14,11 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuración e Inicialización
-        let firebaseConfig = {};
-        try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        } catch (e) { console.error("Error parsing config:", e); }
-
-        const app = Object.keys(firebaseConfig).length ? initializeApp(firebaseConfig) : null;
-        const auth = app ? getAuth(app) : null;
-        const db = app ? getFirestore(app) : null;
+        // Global variables provided by environment (MANDATORY RULES)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ucp-spc-v1';
 
         // Exponer a global para funciones tradicionales
@@ -46,27 +42,23 @@
             };
 
             try {
-                if (!auth) {
-                    hideLoader();
-                    return;
-                }
-
+                // RULE 3: Auth BEFORE Queries
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
                 
-                if (db) {
-                    const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                    await setDoc(adminRef, {
-                        username: '136219951',
-                        password: 'Marquitos123',
-                        fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
-                        role: 'ADMINISTRADOR',
-                        multiRole: true
-                    }, { merge: true });
-                }
+                // Asegurar persistencia del usuario administrador
+                const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
+                await setDoc(adminRef, {
+                    username: '136219951',
+                    password: 'Marquitos123',
+                    fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+                    role: 'ADMINISTRADOR',
+                    multiRole: true
+                }, { merge: true });
+                
             } catch (error) {
                 console.error("Auth Error:", error);
             } finally {
@@ -74,53 +66,56 @@
             }
         };
 
-        // Escuchas en tiempo real - Sincronización de colecciones
-        if (auth && db) {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    const errorLog = (err) => console.warn("Firestore Error:", err);
+        // Escuchas en tiempo real - Sincronización de colecciones (RULE 3 Guard)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                const errorLog = (err) => console.warn("Firestore Error:", err);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
-                        let data = [];
-                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                        window.ingresosRecientes = data;
-                        if (window.updateIngresosTable) window.updateIngresosTable();
-                        if (window.updateReportTable) window.updateReportTable();
-                    }, errorLog);
+                // Sincronización de Ingresos
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
+                    let data = [];
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    window.ingresosRecientes = data;
+                    if (window.updateIngresosTable) window.updateIngresosTable();
+                    if (window.updateReportTable) window.updateReportTable();
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
-                        const data = [];
-                        snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
-                        window.SYSTEM_USERS = data;
-                        if (window.refreshUsersList) window.refreshUsersList();
-                    }, errorLog);
+                // Usuarios
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
+                    const data = [];
+                    snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
+                    window.SYSTEM_USERS = data;
+                    if (window.refreshUsersList) window.refreshUsersList();
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
-                        const data = [];
-                        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-                        window.PERSONAL_DB = data;
-                        if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
-                        if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
-                    }, errorLog);
+                // Personal
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
+                    const data = [];
+                    snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                    window.PERSONAL_DB = data;
+                    if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
+                    if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
-                        const data = [];
-                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        window.pasesBodyData = data;
-                        if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
-                    }, errorLog);
+                // Body Scan
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
+                    const data = [];
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                    window.pasesBodyData = data;
+                    if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
-                        let data = [];
-                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                        window.activityLogs = data;
-                        if (window.updateActivityLogsTable) window.updateActivityLogsTable();
-                    }, errorLog);
-                }
-            });
-        }
+                // Logs
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
+                    let data = [];
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    window.activityLogs = data;
+                    if (window.updateActivityLogsTable) window.updateActivityLogsTable();
+                }, errorLog);
+            }
+        });
 
         window.onload = () => {
             const savedTheme = localStorage.getItem('theme');
@@ -514,7 +509,7 @@
                 d.innerHTML = `
                     <div class="space-y-3 animate-fade-in text-left">
                         <div class="flex gap-2 text-left">
-                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="AFILIADO / MATRÍCULA">
+                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="AFILIADO / MATRÍCULA">
                             <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
                         </div>
                         <div id="personal-preview" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 rounded-2xl text-left">
@@ -555,10 +550,8 @@
                 return;
             }
 
-            // Búsqueda en base de personal (insensible a mayúsculas y espacios)
             const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim().toUpperCase() === id);
             
-            // Búsqueda de pases Body (últimos 60 días)
             let pases = [];
             try {
                 const now = new Date();
@@ -583,20 +576,15 @@
                     const dateB = new Date(b.fechaHora.includes('/') ? b.fechaHora.split('/').reverse().join('-') : b.fechaHora);
                     return dateB - dateA;
                 });
-            } catch (err) {
-                console.error("Error procesando pases:", err);
-            }
+            } catch (err) { console.error(err); }
 
             if (!p && pases.length === 0) {
                 preview.classList.add('hidden');
                 return;
             }
 
-            if (p) {
-                prevName.innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
-            } else {
-                prevName.innerText = "SUJETO NO EN BASE PERSONAL";
-            }
+            if (p) prevName.innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
+            else prevName.innerText = "SUJETO NO EN BASE PERSONAL";
 
             if (bodyAnalytics) {
                 bodyAnalytics.innerHTML = `
@@ -608,7 +596,6 @@
                         ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
                     </div>`;
             }
-
             preview.classList.remove('hidden');
         };
 
