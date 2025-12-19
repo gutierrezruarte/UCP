@@ -111,6 +111,9 @@
                     window.activityLogs = data;
                     if (window.updateActivityLogsTable) window.updateActivityLogsTable();
                 }, errorLog);
+                
+                // Intentar sincronizar datos pendientes al conectar
+                setTimeout(syncOfflineData, 2000);
             }
         });
 
@@ -138,6 +141,9 @@
                     renderView(event.state.view, event.state.title, false);
                 }
             });
+
+            window.addEventListener('online', syncOfflineData);
+            setInterval(syncOfflineData, 60000); // Check cada minuto
         };
 
         window.fbUpdatePersonal = async (list) => {
@@ -180,6 +186,25 @@
                 });
             } catch (e) { console.error("Log error:", e); }
         };
+
+        async function syncOfflineData() {
+            if (!navigator.onLine || !currentUser) return;
+            const pending = JSON.parse(localStorage.getItem('PENDING_INGRESOS') || '[]');
+            if (pending.length === 0) return;
+
+            let successful = [];
+            for (const data of pending) {
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), data);
+                    successful.push(data.timestamp);
+                } catch (e) {
+                    console.warn("Error sincronizando un registro, se reintentará luego.");
+                }
+            }
+            const remaining = pending.filter(p => !successful.includes(p.timestamp));
+            localStorage.setItem('PENDING_INGRESOS', JSON.stringify(remaining));
+            if (successful.length > 0) showMessage(`Sincronizados ${successful.length} registros pendientes.`, "success");
+        }
     </script>
 
     <style>
@@ -382,6 +407,11 @@
         async function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
+            // Aseguramos que la base de usuarios esté disponible antes de validar
+            if (window.SYSTEM_USERS.length === 0) {
+                showMessage("Sincronizando base de usuarios, espere un momento...", "info");
+                return;
+            }
             const user = window.SYSTEM_USERS.find(x => x.username === u && x.password === p);
             if (user) {
                 playBeep(880, 100);
@@ -477,9 +507,9 @@
             container.innerHTML = `
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full text-left">
                 <div class="xl:col-span-5 text-left">
-                    <div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
+                    <div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left text-left">
                         <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
-                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic">Registro Acceso</h3>
+                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic text-left">Registro Acceso</h3>
                             <div class="grid grid-cols-2 gap-3 text-left">
                                 <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
                                 <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
@@ -529,7 +559,7 @@
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-hidden flex flex-col text-left">
+                <div class="flex-1 overflow-hidden flex flex-col text-left text-left">
                     <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl text-left">
                         <table class="w-full text-left print-table text-left">
                             <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[7px] sticky top-0 text-left">
@@ -569,7 +599,7 @@
                         </form>
                     </div>
                 </div>
-                <div class="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden text-left">
+                <div class="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden text-left text-left">
                     <table class="w-full text-left text-[11px] text-left text-left"><tbody id="users-list-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table>
                 </div>
             </div>`;
@@ -607,7 +637,7 @@
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
                     <div class="text-left flex-1 text-left">
-                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Base Body Scan</h2>
+                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left text-left">Base Body Scan</h2>
                         <div class="flex items-center gap-6 mt-4 text-left">
                             <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50 text-left">
                                 <span class="text-[10px] font-black text-amber-600 block mb-1 uppercase text-left">Registros</span>
@@ -620,7 +650,7 @@
                     <div class="w-full max-w-sm flex flex-col gap-4 text-left">
                         <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white transition-all text-center" onclick="document.getElementById('body-file').click()">
                             <input type="file" id="body-file" class="hidden" onchange="updateFileName('body-file-label', this)">
-                            <p id="body-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center">Sincronizar Body Scan (.xlsx)</p>
+                            <p id="body-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center text-center">Sincronizar Body Scan (.xlsx)</p>
                         </div>
                         <button onclick="processBodyFile()" class="bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center text-center text-center">Importar Nuevos</button>
                     </div>
@@ -711,10 +741,10 @@
             const records = (window.ingresosRecientes || []).slice(0, 15);
             b.innerHTML = records.map(i => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left">
-                    <td class="px-5 py-4 font-mono text-blue-600 font-black text-sm text-left">${i.hora}</td>
+                    <td class="px-5 py-4 font-mono text-blue-600 font-black text-sm text-left text-left">${i.hora}</td>
                     <td class="px-5 py-4 text-left">
-                        <div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left">${i.nomSujeto || i.sujeto}</div>
-                        <div class="text-[8px] text-slate-400 font-bold text-left">${i.perfil} | ${i.modo}</div>
+                        <div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left text-left">${i.nomSujeto || i.sujeto}</div>
+                        <div class="text-[8px] text-slate-400 font-bold text-left text-left text-left">${i.perfil} | ${i.modo}</div>
                     </td>
                     <td class="px-5 py-4 text-right">
                         ${(activeRole === ROLES.UCP || activeRole === ROLES.ADMIN) ? `<button onclick="editIngreso('${i.id}')" class="text-blue-500 mr-2">✏️</button>` : ''}
@@ -740,15 +770,15 @@
 
             body.innerHTML = records.map(i => {
                 const p = (window.PERSONAL_DB || []).find(x => x.id === i.sujeto);
-                const nomYcargo = p ? `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left">${p.apellido} ${p.nombre}</div><div class="text-[6.5px] text-blue-400 text-left">${p.cargo}</div>` : `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left">${i.nomSujeto || 'NO IDENTIFICADO'}</div><div class="text-[6.5px] text-slate-400 text-left">${i.perfil}</div>`;
+                const nomYcargo = p ? `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left text-left">${p.apellido} ${p.nombre}</div><div class="text-[6.5px] text-blue-400 text-left text-left text-left">${p.cargo}</div>` : `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left text-left text-left">${i.nomSujeto || 'NO IDENTIFICADO'}</div><div class="text-[6.5px] text-slate-400 text-left text-left text-left">${i.perfil}</div>`;
                 return `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
-                    <td class="px-2 py-1 leading-tight text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500 text-left">${i.hora}</span></td>
-                    <td class="px-2 py-1 font-black text-slate-800 dark:text-white leading-none text-left">${i.sujeto}<br><span class="text-[6.5px] text-slate-400 text-left">${i.perfil}</span></td>
-                    <td class="px-2 py-1 text-left">${nomYcargo}</td>
-                    <td class="px-2 py-1 text-[8px] text-left">${i.modo} ${i.dominio || i.nMovil}</td>
-                    <td class="px-2 py-1 font-black text-blue-600 text-left">${i.operador}</td>
-                    <td class="px-2 py-1 no-print text-left">
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left">
+                    <td class="px-2 py-1 leading-tight text-left text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500 text-left text-left">${i.hora}</span></td>
+                    <td class="px-2 py-1 font-black text-slate-800 dark:text-white leading-none text-left text-left">${i.sujeto}<br><span class="text-[6.5px] text-slate-400 text-left text-left">${i.perfil}</span></td>
+                    <td class="px-2 py-1 text-left text-left text-left">${nomYcargo}</td>
+                    <td class="px-2 py-1 text-[8px] text-left text-left text-left">${i.modo} ${i.dominio || i.nMovil}</td>
+                    <td class="px-2 py-1 font-black text-blue-600 text-left text-left text-left">${i.operador}</td>
+                    <td class="px-2 py-1 no-print text-left text-left">
                         ${activeRole === ROLES.DIP || activeRole === ROLES.ADMIN ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}
                     </td>
                 </tr>`;
@@ -757,7 +787,7 @@
 
         window.refreshUsersList = function() {
             const body = document.getElementById('users-list-body'); if (!body) return;
-            body.innerHTML = (window.SYSTEM_USERS || []).map(u => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left"><td class="px-5 py-4 text-left"><div class="font-black uppercase text-left">${u.fullName}</div><div class="text-[8px] text-slate-400 font-bold uppercase text-left">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right">${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
+            body.innerHTML = (window.SYSTEM_USERS || []).map(u => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left"><td class="px-5 py-4 text-left text-left text-left"><div class="font-black uppercase text-left text-left text-left">${u.fullName}</div><div class="text-[8px] text-slate-400 font-bold uppercase text-left text-left text-left">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right">${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
         };
 
         // --- FUNCIONES DE SOPORTE ---
@@ -804,7 +834,7 @@
             if(confirm("¿Eliminar registro?")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', id));
                 await logActivity("ELIMINACIÓN REGISTRO ID: " + id);
-                showMessage("Registro Eliminar", "success");
+                showMessage("Registro Eliminado", "success");
             }
         }
 
@@ -812,7 +842,7 @@
             const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
             if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
                 d.innerHTML = `
-                    <div class="space-y-3 animate-fade-in text-left">
+                    <div class="space-y-3 animate-fade-in text-left text-left">
                         <div class="flex gap-2 text-left">
                             <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="AFILIADO / MATRÍCULA">
                             <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
@@ -904,8 +934,8 @@
 
             document.getElementById('body-analytics').innerHTML = `
                 <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
-                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
-                    ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left text-left">SIN REGISTROS RECIENTES</div>'}
+                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left text-left">
+                    ${pases.map(pase => `<div class="text-left text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left text-left text-left">SIN REGISTROS RECIENTES</div>'}
                 </div>`;
             
             preview.classList.remove('hidden');
@@ -915,6 +945,7 @@
             const p = document.getElementById('ing-perfil').value;
             const m = document.getElementById('ing-modo').value;
             if (!p || !m) return showMessage("Faltan datos clave.", "error");
+            
             const data = {
                 fecha: document.getElementById('ing-fecha').value,
                 hora: document.getElementById('ing-hora').value,
@@ -925,16 +956,34 @@
                 dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(),
                 operador: getOperatorID(), timestamp: Date.now()
             };
-            try {
-                if (editingId) {
+
+            if (editingId) {
+                try {
                     await window.fbUpdateDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', editingId), data);
                     await logActivity("EDICIÓN REGISTRO ID: " + editingId);
-                } else {
-                    await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
-                    await logActivity("NUEVO INGRESO: " + data.sujeto + " - " + data.perfil);
+                    playBeep(660, 150); showMessage("Registro Actualizado", "success");
+                    renderView('ingresos', 'REGISTRO DE INGRESOS');
+                } catch (e) {
+                    showMessage("Error al actualizar. Verifique su conexión.", "error");
                 }
-                playBeep(660, 150); showMessage("Registro Guardado", "success"); renderView('ingresos', 'REGISTRO DE INGRESOS');
-            } catch (e) { showMessage("Error al guardar.", "error"); }
+                return;
+            }
+
+            // Nuevo registro con manejo offline
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), data);
+                await logActivity("NUEVO INGRESO: " + data.sujeto + " - " + data.perfil);
+                playBeep(660, 150); 
+                showMessage("Registro Guardado", "success");
+            } catch (e) {
+                // Si falla por falta de señal, guardar localmente
+                const pending = JSON.parse(localStorage.getItem('PENDING_INGRESOS') || '[]');
+                pending.push(data);
+                localStorage.setItem('PENDING_INGRESOS', JSON.stringify(pending));
+                showMessage("Sin señal. Registro guardado localmente (se enviará automáticamente)", "info");
+                playBeep(330, 300);
+            }
+            renderView('ingresos', 'REGISTRO DE INGRESOS');
         }
 
         async function handleSaveUser() {
@@ -1010,8 +1059,8 @@
             const sorted = Object.keys(counts).sort((a,b) => b.localeCompare(a));
             document.getElementById('calendar-list').innerHTML = sorted.map(d => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left">
-                    <span class="font-black text-[9px] uppercase text-slate-500 text-left">${d}</span>
-                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center">${counts[d]}</span>
+                    <span class="font-black text-[9px] uppercase text-slate-500 text-left text-left text-left">${d}</span>
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center text-center text-center">${counts[d]}</span>
                 </div>`).join('');
             document.getElementById('modal-calendar').classList.remove('hidden');
         }
@@ -1040,14 +1089,14 @@
         function openDataModal(title, headers, rows) {
             modalFullData = rows; modalHeaders = headers; modalPage = 1;
             document.getElementById('modal-data-title').innerText = title;
-            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
+            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left text-left text-left">${h}</th>`).join('')}</tr>`;
             updateModalTable(); document.getElementById('modal-data').classList.remove('hidden');
         }
         function updateModalTable() {
             const q = document.getElementById('modal-search').value.toUpperCase();
             const filt = modalFullData.filter(r => r.some(c => String(c).toUpperCase().includes(q)));
             const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
             document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
         }
         function exportToExcel() {
