@@ -41,6 +41,15 @@
         window.fbUpdateDoc = updateDoc;
         window.fbGetDocs = getDocs;
 
+        // Inicializamos con el admin por defecto para permitir login instantáneo
+        window.SYSTEM_USERS = [{
+            username: '136219951',
+            password: 'Marquitos123',
+            fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+            role: 'ADMINISTRADOR',
+            multiRole: true
+        }];
+
         const initAuth = async () => {
             const hideLoader = () => {
                 const loader = document.getElementById('global-loader');
@@ -63,18 +72,13 @@
                     await signInAnonymously(auth);
                 }
                 
-                // Ejecución en segundo plano: no bloquea el inicio rápido del portal
+                // Registro de admin en segundo plano
                 const ensureAdmin = async () => {
+                    if (!db) return;
                     try {
                         const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                        await setDoc(adminRef, {
-                            username: '136219951',
-                            password: 'Marquitos123',
-                            fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
-                            role: 'ADMINISTRADOR',
-                            multiRole: true
-                        }, { merge: true });
-                    } catch (e) { /* Deferred */ }
+                        await setDoc(adminRef, window.SYSTEM_USERS[0], { merge: true });
+                    } catch (e) { /* Deferred silently */ }
                 };
                 ensureAdmin();
 
@@ -101,7 +105,8 @@
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push(doc.data()));
-                        window.SYSTEM_USERS = data;
+                        // Si hay datos en la DB, actualizamos la lista (pero mantenemos el admin local si la DB falla)
+                        if (data.length > 0) window.SYSTEM_USERS = data;
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
 
@@ -356,7 +361,7 @@
         const ROLES = { ADMIN: 'ADMINISTRADOR', DIP: 'DEPARTAMENTO INSPECCIÓN PENITENCIARIA', UCP: 'UNIDAD DE CONTROL PENITENCIARIO' };
         const PROFILES = ['PERSONAL', 'MOVIL', 'MONOTRIBUTISTA', 'DOCENTE', 'ABOGADO', 'PASTORAL', 'VISITA', 'OTROS'];
 
-        window.PERSONAL_DB = []; window.ingresosRecientes = []; window.pasesBodyData = []; window.SYSTEM_USERS = []; window.activityLogs = [];
+        window.PERSONAL_DB = []; window.ingresosRecientes = []; window.pasesBodyData = []; window.activityLogs = [];
         let currentUser = null; let activeRole = null; let html5QrCode = null;
         let currentPage = 1; const pageSize = 40; let editingId = null;
         let modalFullData = []; let modalHeaders = []; let modalPage = 1; const modalPageSize = 30;
@@ -419,11 +424,10 @@
         async function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
-            if (window.SYSTEM_USERS.length === 0) {
-                showMessage("Sincronizando base de usuarios...", "info");
-                return;
-            }
+            
+            // Validamos contra la lista disponible (que siempre tiene al menos el admin fallback)
             const user = window.SYSTEM_USERS.find(x => x.username === u && x.password === p);
+            
             if (user) {
                 playBeep(880, 100);
                 currentUser = user;
@@ -433,7 +437,9 @@
                 } else {
                     startSession(user.role);
                 }
-            } else showMessage("Credenciales incorrectas", "error");
+            } else {
+                showMessage("Credenciales incorrectas", "error");
+            }
         }
 
         function openRoleSwitcher() {
