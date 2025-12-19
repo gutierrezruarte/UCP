@@ -14,22 +14,34 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Manejo seguro de configuración para evitar bloqueos en GitHub
+        let firebaseConfig = {};
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+        } catch (e) { console.error("Config Error:", e); }
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ucp-spc-v1';
+        let app, auth, db;
 
-        window.fbDb = db;
-        window.fbAppId = appId;
-        window.fbDoc = doc;
-        window.fbSetDoc = setDoc;
-        window.fbAddDoc = addDoc;
-        window.fbCollection = collection;
-        window.fbDeleteDoc = deleteDoc;
-        window.fbUpdateDoc = updateDoc;
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            // Exponer a global para funciones tradicionales
+            window.fbDb = db;
+            window.fbAppId = appId;
+            window.fbDoc = doc;
+            window.fbSetDoc = setDoc;
+            window.fbAddDoc = addDoc;
+            window.fbCollection = collection;
+            window.fbDeleteDoc = deleteDoc;
+            window.fbUpdateDoc = updateDoc;
+        }
 
-        // Caché local para uso ágil
+        // Caché local para uso ágil (Offline-First)
         window.PERSONAL_DB = JSON.parse(localStorage.getItem('ucp_cache_personal') || '[]');
         window.pasesBodyData = JSON.parse(localStorage.getItem('ucp_cache_body') || '[]');
         window.ingresosRecientes = JSON.parse(localStorage.getItem('ucp_cache_ingresos') || '[]');
@@ -45,24 +57,28 @@
                 }
             };
 
+            // Failsafe de 4 segundos para asegurar que el portal sea usable con datos locales
             const loaderTimeout = setTimeout(hideLoader, 4000);
 
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                if (auth) {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    
+                    if (db) {
+                        const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
+                        await setDoc(adminRef, {
+                            username: '136219951',
+                            password: 'Marquitos123',
+                            fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+                            role: 'ADMINISTRADOR',
+                            multiRole: true
+                        }, { merge: true });
+                    }
                 }
-                
-                const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                await setDoc(adminRef, {
-                    username: '136219951',
-                    password: 'Marquitos123',
-                    fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
-                    role: 'ADMINISTRADOR',
-                    multiRole: true
-                }, { merge: true });
-                
             } catch (error) {
                 console.error("Auth Error:", error);
             } finally {
@@ -71,52 +87,54 @@
             }
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                const errorLog = (err) => console.warn("Sync Error:", err);
+        if (auth && db) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    const errorLog = (err) => console.warn("Sync Error:", err);
 
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
-                    let data = [];
-                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    window.ingresosRecientes = data;
-                    localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
-                    if (window.updateIngresosTable) window.updateIngresosTable();
-                    if (window.updateReportTable) window.updateReportTable();
-                }, errorLog);
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
+                        let data = [];
+                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        window.ingresosRecientes = data;
+                        localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
+                        if (window.updateIngresosTable) window.updateIngresosTable();
+                        if (window.updateReportTable) window.updateReportTable();
+                    }, errorLog);
 
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
-                    const data = [];
-                    snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
-                    window.SYSTEM_USERS = data;
-                    if (window.refreshUsersList) window.refreshUsersList();
-                }, errorLog);
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
+                        window.SYSTEM_USERS = data;
+                        if (window.refreshUsersList) window.refreshUsersList();
+                    }, errorLog);
 
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
-                    const data = [];
-                    snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-                    window.PERSONAL_DB = data;
-                    localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
-                    updateUIStats();
-                }, errorLog);
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                        window.PERSONAL_DB = data;
+                        localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
+                        updateUIStats();
+                    }, errorLog);
 
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
-                    const data = [];
-                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                    window.pasesBodyData = data;
-                    localStorage.setItem('ucp_cache_body', JSON.stringify(data));
-                    updateUIStats();
-                }, errorLog);
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        window.pasesBodyData = data;
+                        localStorage.setItem('ucp_cache_body', JSON.stringify(data));
+                        updateUIStats();
+                    }, errorLog);
 
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
-                    let data = [];
-                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    window.activityLogs = data;
-                    if (window.updateActivityLogsTable) window.updateActivityLogsTable();
-                }, errorLog);
-            }
-        });
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
+                        let data = [];
+                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        window.activityLogs = data;
+                        if (window.updateActivityLogsTable) window.updateActivityLogsTable();
+                    }, errorLog);
+                }
+            });
+        }
 
         function updateUIStats() {
             if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = window.PERSONAL_DB.length;
@@ -146,6 +164,7 @@
         };
 
         window.fbUpdatePersonal = async (list) => {
+            if (!db) return;
             const chunks = [];
             for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
@@ -157,6 +176,7 @@
         };
 
         window.fbUpdateBody = async (list) => {
+            if (!db) return;
             const chunks = [];
             for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
@@ -441,7 +461,7 @@
             window.updateIngresosTable();
         }
 
-        function renderReportesView(container) {
+        window.renderReportesView = function(container) {
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 h-full flex flex-col text-left">
                 <div class="flex justify-between items-center mb-4 no-print">
@@ -466,9 +486,9 @@
                 </div>
             </div>`;
             window.updateReportTable();
-        }
+        };
 
-        function renderUsersAdminView(container) {
+        window.renderUsersAdminView = function(container) {
             container.innerHTML = `
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
                 <div class="xl:col-span-4">
@@ -492,9 +512,9 @@
                 </div>
             </div>`;
             window.refreshUsersList();
-        }
+        };
 
-        function renderImportPersonalView(container) {
+        window.renderImportPersonalView = function(container) {
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
@@ -517,9 +537,9 @@
                     </div>
                 </div>
             </div>`;
-        }
+        };
 
-        function renderPasesBodyView(container) {
+        window.renderPasesBodyView = function(container) {
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
@@ -542,9 +562,9 @@
                     </div>
                 </div>
             </div>`;
-        }
+        };
 
-        function renderActivityLogView(container) {
+        window.renderActivityLogView = function(container) {
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 h-full flex flex-col text-left">
                 <div class="flex justify-between items-center mb-4">
@@ -554,9 +574,9 @@
                 <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-[11px]"><tbody id="logs-table-body" class="divide-y dark:divide-slate-800"></tbody></table></div>
             </div>`;
             window.updateActivityLogsTable();
-        }
+        };
 
-        function updateDynamicFields(perfil) {
+        window.updateDynamicFields = function(perfil) {
             const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
             if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
                 d.innerHTML = `
@@ -590,7 +610,7 @@
                         <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="APELLIDO Y NOMBRE">
                     </div>`;
             }
-        }
+        };
 
         window.searchPersonalInDB = function(val) {
             const id = val.trim().toUpperCase();
@@ -682,7 +702,51 @@
                 </tr>`).join('');
         };
 
-        async function handleSaveIngreso() {
+        window.getOperatorID = function() { return currentUser ? `${currentUser.fullName.split(' ').map(n=>n[0]).join('')}-${currentUser.username.slice(-3)}` : "S/D"; };
+        window.toggleSidebar = function(f) { const s = document.getElementById('sidebar'); if (f) s.classList.remove('-translate-x-full'); else s.classList.add('-translate-x-full'); };
+        window.toggleTheme = function() { document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); };
+        window.logout = function() { window.location.reload(); };
+        window.setMode = function(m) { 
+            document.getElementById('ing-modo').value = m;
+            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600':'bg-white dark:bg-slate-800'}`;
+            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600':'bg-white dark:bg-slate-800'}`;
+            if(m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
+        };
+        window.updateFileName = function(id, input) { if(input.files.length) document.getElementById(id).innerText = input.files[0].name.toUpperCase(); };
+        window.toggleFullscreen = function() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
+        window.startScanner = function(type) { document.getElementById('scanner-title').innerText = type; document.getElementById('modal-scanner').classList.remove('hidden'); html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 15 }, (t) => handleScanSuccess(t, type)).catch(stopScanner); };
+        window.stopScanner = function() { if(html5QrCode) html5QrCode.stop().finally(() => { document.getElementById('modal-scanner').classList.add('hidden'); }); };
+        window.handleScanSuccess = function(text, type) { playBeep(); stopScanner(); if(type==='LOGIN') document.getElementById('username').value = text; else document.getElementById('ing-dni').value = text; };
+
+        window.closeDataModal = function() { document.getElementById('modal-data').classList.add('hidden'); };
+        window.viewPersonalData = function() { openDataModal("BASE PERSONAL", ["ID", "APELLIDO", "NOMBRE", "CARGO"], (window.PERSONAL_DB || []).map(p => [p.id, p.apellido, p.nombre, p.cargo])); };
+        window.viewBodyData = function() { openDataModal("HISTORIAL BODY SCAN", ["ID", "NOMBRE", "FECHA/HORA", "SECTOR"], (window.pasesBodyData || []).map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); };
+        
+        window.openDataModal = function(title, headers, rows) {
+            modalFullData = rows; modalPage = 1;
+            document.getElementById('modal-data-title').innerText = title;
+            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
+            updateModalTable(); document.getElementById('modal-data').classList.remove('hidden');
+        };
+        window.updateModalTable = function() {
+            const q = document.getElementById('modal-search').value.toUpperCase();
+            const filt = (modalFullData || []).filter(r => r.some(c => String(c).toUpperCase().includes(q)));
+            const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
+        };
+        window.prevModalPage = function() { if(modalPage > 1) { modalPage--; updateModalTable(); } };
+        window.nextModalPage = function() { if(modalPage * modalPageSize < (modalFullData || []).length) { modalPage++; updateModalTable(); } };
+        window.exportToExcel = function() {
+            const data = (window.ingresosRecientes || []).map(i => ({ Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, Sujeto: i.sujeto, Nombre: i.nomSujeto, Op: i.operador }));
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "UCP"); XLSX.writeFile(wb, `Auditoria_UCP.xlsx`);
+        };
+        window.exportActivityToExcel = function() {
+            const data = (window.activityLogs || []).map(l => ({ Fecha: l.fecha, Hora: l.hora, Usuario: l.userName, Accion: l.detail }));
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Actividad"); XLSX.writeFile(wb, `Logs_Actividad_UCP.xlsx`);
+        };
+
+        window.handleSaveIngreso = async function() {
             const p = document.getElementById('ing-perfil').value; const m = document.getElementById('ing-modo').value;
             if (!p || !m) return showMessage("Faltan datos", "error");
             const data = {
@@ -694,106 +758,31 @@
                 dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(), operador: getOperatorID(), timestamp: Date.now()
             };
             try {
-                await addDoc(collection(fbDb, 'artifacts', fbAppId, 'public', 'data', 'ingresos'), data);
-                playBeep(660, 150); showMessage("Registrado", "success"); renderView('ingresos', 'REGISTRO DE INGRESOS');
+                if (window.fbDb) {
+                    await addDoc(collection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
+                    playBeep(660, 150); showMessage("Registrado", "success"); renderView('ingresos', 'REGISTRO DE INGRESOS');
+                } else {
+                    showMessage("Error: No conectado a base de datos", "error");
+                }
             } catch (e) { showMessage("Error de red", "error"); }
-        }
+        };
 
-        async function handleSaveUser() {
+        window.handleSaveUser = async function() {
             const u = document.getElementById('u-user').value.trim(), n = document.getElementById('u-name').value.trim(), p = document.getElementById('u-pass').value, r = document.getElementById('u-role').value;
             if(!u || !n || !p) return showMessage("Complete los campos", "error");
-            await setDoc(doc(fbDb, 'artifacts', fbAppId, 'public', 'data', 'users', u), { username: u, fullName: n.toUpperCase(), password: p, role: r, multiRole: r === ROLES.ADMIN });
-            showMessage("Usuario Actualizado", "success"); document.getElementById('user-form').reset();
-        }
+            if (window.fbDb) {
+                await setDoc(doc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'users', u), { username: u, fullName: n.toUpperCase(), password: p, role: r, multiRole: r === ROLES.ADMIN });
+                showMessage("Usuario Actualizado", "success"); document.getElementById('user-form').reset();
+            }
+        };
 
-        async function deleteSystemUser(id) {
-            if(confirm("¿Eliminar operador?")) { await deleteDoc(doc(fbDb, 'artifacts', fbAppId, 'public', 'data', 'users', id)); showMessage("Eliminado", "success"); }
-        }
-
-        async function processPersonalFile() {
-            const input = document.getElementById('personal-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
-            const reader = new FileReader(); reader.onload = async (e) => {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const list = js.map(row => {
-                    let id = "", nom = "", ape = "", jer = "AGENTE";
-                    Object.keys(row).forEach(key => {
-                        const ck = key.toUpperCase().trim();
-                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") id = String(row[key]).split('.')[0].trim();
-                        if(ck === "NOMBRE" || ck === "NOMBRES") nom = String(row[key]).trim().toUpperCase();
-                        if(ck === "APELLIDO" || ck === "APELLIDOS") ape = String(row[key]).trim().toUpperCase();
-                        if(ck === "JERARQUIA" || ck === "CARGO") jer = String(row[key]).trim().toUpperCase();
-                    });
-                    return { id, nombre: nom, apellido: ape, cargo: jer };
-                }).filter(p => p.id);
-                await window.fbUpdatePersonal(list); showMessage("Sincronizado", "success");
-            };
-            reader.readAsArrayBuffer(input.files[0]);
-        }
-
-        async function processBodyFile() {
-            const input = document.getElementById('body-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
-            const reader = new FileReader(); reader.onload = async (e) => {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const list = js.map(row => {
-                    let mat = "", nom = "", fec = "", sec = "U.C.P.";
-                    Object.keys(row).forEach(key => {
-                        const ck = key.toUpperCase().trim();
-                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") mat = String(row[key]).split('.')[0].trim();
-                        if(ck === "NOMBRE" || ck === "SUJETO") nom = String(row[key]).trim().toUpperCase();
-                        if(ck.includes("FECHA") || ck.includes("HORA")) fec = String(row[key]).trim();
-                        if(ck.includes("SECTOR")) sec = String(row[key]).trim().toUpperCase();
-                    });
-                    return { matricula: mat, nombre: nom, fechaHora: fec, sector: sec, timestamp: Date.now() };
-                }).filter(p => p.matricula);
-                await window.fbUpdateBody(list); showMessage("Importado", "success");
-            };
-            reader.readAsArrayBuffer(input.files[0]);
-        }
-
-        function getOperatorID() { return currentUser ? `${currentUser.fullName.split(' ').map(n=>n[0]).join('')}-${currentUser.username.slice(-3)}` : "S/D"; }
-        function toggleSidebar(f) { const s = document.getElementById('sidebar'); if (f) s.classList.remove('-translate-x-full'); else s.classList.add('-translate-x-full'); }
-        function toggleTheme() { document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
-        function logout() { window.location.reload(); }
-        function setMode(m) { 
-            document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600':'bg-white dark:bg-slate-800'}`;
-            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600':'bg-white dark:bg-slate-800'}`;
-            if(m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
-        }
-        function updateFileName(id, input) { if(input.files.length) document.getElementById(id).innerText = input.files[0].name.toUpperCase(); }
-        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
-        function startScanner(type) { document.getElementById('scanner-title').innerText = type; document.getElementById('modal-scanner').classList.remove('hidden'); html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 15 }, (t) => handleScanSuccess(t, type)).catch(stopScanner); }
-        function stopScanner() { if(html5QrCode) html5QrCode.stop().finally(() => { document.getElementById('modal-scanner').classList.add('hidden'); }); }
-        function handleScanSuccess(text, type) { playBeep(); stopScanner(); if(type==='LOGIN') document.getElementById('username').value = text; else document.getElementById('ing-dni').value = text; }
-
-        function closeDataModal() { document.getElementById('modal-data').classList.add('hidden'); }
-        function viewPersonalData() { openDataModal("BASE PERSONAL", ["ID", "APELLIDO", "NOMBRE", "CARGO"], (window.PERSONAL_DB || []).map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
-        function viewBodyData() { openDataModal("HISTORIAL BODY SCAN", ["ID", "NOMBRE", "FECHA/HORA", "SECTOR"], (window.pasesBodyData || []).map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
-        function openDataModal(title, headers, rows) {
-            modalFullData = rows; modalPage = 1;
-            document.getElementById('modal-data-title').innerText = title;
-            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
-            updateModalTable(); document.getElementById('modal-data').classList.remove('hidden');
-        }
-        function updateModalTable() {
-            const q = document.getElementById('modal-search').value.toUpperCase();
-            const filt = (modalFullData || []).filter(r => r.some(c => String(c).toUpperCase().includes(q)));
-            const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
-            document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
-        }
-        function prevModalPage() { if(modalPage > 1) { modalPage--; updateModalTable(); } }
-        function nextModalPage() { if(modalPage * modalPageSize < (modalFullData || []).length) { modalPage++; updateModalTable(); } }
-        function exportToExcel() {
-            const data = (window.ingresosRecientes || []).map(i => ({ Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, Sujeto: i.sujeto, Nombre: i.nomSujeto, Op: i.operador }));
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "UCP"); XLSX.writeFile(wb, `Auditoria_UCP.xlsx`);
-        }
-        function exportActivityToExcel() {
-            const data = (window.activityLogs || []).map(l => ({ Fecha: l.fecha, Hora: l.hora, Usuario: l.userName, Accion: l.detail }));
-            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Actividad"); XLSX.writeFile(wb, `Logs_Actividad_UCP.xlsx`);
-        }
+        window.deleteSystemUser = async function(id) {
+            if(confirm("¿Eliminar operador?")) { 
+                if (window.fbDb) {
+                    await deleteDoc(doc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'users', id)); showMessage("Eliminado", "success"); 
+                }
+            }
+        };
     </script>
 </body>
 </html>
