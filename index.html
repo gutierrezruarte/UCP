@@ -14,53 +14,54 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by environment (MANDATORY RULES)
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Variables de entorno con manejo de errores para GitHub
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) { console.warn("Firebase Config not found, using offline mode."); }
+        
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ucp-spc-v1';
+        
+        // Inicialización segura
+        const app = firebaseConfig.apiKey ? initializeApp(firebaseConfig) : null;
+        const auth = app ? getAuth(app) : null;
+        const db = app ? getFirestore(app) : null;
 
-        // Exponer a global para funciones tradicionales
+        // Exponer a global para persistencia
         window.fbDb = db;
         window.fbAppId = appId;
-        window.fbDoc = doc;
-        window.fbSetDoc = setDoc;
-        window.fbAddDoc = addDoc;
-        window.fbCollection = collection;
-        window.fbDeleteDoc = deleteDoc;
-        window.fbUpdateDoc = updateDoc;
 
-        // Caché local para uso ágil (Offline-First)
+        // CARGA INMEDIATA DESDE CACHÉ (Híbrido)
         window.PERSONAL_DB = JSON.parse(localStorage.getItem('ucp_cache_personal') || '[]');
         window.pasesBodyData = JSON.parse(localStorage.getItem('ucp_cache_body') || '[]');
         window.ingresosRecientes = JSON.parse(localStorage.getItem('ucp_cache_ingresos') || '[]');
-        window.SYSTEM_USERS = [];
+        window.SYSTEM_USERS = JSON.parse(localStorage.getItem('ucp_cache_users') || '[]');
         window.activityLogs = [];
 
-        const initAuth = async () => {
+        // Función para quitar el loader de forma segura
+        window.hideGlobalLoader = () => {
             const loader = document.getElementById('global-loader');
-            const hideLoader = () => {
-                if (loader) {
-                    loader.classList.add('opacity-0');
-                    setTimeout(() => loader.remove(), 300);
-                }
-            };
+            if (loader) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.remove(), 500);
+            }
+        };
 
-            // Failsafe de 4 segundos para asegurar que el portal sea usable con datos locales
-            const loaderTimeout = setTimeout(hideLoader, 4000);
+        const initAuth = async () => {
+            // Failsafe: Si en 2.5 segundos no respondió Firebase, abrir con caché
+            setTimeout(window.hideGlobalLoader, 2500);
+
+            if (!auth || !db) return;
 
             try {
-                // RULE 3: Auth Before Queries
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
                 
-                // Asegurar existencia de admin
-                const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                await setDoc(adminRef, {
+                // Asegurar existencia de cuenta admin solicitada
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951'), {
                     username: '136219951',
                     password: 'Marquitos123',
                     fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
@@ -69,67 +70,66 @@
                 }, { merge: true });
                 
             } catch (error) {
-                console.error("Auth Error:", error);
+                console.warn("Auth Offline Mode Active");
             } finally {
-                clearTimeout(loaderTimeout);
-                hideLoader();
+                window.hideGlobalLoader();
             }
         };
 
-        // Escuchas en tiempo real - Sincronización de colecciones (RULE 1 Paths)
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                const errorLog = (err) => console.warn("Sync Error:", err);
+        if (auth && db) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    const errorLog = (err) => console.warn("Sync Error:", err);
 
-                // Ingresos
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
-                    let data = [];
-                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    window.ingresosRecientes = data;
-                    localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
-                    if (window.updateIngresosTable) window.updateIngresosTable();
-                    if (window.updateReportTable) window.updateReportTable();
-                }, errorLog);
+                    // Sincronización de Ingresos
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
+                        let data = [];
+                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        window.ingresosRecientes = data;
+                        localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 50)));
+                        if (window.updateIngresosTable) window.updateIngresosTable();
+                        if (window.updateReportTable) window.updateReportTable();
+                    }, errorLog);
 
-                // Usuarios del sistema
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
-                    const data = [];
-                    snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
-                    window.SYSTEM_USERS = data;
-                    if (window.refreshUsersList) window.refreshUsersList();
-                }, errorLog);
+                    // Sincronización de Usuarios (Para login rápido futuro)
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
+                        window.SYSTEM_USERS = data;
+                        localStorage.setItem('ucp_cache_users', JSON.stringify(data));
+                        if (window.refreshUsersList) window.refreshUsersList();
+                    }, errorLog);
 
-                // Base de Datos de Personal (Agentes)
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
-                    const data = [];
-                    snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-                    window.PERSONAL_DB = data;
-                    localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
-                    updateUIStats();
-                    if (window.updateModalTable && document.getElementById('modal-data-title')?.innerText === "BASE PERSONAL") window.updateModalTable();
-                }, errorLog);
+                    // Sincronización de Personal
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                        window.PERSONAL_DB = data;
+                        localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
+                        updateUIStats();
+                    }, errorLog);
 
-                // Registros de Body Scan
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
-                    const data = [];
-                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                    window.pasesBodyData = data;
-                    localStorage.setItem('ucp_cache_body', JSON.stringify(data));
-                    updateUIStats();
-                    if (window.updateModalTable && document.getElementById('modal-data-title')?.innerText === "HISTORIAL BODY SCAN") window.updateModalTable();
-                }, errorLog);
+                    // Sincronización de Body Scan
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        window.pasesBodyData = data;
+                        localStorage.setItem('ucp_cache_body', JSON.stringify(data));
+                        updateUIStats();
+                    }, errorLog);
 
-                // Logs de Actividad
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
-                    let data = [];
-                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    window.activityLogs = data;
-                    if (window.updateActivityLogsTable) window.updateActivityLogsTable();
-                }, errorLog);
-            }
-        });
+                    // Sincronización de Logs
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
+                        let data = [];
+                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        window.activityLogs = data;
+                        if (window.updateActivityLogsTable) window.updateActivityLogsTable();
+                    }, errorLog);
+                }
+            });
+        }
 
         function updateUIStats() {
             if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = window.PERSONAL_DB.length;
@@ -141,6 +141,7 @@
             if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
             initAuth();
             initUI();
+            updateUIStats();
         };
 
         window.logActivity = async (detail) => {
@@ -156,28 +157,6 @@
                     detail: detail.toUpperCase()
                 });
             } catch (e) { }
-        };
-
-        window.fbUpdatePersonal = async (list) => {
-            const chunks = [];
-            for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
-            for (const chunk of chunks) {
-                const batch = writeBatch(db);
-                chunk.forEach(p => batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'personal', p.id), p, { merge: true }));
-                await batch.commit();
-            }
-            await logActivity("IMPORTACIÓN BASE PERSONAL (" + list.length + " REGISTROS)");
-        };
-
-        window.fbUpdateBody = async (list) => {
-            const chunks = [];
-            for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
-            for (const chunk of chunks) {
-                const batch = writeBatch(db);
-                chunk.forEach(p => batch.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body')), p));
-                await batch.commit();
-            }
-            await logActivity("IMPORTACIÓN BASE BODY SCAN (" + list.length + " REGISTROS)");
         };
     </script>
 
@@ -199,13 +178,13 @@
 </head>
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden text-left">
 
-    <div id="global-loader" class="fixed inset-0 z-[1000] bg-slate-900 flex flex-col items-center justify-center text-center transition-opacity duration-300">
+    <div id="global-loader" class="fixed inset-0 z-[1000] bg-slate-900 flex flex-col items-center justify-center text-center transition-opacity duration-500">
         <div class="mb-6 relative">
             <div class="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
             <div class="absolute inset-0 flex items-center justify-center font-black text-blue-600 text-[9px]">UCP</div>
         </div>
         <h2 class="text-white font-black uppercase text-sm mb-1">Iniciando Portal</h2>
-        <p class="text-slate-500 font-bold uppercase text-[7px] tracking-widest animate-pulse">Sincronización Ágil Activa</p>
+        <p class="text-slate-500 font-bold uppercase text-[7px] tracking-widest animate-pulse">Sincronización Híbrida Activa</p>
     </div>
 
     <div id="toast-wrapper" class="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none"></div>
@@ -346,11 +325,19 @@
         function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
+            // Login rápido usando caché local inmediata para evitar bloqueos por red
             let user = (window.SYSTEM_USERS || []).find(x => x.username === u && x.password === p);
+            
             if (!user && u === '136219951' && p === 'Marquitos123') {
                 user = { username: '136219951', fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE', role: ROLES.ADMIN, multiRole: true };
             }
-            if (user) { playBeep(880, 100); currentUser = user; if (user.multiRole || user.role === ROLES.ADMIN) openRoleSwitcher(); else startSession(user.role); }
+
+            if (user) { 
+                playBeep(880, 100); 
+                currentUser = user; 
+                if (user.multiRole || user.role === ROLES.ADMIN) openRoleSwitcher(); 
+                else startSession(user.role); 
+            }
             else showMessage("Credenciales incorrectas", "error");
         }
 
@@ -381,11 +368,11 @@
             if (activeRole === ROLES.ADMIN) items.push({ id: 'activity_log', label: 'REGISTRO ACTIVIDAD', icon: '📜' });
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left">
-                    <span class="text-base">${item.icon}</span> <span class="font-black uppercase">${item.label}</span>
+                    <span class="text-base">${item.icon}</span> <span class="font-black uppercase text-[9px]">${item.label}</span>
                 </button>`).join('');
         }
 
-        function renderView(viewId, title, saveState = true) {
+        window.renderView = function(viewId, title, saveState = true) {
             if (window.innerWidth < 1024) toggleSidebar(false);
             document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
@@ -404,13 +391,13 @@
                     </div>
                     <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
                         <p class="text-[8px] font-black uppercase text-slate-400">Operador</p>
-                        <p class="text-base font-black uppercase truncate">${getOperatorID()}</p>
+                        <p class="text-base font-black uppercase truncate text-[10px]">${getOperatorID()}</p>
                     </div>
                 </div>
                 <div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm">
                     <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-20 mb-6 mx-auto">
                     <h2 class="text-xl font-black uppercase italic dark:text-white leading-none">Unidad de Control Penitenciario</h2>
-                    <p class="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3">Sincronización Ágil Activa</p>
+                    <p class="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3">Sincronización Híbrida Activa</p>
                 </div>`;
             } else if (viewId === 'ingresos') renderIngresosView(content);
             else if (viewId === 'reportes') renderReportesView(content);
@@ -418,7 +405,7 @@
             else if (viewId === 'importar_personal') renderImportPersonalView(content);
             else if (viewId === 'pases_body') renderPasesBodyView(content);
             else if (viewId === 'activity_log') renderActivityLogView(content);
-        }
+        };
 
         function renderIngresosView(container) {
             const now = new Date();
@@ -447,7 +434,7 @@
                     </div>
                 </div>
                 <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col">
-                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] flex justify-between"><span>Recientes (Caché local activa)</span><span>OP: ${getOperatorID()}</span></div>
+                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] flex justify-between"><span>Recientes (Resguardo Temporal Activo)</span><span>OP: ${getOperatorID()}</span></div>
                     <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-[11px] text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800"></tbody></table></div>
                 </div>
             </div>`;
@@ -579,7 +566,7 @@
                             <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg">📟</button>
                         </div>
                         <div id="personal-preview" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 rounded-2xl">
-                            <div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-xs mb-2"></div>
+                            <div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-xs mb-2 leading-tight"></div>
                             <div id="body-analytics" class="space-y-2 border-t dark:border-emerald-900/50 pt-2"></div>
                         </div>
                     </div>`;
@@ -613,6 +600,7 @@
 
             if (!id || !preview) { if (preview) preview.classList.add('hidden'); return; }
 
+            // Búsqueda instantánea en caché híbrida
             const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim().toUpperCase() === id);
             
             let pases = [];
@@ -686,7 +674,7 @@
             body.innerHTML = (window.SYSTEM_USERS || []).map(u => `
                 <tr class="hover:bg-slate-50">
                     <td class="px-5 py-4">
-                        <div class="font-black uppercase">${u.fullName}</div>
+                        <div class="font-black uppercase text-[10px]">${u.fullName}</div>
                         <div class="text-[8px] text-slate-400 font-bold uppercase">${u.role} | ID: ${u.username}</div>
                     </td>
                     <td class="px-5 py-4 text-right">
@@ -776,6 +764,51 @@
                 }
             }
         };
+
+        async function processPersonalFile() {
+            const input = document.getElementById('personal-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
+            const reader = new FileReader(); reader.onload = async (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const list = js.map(row => {
+                    let id = "", nom = "", ape = "", jer = "AGENTE";
+                    Object.keys(row).forEach(key => {
+                        const ck = key.toUpperCase().trim();
+                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") id = String(row[key]).split('.')[0].trim();
+                        if(ck === "NOMBRE" || ck === "NOMBRES") nom = String(row[key]).trim().toUpperCase();
+                        if(ck === "APELLIDO" || ck === "APELLIDOS") ape = String(row[key]).trim().toUpperCase();
+                        if(ck === "JERARQUIA" || ck === "CARGO") jer = String(row[key]).trim().toUpperCase();
+                    });
+                    return { id, nombre: nom, apellido: ape, cargo: jer };
+                }).filter(p => p.id);
+                await window.fbUpdatePersonal(list); showMessage("Sincronizado", "success");
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        }
+        window.processPersonalFile = processPersonalFile;
+
+        async function processBodyFile() {
+            const input = document.getElementById('body-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
+            const reader = new FileReader(); reader.onload = async (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const list = js.map(row => {
+                    let mat = "", nom = "", fec = "", sec = "U.C.P.";
+                    Object.keys(row).forEach(key => {
+                        const ck = key.toUpperCase().trim();
+                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") mat = String(row[key]).split('.')[0].trim();
+                        if(ck === "NOMBRE" || ck === "SUJETO") nom = String(row[key]).trim().toUpperCase();
+                        if(ck.includes("FECHA") || ck.includes("HORA")) fec = String(row[key]).trim();
+                        if(ck.includes("SECTOR")) sec = String(row[key]).trim().toUpperCase();
+                    });
+                    return { matricula: mat, nombre: nom, fechaHora: fec, sector: sec, timestamp: Date.now() };
+                }).filter(p => p.matricula);
+                await window.fbUpdateBody(list); showMessage("Importado", "success");
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        }
+        window.processBodyFile = processBodyFile;
+
     </script>
 </body>
 </html>
