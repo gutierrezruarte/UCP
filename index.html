@@ -14,6 +14,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Configuración e Inicialización
         let firebaseConfig = {};
         try {
             firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
@@ -24,6 +25,7 @@
         const db = app ? getFirestore(app) : null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ucp-spc-v1';
 
+        // Exponer a global para funciones tradicionales
         window.fbDb = db;
         window.fbAppId = appId;
         window.fbDoc = doc;
@@ -49,6 +51,7 @@
                     return;
                 }
 
+                // Regla 3: Autenticación antes de cualquier operación
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -56,6 +59,7 @@
                 }
                 
                 if (db) {
+                    // Asegurar persistencia del usuario administrador
                     const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
                     await setDoc(adminRef, {
                         username: '136219951',
@@ -72,11 +76,16 @@
             }
         };
 
+        // Escuchas en tiempo real - Corregido para asegurar carga de datos
         if (auth && db) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    const errorLog = (err) => console.warn("Firestore Error:", err);
+                    const errorLog = (err) => {
+                        console.warn("Firestore Error:", err);
+                        if (window.showMessage) window.showMessage("Error de conexión con la base de datos", "error");
+                    };
 
+                    // Sincronización de Ingresos
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
                         let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -86,6 +95,7 @@
                         if (window.updateReportTable) window.updateReportTable();
                     }, errorLog);
 
+                    // Sincronización de Usuarios del Sistema
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
@@ -93,6 +103,7 @@
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
 
+                    // Sincronización de Base de Personal
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
@@ -101,6 +112,7 @@
                         if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
                     }, errorLog);
 
+                    // Sincronización de Pases Body
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -108,6 +120,7 @@
                         if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                     }, errorLog);
 
+                    // Sincronización de Logs de Actividad
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
                         let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -380,10 +393,9 @@
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
             
-            // Buscar en la lista de usuarios de la DB
             let user = (window.SYSTEM_USERS || []).find(x => x.username === u && x.password === p);
             
-            // Validación maestra para administrador (evita bloqueos si la DB no sincronizó aún)
+            // Validación de respaldo para admin
             if (!user && u === '136219951' && p === 'Marquitos123') {
                 user = {
                     username: '136219951',
