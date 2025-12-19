@@ -84,22 +84,22 @@
             }
         };
 
-        if (db) {
+        if (db && auth) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     const errorLog = (err) => console.warn("Firestore Error:", err);
 
-                    // Consultas simples para evitar errores de índices (Regla 2)
+                    // Escucha de Ingresos
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
                         let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        // Ordenamiento en memoria
                         data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                        window.ingresosRecientes = data.slice(0, 300); 
+                        window.ingresosRecientes = data.slice(0, 500); 
                         if (window.updateIngresosTable) window.updateIngresosTable();
                         if (window.updateReportTable) window.updateReportTable();
                     }, errorLog);
 
+                    // Escucha de Usuarios del Sistema
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push(doc.data()));
@@ -107,13 +107,19 @@
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
 
+                    // Escucha de Base de Personal
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push(doc.data()));
                         window.PERSONAL_DB = data;
                         if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
+                        if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
+                        // Forzar actualización de reportes ya que dependen de los nombres en la base de personal
+                        if (window.updateReportTable) window.updateReportTable();
+                        if (window.updateIngresosTable) window.updateIngresosTable();
                     }, errorLog);
 
+                    // Escucha de Pases Body Scan
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -121,6 +127,7 @@
                         if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                     }, errorLog);
 
+                    // Escucha de Logs de Actividad
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
                         let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -381,11 +388,7 @@
         function showMessage(text, type = 'info') {
             const wrapper = document.getElementById('toast-wrapper');
             const toast = document.createElement('div');
-            const colors = {
-                'info': 'bg-blue-600',
-                'success': 'bg-emerald-600',
-                'error': 'bg-red-600'
-            };
+            const colors = { 'info': 'bg-blue-600', 'success': 'bg-emerald-600', 'error': 'bg-red-600' };
             toast.className = `${colors[type]} text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest animate-fade-in pointer-events-auto flex items-center gap-3 text-left`;
             toast.innerHTML = `<span>${text}</span>`;
             wrapper.appendChild(toast);
@@ -399,9 +402,7 @@
         let wakeLock = null;
         async function requestWakeLock() {
             if (!('wakeLock' in navigator)) return;
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) { }
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { }
         }
 
         function initUI() {
@@ -424,17 +425,11 @@
             const p = document.getElementById('password').value;
             const user = window.SYSTEM_USERS.find(x => x.username === u && x.password === p);
             if (user) {
-                playBeep(880, 100);
-                currentUser = user;
+                playBeep(880, 100); currentUser = user;
                 if (typeof requestWakeLock === 'function') requestWakeLock();
-                if (user.multiRole || user.role === ROLES.ADMIN) {
-                    openRoleSwitcher();
-                } else {
-                    startSession(user.role);
-                }
-            } else {
-                showMessage("Credenciales incorrectas", "error");
-            }
+                if (user.multiRole || user.role === ROLES.ADMIN) openRoleSwitcher();
+                else startSession(user.role);
+            } else showMessage("Credenciales incorrectas", "error");
         }
 
         function openRoleSwitcher() {
@@ -454,14 +449,8 @@
             document.getElementById('user-display-name').innerText = currentUser.fullName;
             document.getElementById('user-display-role').innerText = activeRole;
             document.getElementById('user-initial').innerText = currentUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            
-            if (currentUser.multiRole || currentUser.role === ROLES.ADMIN) {
-                document.getElementById('btn-switch-role').classList.remove('hidden');
-            }
-            
-            buildMenu();
-            renderView('dashboard', 'Inicio');
-            logActivity("INICIO DE SESIÓN - ROL: " + role);
+            if (currentUser.multiRole || currentUser.role === ROLES.ADMIN) document.getElementById('btn-switch-role').classList.remove('hidden');
+            buildMenu(); renderView('dashboard', 'Inicio'); logActivity("INICIO DE SESIÓN - ROL: " + role);
         }
 
         function buildMenu() {
@@ -470,7 +459,6 @@
             if (activeRole !== ROLES.UCP) items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
             items.push({ id: 'users_admin', label: 'GESTIÓN DE USUARIOS', icon: '👥' });
             if (activeRole === ROLES.ADMIN) items.push({ id: 'activity_log', label: 'REGISTRO ACTIVIDAD', icon: '📜' });
-            
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left uppercase">
                     <span class="text-base text-left">${item.icon}</span> <span class="font-black text-left">${item.label}</span>
@@ -482,9 +470,7 @@
             document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
             currentPage = 1; editingId = null;
-
             if (saveState) window.history.pushState({ view: viewId, title: title }, title);
-
             if (viewId === 'dashboard') {
                 content.innerHTML = `
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in text-left">
@@ -502,7 +488,7 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm text-left">
-                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-20 mb-6 mx-auto">
+                    <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-20 mb-6 mx-auto text-center">
                     <h2 class="text-xl font-black uppercase italic dark:text-white leading-none text-center">Unidad de Control Penitenciario</h2>
                     <p class="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3 text-center">Portal de Auditoría y Acceso</p>
                 </div>`;
@@ -561,7 +547,6 @@
                         <button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">PDF COMPRIMIDO</button>
                     </div>
                 </div>
-                
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 no-print text-left">
                     <div class="md:col-span-2 text-left"><input type="text" id="report-search" oninput="updateReportTable()" placeholder="BÚSQUEDA RÁPIDA..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase text-left"></div>
                     <div class="flex gap-2 text-left">
@@ -569,7 +554,6 @@
                         <input type="date" id="report-to" onchange="updateReportTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none text-left">
                     </div>
                 </div>
-
                 <div class="flex-1 overflow-hidden flex flex-col text-left">
                     <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl text-left">
                         <table class="w-full text-left print-table text-left">
@@ -588,7 +572,7 @@
                     </div>
                 </div>
             </div>`;
-            updateReportTable();
+            window.updateReportTable();
         }
 
         function renderUsersAdminView(container) {
@@ -621,7 +605,7 @@
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
-                    <div class="text-left flex-1">
+                    <div class="text-left flex-1 text-left">
                         <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Importar Personal</h2>
                         <div class="flex items-center gap-6 mt-4 text-left">
                             <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50 text-left">
@@ -647,7 +631,7 @@
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
-                    <div class="text-left flex-1">
+                    <div class="text-left flex-1 text-left">
                         <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Base Body Scan</h2>
                         <div class="flex items-center gap-6 mt-4 text-left">
                             <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50 text-left">
@@ -679,7 +663,6 @@
                         <button onclick="exportActivityToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">Exportar logs</button>
                     </div>
                 </div>
-                
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 no-print text-left">
                     <div class="md:col-span-2 text-left"><input type="text" id="log-search" oninput="updateActivityLogsTable()" placeholder="BUSCAR OPERADOR O ACCIÓN..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase text-left"></div>
                     <div class="flex gap-2 text-left">
@@ -687,7 +670,6 @@
                         <input type="date" id="log-to" onchange="updateActivityLogsTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none text-left">
                     </div>
                 </div>
-
                 <div class="flex-1 overflow-hidden flex flex-col text-left">
                     <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl text-left">
                         <table class="w-full text-left">
@@ -711,8 +693,7 @@
                     </div>
                 </div>
             </div>`;
-            window.logCurrentPage = 1;
-            updateActivityLogsTable();
+            window.logCurrentPage = 1; updateActivityLogsTable();
         }
 
         window.updateActivityLogsTable = function() {
@@ -720,18 +701,14 @@
             const search = document.getElementById('log-search').value.toUpperCase();
             const from = document.getElementById('log-from').value;
             const to = document.getElementById('log-to').value;
-
             let filtered = (window.activityLogs || []).filter(l => {
                 const matchesSearch = !search || JSON.stringify(l).toUpperCase().includes(search);
                 const matchesFrom = !from || l.fecha >= from;
                 const matchesTo = !to || l.fecha <= to;
                 return matchesSearch && matchesFrom && matchesTo;
             });
-
-            const pSize = 30;
-            const total = Math.ceil(filtered.length / pSize);
+            const pSize = 30; const total = Math.ceil(filtered.length / pSize);
             const slice = filtered.slice((window.logCurrentPage - 1) * pSize, window.logCurrentPage * pSize);
-
             body.innerHTML = slice.map(l => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
                     <td class="px-3 py-2 text-left leading-tight"><b>${l.fecha}</b><br><span class="font-mono text-blue-500 text-left">${l.hora}</span></td>
@@ -767,29 +744,24 @@
             const search = document.getElementById('report-search').value.toUpperCase();
             const from = document.getElementById('report-from').value;
             const to = document.getElementById('report-to').value;
-
             let filtered = (window.ingresosRecientes || []).filter(i => {
                 const matchesSearch = !search || JSON.stringify(i).toUpperCase().includes(search);
                 const matchesFrom = !from || i.fecha >= from;
                 const matchesTo = !to || i.fecha <= to;
                 return matchesSearch && matchesFrom && matchesTo;
             });
-
             const records = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
             body.innerHTML = records.map(i => {
-                const p = (window.PERSONAL_DB || []).find(x => x.id === i.sujeto);
+                const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim() === String(i.sujeto).trim());
                 const nomYcargo = p ? `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left">${p.apellido} ${p.nombre}</div><div class="text-[6.5px] text-blue-400 text-left">${p.cargo}</div>` : `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left">${i.nomSujeto || 'NO IDENTIFICADO'}</div><div class="text-[6.5px] text-slate-400 text-left">${i.perfil}</div>`;
                 return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
                     <td class="px-2 py-1 leading-tight text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500 text-left">${i.hora}</span></td>
                     <td class="px-2 py-1 font-black text-slate-800 dark:text-white leading-none text-left">${i.sujeto}<br><span class="text-[6.5px] text-slate-400 text-left">${i.perfil}</span></td>
                     <td class="px-2 py-1 text-left">${nomYcargo}</td>
-                    <td class="px-2 py-1 text-[8px] text-left">${i.modo} ${i.dominio || i.nMovil}</td>
+                    <td class="px-2 py-1 text-[8px] text-left">${i.modo} ${i.dominio || i.nMovil || ""}</td>
                     <td class="px-2 py-1 font-black text-blue-600 text-left">${i.operador}</td>
-                    <td class="px-2 py-1 no-print text-left">
-                        ${activeRole === ROLES.DIP || activeRole === ROLES.ADMIN ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}
-                    </td>
+                    <td class="px-2 py-1 no-print text-left">${activeRole === ROLES.DIP || activeRole === ROLES.ADMIN ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}</td>
                 </tr>`;
             }).join('');
         };
@@ -800,11 +772,9 @@
         };
 
         function toggleTheme() {
-            const doc = document.documentElement;
-            const isDark = doc.classList.toggle('dark');
+            const doc = document.documentElement; const isDark = doc.classList.toggle('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            const btn = document.getElementById('theme-btn');
-            if (btn) btn.innerText = isDark ? '☀️' : '🌙';
+            const btn = document.getElementById('theme-btn'); if (btn) btn.innerText = isDark ? '☀️' : '🌙';
         }
 
         function toggleFullscreen() {
@@ -813,36 +783,22 @@
         }
 
         function editIngreso(id) {
-            editingId = id;
-            const i = window.ingresosRecientes.find(x => x.id === id);
-            if (!i) return;
+            editingId = id; const i = window.ingresosRecientes.find(x => x.id === id); if (!i) return;
             renderView('ingresos', 'REGISTRO DE INGRESOS (EDICIÓN)');
             setTimeout(() => {
-                document.getElementById('ing-fecha').value = i.fecha;
-                document.getElementById('ing-hora').value = i.hora;
-                document.getElementById('ing-perfil').value = i.perfil;
-                updateDynamicFields(i.perfil);
-                if (i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') {
-                    document.getElementById('ing-mat').value = i.sujeto;
-                    searchPersonalInDB(i.sujeto);
-                } else {
-                    document.getElementById('ing-dni').value = i.sujeto;
-                    document.getElementById('ing-nom').value = i.nomSujeto;
-                }
-                setMode(i.modo);
-                if (i.modo === 'VEHÍCULO') {
-                    document.getElementById('ing-dominio').value = i.dominio;
-                }
-                document.getElementById('ing-obs').value = i.obs;
-                document.getElementById('btn-submit').innerText = "Actualizar Registro";
+                document.getElementById('ing-fecha').value = i.fecha; document.getElementById('ing-hora').value = i.hora;
+                document.getElementById('ing-perfil').value = i.perfil; updateDynamicFields(i.perfil);
+                if (i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') { document.getElementById('ing-mat').value = i.sujeto; searchPersonalInDB(i.sujeto); }
+                else { document.getElementById('ing-dni').value = i.sujeto; document.getElementById('ing-nom').value = i.nomSujeto; }
+                setMode(i.modo); if (i.modo === 'VEHÍCULO') document.getElementById('ing-dominio').value = i.dominio;
+                document.getElementById('ing-obs').value = i.obs; document.getElementById('btn-submit').innerText = "Actualizar Registro";
             }, 100);
         }
 
         async function deleteIngreso(id) {
             if(confirm("¿Eliminar registro?")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', id));
-                await logActivity("ELIMINACIÓN REGISTRO ID: " + id);
-                showMessage("Registro Eliminado", "success");
+                await logActivity("ELIMINACIÓN REGISTRO ID: " + id); showMessage("Registro Eliminado", "success");
             }
         }
 
@@ -876,107 +832,66 @@
             playBeep(440, 150); stopScanner();
             if (type === 'QR') {
                 const parts = text.split('@').map(s => s.trim());
-                if (parts.length >= 8) { 
-                    document.getElementById('ing-dni').value = parts[4];
-                    document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
-                } else if (parts.length >= 4) {
-                    document.getElementById('ing-dni').value = parts[0];
-                    document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
-                } else document.getElementById('ing-dni').value = text;
-            } else if (type === 'BARCODE') {
-                document.getElementById('ing-mat').value = text; searchPersonalInDB(text);
-            } else if (type === 'LOGIN') {
-                document.getElementById('username').value = text;
-            }
+                if (parts.length >= 8) { document.getElementById('ing-dni').value = parts[4]; document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`; }
+                else if (parts.length >= 4) { document.getElementById('ing-dni').value = parts[0]; document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`; }
+                else document.getElementById('ing-dni').value = text;
+            } else if (type === 'BARCODE') { document.getElementById('ing-mat').value = text; searchPersonalInDB(text); }
+            else if (type === 'LOGIN') document.getElementById('username').value = text;
         }
 
         function searchPersonalInDB(val) {
-            const id = val.trim();
-            if (!id) {
-                const preview = document.getElementById('personal-preview');
-                if (preview) preview.classList.add('hidden');
-                return;
-            }
-
+            const id = val.trim(); if (!id) { const preview = document.getElementById('personal-preview'); if (preview) preview.classList.add('hidden'); return; }
             const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim() === id);
             const preview = document.getElementById('personal-preview');
-            
-            const now = new Date();
-            const sixtyDays = 60 * 24 * 60 * 60 * 1000;
+            const now = new Date(); const sixtyDays = 60 * 24 * 60 * 60 * 1000;
             const pases = (window.pasesBodyData || []).filter(b => {
                 if (String(b.matricula).trim() !== id) return false;
-                let d;
-                const dateStr = String(b.fechaHora).split(' ')[0];
+                let d; const dateStr = String(b.fechaHora).split(' ')[0];
                 const pt = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
-                if (pt.length === 3) {
-                    let year = pt[2];
-                    if (year.length === 2) year = "20" + year;
-                    d = new Date(`${year}-${pt[1]}-${pt[0]}`);
-                } else d = new Date(b.fechaHora);
+                if (pt.length === 3) { let year = pt[2]; if (year.length === 2) year = "20" + year; d = new Date(`${year}-${pt[1]}-${pt[0]}`); }
+                else d = new Date(b.fechaHora);
                 return !isNaN(d.getTime()) && (now - d) < sixtyDays;
             }).sort((a,b) => {
                 const dateA = new Date(a.fechaHora.includes('/') ? a.fechaHora.split('/').reverse().join('-') : a.fechaHora);
                 const dateB = new Date(b.fechaHora.includes('/') ? b.fechaHora.split('/').reverse().join('-') : b.fechaHora);
                 return dateB - dateA;
             });
-
-            if (!p && pases.length === 0) {
-                if(preview) preview.classList.add('hidden');
-                return;
-            }
-
-            if (p) {
-                document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
-            } else {
-                document.getElementById('prev-name').innerText = "SUJETO NO EN BASE PERSONAL";
-            }
-
+            if (!p && pases.length === 0) { if(preview) preview.classList.add('hidden'); return; }
+            if (p) { document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`; }
+            else { document.getElementById('prev-name').innerText = "SUJETO NO EN BASE PERSONAL"; }
             document.getElementById('body-analytics').innerHTML = `
-                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
-                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
-                    ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
+                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center text-center">${pases.length}</span></div>
+                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left text-left">
+                    ${pases.map(pase => `<div class="text-left text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left text-left">SIN REGISTROS RECIENTES</div>'}
                 </div>`;
-            
             preview.classList.remove('hidden');
         }
 
         async function handleSaveIngreso() {
-            const p = document.getElementById('ing-perfil').value;
-            const m = document.getElementById('ing-modo').value;
+            const p = document.getElementById('ing-perfil').value; const m = document.getElementById('ing-modo').value;
             if (!p || !m) return showMessage("Faltan datos clave.", "error");
-            
             const data = {
-                fecha: document.getElementById('ing-fecha').value,
-                hora: document.getElementById('ing-hora').value,
-                perfil: p, modo: m,
-                sujeto: (document.getElementById('ing-dni')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
-                nomSujeto: (document.getElementById('ing-nom')?.value || "").toUpperCase(),
-                obs: document.getElementById('ing-obs').value.toUpperCase(),
-                dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(),
-                operador: getOperatorID(), timestamp: Date.now()
+                fecha: document.getElementById('ing-fecha').value, hora: document.getElementById('ing-hora').value,
+                perfil: p, modo: m, sujeto: (document.getElementById('ing-dni')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
+                nomSujeto: (document.getElementById('ing-nom')?.value || "").toUpperCase(), obs: document.getElementById('ing-obs').value.toUpperCase(),
+                dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(), operador: getOperatorID(), timestamp: Date.now()
             };
-
             if (editingId) {
                 try {
                     await window.fbUpdateDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', editingId), data);
-                    await logActivity("EDICIÓN REGISTRO ID: " + editingId);
-                    playBeep(660, 150); showMessage("Registro Actualizado", "success");
-                    renderView('ingresos', 'REGISTRO DE INGRESOS');
+                    await logActivity("EDICIÓN REGISTRO ID: " + editingId); playBeep(660, 150);
+                    showMessage("Registro Actualizado", "success"); renderView('ingresos', 'REGISTRO DE INGRESOS');
                 } catch (e) { showMessage("Error de conexión.", "error"); }
                 return;
             }
-
             try {
                 if(!window.fbDb) throw new Error("Offline");
                 await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
                 await logActivity("NUEVO INGRESO: " + data.sujeto + " - " + data.perfil);
                 playBeep(660, 150); showMessage("Registro Guardado", "success");
             } catch (e) {
-                const pending = JSON.parse(localStorage.getItem('PENDING_INGRESOS') || '[]');
-                pending.push(data);
-                localStorage.setItem('PENDING_INGRESOS', JSON.stringify(pending));
-                showMessage("Sin señal. Guardado localmente.", "info");
-                playBeep(330, 300);
+                const pending = JSON.parse(localStorage.getItem('PENDING_INGRESOS') || '[]'); pending.push(data);
+                localStorage.setItem('PENDING_INGRESOS', JSON.stringify(pending)); showMessage("Sin señal. Guardado localmente.", "info"); playBeep(330, 300);
             }
             renderView('ingresos', 'REGISTRO DE INGRESOS');
         }
@@ -985,23 +900,19 @@
             const u = document.getElementById('u-user').value.trim(), n = document.getElementById('u-name').value.trim(), p = document.getElementById('u-pass').value, r = document.getElementById('u-role').value;
             if(!u || !n || !p) return showMessage("Complete los campos", "error");
             await window.fbSetDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'users', u), { username: u, fullName: n.toUpperCase(), password: p, role: r, multiRole: r === ROLES.ADMIN });
-            await logActivity("GESTIÓN DE USUARIO: " + u);
-            showMessage("Usuario Actualizado", "success");
-            document.getElementById('user-form').reset();
+            await logActivity("GESTIÓN DE USUARIO: " + u); showMessage("Usuario Actualizado", "success"); document.getElementById('user-form').reset();
         }
 
         async function deleteSystemUser(id) {
             if(confirm("¿Eliminar operador?")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'users', id));
-                await logActivity("ELIMINACIÓN USUARIO: " + id);
-                showMessage("Usuario Eliminado", "success");
+                await logActivity("ELIMINACIÓN USUARIO: " + id); showMessage("Usuario Eliminado", "success");
             }
         }
 
         async function processPersonalFile() {
             const input = document.getElementById('personal-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
-            const reader = new FileReader();
-            reader.onload = async (e) => {
+            const reader = new FileReader(); reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 const list = js.map(row => {
@@ -1023,8 +934,7 @@
         async function processBodyFile() {
             const input = document.getElementById('body-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
             const existingKeys = new Set((window.pasesBodyData || []).map(p => `${p.matricula}_${p.fechaHora}`));
-            const reader = new FileReader();
-            reader.onload = async (e) => {
+            const reader = new FileReader(); reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 const list = js.map(row => {
@@ -1045,17 +955,13 @@
         }
 
         function viewCalendarTotals(type) {
-            const counts = {};
-            const data = type === 'ingresos' ? window.ingresosRecientes : window.pasesBodyData;
-            data.forEach(i => {
-                const d = type === 'ingresos' ? i.fecha : i.fechaHora.split(' ')[0];
-                counts[d] = (counts[d] || 0) + 1;
-            });
+            const counts = {}; const data = type === 'ingresos' ? window.ingresosRecientes : window.pasesBodyData;
+            data.forEach(i => { const d = type === 'ingresos' ? i.fecha : i.fechaHora.split(' ')[0]; counts[d] = (counts[d] || 0) + 1; });
             const sorted = Object.keys(counts).sort((a,b) => b.localeCompare(a));
             document.getElementById('calendar-list').innerHTML = sorted.map(d => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left">
-                    <span class="font-black text-[9px] uppercase text-slate-500 text-left">${d}</span>
-                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center">${counts[d]}</span>
+                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left text-left">
+                    <span class="font-black text-[9px] uppercase text-slate-500 text-left text-left">${d}</span>
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs text-center text-center text-center">${counts[d]}</span>
                 </div>`).join('');
             document.getElementById('modal-calendar').classList.remove('hidden');
         }
@@ -1084,14 +990,14 @@
         function openDataModal(title, headers, rows) {
             modalFullData = rows; modalHeaders = headers; modalPage = 1;
             document.getElementById('modal-data-title').innerText = title;
-            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
+            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left text-left text-left">${h}</th>`).join('')}</tr>`;
             updateModalTable(); document.getElementById('modal-data').classList.remove('hidden');
         }
         function updateModalTable() {
             const q = document.getElementById('modal-search').value.toUpperCase();
             const filt = (modalFullData || []).filter(r => r.some(c => String(c).toUpperCase().includes(q)));
             const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
             document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
         }
         function exportToExcel() {
