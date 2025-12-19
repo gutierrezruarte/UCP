@@ -5,12 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>U.C.P. - Portal de Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Configuración necesaria para que Tailwind detecte la clase 'dark' manualmente
-        tailwind.config = {
-            darkMode: 'class'
-        }
-    </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -20,7 +14,6 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Manejo seguro de la configuración para evitar bloqueos en entornos externos (GitHub/Local)
         let firebaseConfig = {};
         try {
             firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
@@ -41,47 +34,37 @@
         window.fbUpdateDoc = updateDoc;
         window.fbGetDocs = getDocs;
 
-        // Inicializamos con el admin por defecto para permitir login instantáneo
-        window.SYSTEM_USERS = [{
-            username: '136219951',
-            password: 'Marquitos123',
-            fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
-            role: 'ADMINISTRADOR',
-            multiRole: true
-        }];
-
         const initAuth = async () => {
+            const loader = document.getElementById('global-loader');
             const hideLoader = () => {
-                const loader = document.getElementById('global-loader');
                 if (loader) {
                     loader.classList.add('opacity-0');
                     setTimeout(() => loader.remove(), 300);
                 }
             };
 
-            if (!auth) {
-                console.error("Firebase Auth not initialized. Check configuration.");
-                hideLoader();
-                return;
-            }
-
             try {
+                if (!auth) {
+                    hideLoader();
+                    return;
+                }
+
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
                 
-                // Registro de admin en segundo plano
-                const ensureAdmin = async () => {
-                    if (!db) return;
-                    try {
-                        const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                        await setDoc(adminRef, window.SYSTEM_USERS[0], { merge: true });
-                    } catch (e) { /* Deferred silently */ }
-                };
-                ensureAdmin();
-
+                if (db) {
+                    const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
+                    await setDoc(adminRef, {
+                        username: '136219951',
+                        password: 'Marquitos123',
+                        fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+                        role: 'ADMINISTRADOR',
+                        multiRole: true
+                    }, { merge: true });
+                }
             } catch (error) {
                 console.error("Auth Error:", error);
             } finally {
@@ -89,14 +72,15 @@
             }
         };
 
-        if (db) {
+        if (auth && db) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     const errorLog = (err) => console.warn("Firestore Error:", err);
 
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), orderBy('timestamp', 'desc'), limit(200)), (snapshot) => {
-                        const data = [];
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
+                        let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                         window.ingresosRecientes = data;
                         if (window.updateIngresosTable) window.updateIngresosTable();
                         if (window.updateReportTable) window.updateReportTable();
@@ -104,17 +88,17 @@
 
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
-                        snapshot.forEach(doc => data.push(doc.data()));
-                        // Si hay datos en la DB, actualizamos la lista (pero mantenemos el admin local si la DB falla)
-                        if (data.length > 0) window.SYSTEM_USERS = data;
+                        snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
+                        window.SYSTEM_USERS = data;
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
 
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                         const data = [];
-                        snapshot.forEach(doc => data.push(doc.data()));
+                        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
                         window.PERSONAL_DB = data;
                         if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
+                        if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
                     }, errorLog);
 
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
@@ -124,34 +108,28 @@
                         if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                     }, errorLog);
 
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), orderBy('timestamp', 'desc'), limit(300)), (snapshot) => {
-                        const data = [];
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
+                        let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                         window.activityLogs = data;
                         if (window.updateActivityLogsTable) window.updateActivityLogsTable();
                     }, errorLog);
-                    
-                    setTimeout(syncOfflineData, 2000);
                 }
             });
         }
 
         window.onload = () => {
             const savedTheme = localStorage.getItem('theme');
-            const btn = document.getElementById('theme-btn');
             if (savedTheme === 'dark') {
                 document.documentElement.classList.add('dark');
-                if (btn) btn.innerText = '☀️';
-            } else {
-                document.documentElement.classList.remove('dark');
-                if (btn) btn.innerText = '🌙';
             }
             initAuth();
             initUI();
             
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    if (typeof requestWakeLock === 'function') requestWakeLock();
+                    requestWakeLock();
                 }
             });
 
@@ -160,9 +138,6 @@
                     renderView(event.state.view, event.state.title, false);
                 }
             });
-
-            window.addEventListener('online', syncOfflineData);
-            setInterval(syncOfflineData, 60000);
         };
 
         window.fbUpdatePersonal = async (list) => {
@@ -206,27 +181,18 @@
             } catch (e) { console.error("Log error:", e); }
         };
 
-        async function syncOfflineData() {
-            if (!navigator.onLine || !currentUser || !db) return;
-            const pending = JSON.parse(localStorage.getItem('PENDING_INGRESOS') || '[]');
-            if (pending.length === 0) return;
-
-            let successful = [];
-            for (const data of pending) {
-                try {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), data);
-                    successful.push(data.timestamp);
-                } catch (e) { /* Keep pending */ }
-            }
-            const remaining = pending.filter(p => !successful.includes(p.timestamp));
-            localStorage.setItem('PENDING_INGRESOS', JSON.stringify(remaining));
-            if (successful.length > 0) showMessage(`Sincronizados ${successful.length} registros pendientes.`, "success");
+        let wakeLock = null;
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) return;
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } catch (err) { }
         }
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s; }
         .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -250,11 +216,11 @@
             <div class="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
             <div class="absolute inset-0 flex items-center justify-center font-black text-blue-600 text-[9px]">UCP</div>
         </div>
-        <h2 class="text-white font-black uppercase text-sm mb-1 text-center">Iniciando Portal</h2>
-        <p class="text-slate-500 font-bold uppercase text-[7px] tracking-widest animate-pulse text-center">Carga Segura</p>
+        <h2 class="text-white font-black uppercase text-sm mb-1">Iniciando Portal</h2>
+        <p class="text-slate-500 font-bold uppercase text-[7px] tracking-widest animate-pulse">Carga Segura</p>
     </div>
 
-    <div id="toast-wrapper" class="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none text-left"></div>
+    <div id="toast-wrapper" class="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none"></div>
 
     <div id="sidebar-overlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[45] hidden transition-opacity opacity-0"></div>
 
@@ -264,14 +230,14 @@
 
     <div id="role-screen" class="hidden fixed inset-0 z-[200] bg-slate-900 flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl text-center">
-            <h2 class="text-xl font-black uppercase tracking-tighter mb-1 dark:text-white text-center">Seleccione Perfil</h2>
-            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-6 text-center">Acceso con múltiples permisos</p>
+            <h2 class="text-xl font-black uppercase tracking-tighter mb-1 dark:text-white">Seleccione Perfil</h2>
+            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-6">Acceso con múltiples permisos</p>
             <div id="role-options" class="grid grid-cols-1 gap-3"></div>
         </div>
     </div>
 
     <div id="app-container" class="hidden h-full flex overflow-hidden">
-        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-[50] w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col shrink-0 text-left">
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-[50] w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col shrink-0">
             <div class="p-5 flex flex-col h-full text-left">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="bg-blue-600 p-2 rounded-xl font-black text-xs text-white">UCP</div>
@@ -296,7 +262,7 @@
         </aside>
 
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative overflow-hidden text-left">
-            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0 no-print text-left">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0 no-print">
                 <div class="flex items-center gap-4">
                     <button onclick="toggleSidebar(true)" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg">☰</button>
                     <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Inicio</h2>
@@ -314,7 +280,7 @@
     <div id="modal-data" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-5xl h-[85vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
             <div class="p-5 bg-blue-600 text-white flex justify-between items-center shrink-0">
-                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest italic text-left">Base de Datos</h3>
+                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest italic">Base de Datos</h3>
                 <button onclick="closeDataModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center">✕</button>
             </div>
             <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 flex flex-wrap gap-3 items-center">
@@ -326,9 +292,9 @@
                 </div>
             </div>
             <div class="flex-1 overflow-auto p-2 no-scrollbar">
-                <table class="w-full text-left text-[11px] text-left">
+                <table class="w-full text-left text-[11px]">
                     <thead id="modal-data-head" class="bg-slate-50 dark:bg-slate-800 sticky top-0 font-black uppercase text-[9px] text-left"></thead>
-                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400 text-left"></tbody>
+                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400"></tbody>
                 </table>
             </div>
         </div>
@@ -337,7 +303,7 @@
     <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
         <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
             <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20">
-                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic text-left">Escaneo Activo</span>
+                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic">Escaneo Activo</span>
                 <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center">✕</button>
             </div>
             <div id="reader"></div>
@@ -361,7 +327,7 @@
         const ROLES = { ADMIN: 'ADMINISTRADOR', DIP: 'DEPARTAMENTO INSPECCIÓN PENITENCIARIA', UCP: 'UNIDAD DE CONTROL PENITENCIARIO' };
         const PROFILES = ['PERSONAL', 'MOVIL', 'MONOTRIBUTISTA', 'DOCENTE', 'ABOGADO', 'PASTORAL', 'VISITA', 'OTROS'];
 
-        window.PERSONAL_DB = []; window.ingresosRecientes = []; window.pasesBodyData = []; window.activityLogs = [];
+        window.PERSONAL_DB = []; window.ingresosRecientes = []; window.pasesBodyData = []; window.SYSTEM_USERS = []; window.activityLogs = [];
         let currentUser = null; let activeRole = null; let html5QrCode = null;
         let currentPage = 1; const pageSize = 40; let editingId = null;
         let modalFullData = []; let modalHeaders = []; let modalPage = 1; const modalPageSize = 30;
@@ -371,22 +337,21 @@
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
-                oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
-                oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
-                oscillator.start(); setTimeout(() => oscillator.stop(), duration);
-            } catch(e) {}
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                setTimeout(() => oscillator.stop(), duration);
+            } catch(e) { }
         }
 
         function showMessage(text, type = 'info') {
             const wrapper = document.getElementById('toast-wrapper');
             const toast = document.createElement('div');
-            const colors = {
-                'info': 'bg-blue-600',
-                'success': 'bg-emerald-600',
-                'error': 'bg-red-600'
-            };
-            toast.className = `${colors[type]} text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest animate-fade-in pointer-events-auto flex items-center gap-3 text-left`;
+            const colors = { 'info': 'bg-blue-600', 'success': 'bg-emerald-600', 'error': 'bg-red-600' };
+            toast.className = `${colors[type]} text-white px-5 py-3 rounded-2xl shadow-xl font-black text-[10px] uppercase tracking-widest animate-fade-in pointer-events-auto flex items-center gap-3`;
             toast.innerHTML = `<span>${text}</span>`;
             wrapper.appendChild(toast);
             setTimeout(() => {
@@ -394,16 +359,6 @@
                 toast.style.transform = 'translateY(-10px)';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
-        }
-
-        let wakeLock = null;
-        async function requestWakeLock() {
-            if (!('wakeLock' in navigator)) return;
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {
-                console.warn("Wake Lock no disponible.");
-            }
         }
 
         function initUI() {
@@ -421,22 +376,28 @@
                 </form>`;
         }
 
-        async function handleLogin() {
+        function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
             
-            // Validamos contra la lista disponible (que siempre tiene al menos el admin fallback)
-            const user = window.SYSTEM_USERS.find(x => x.username === u && x.password === p);
+            // Buscar en la lista de usuarios de la DB
+            let user = (window.SYSTEM_USERS || []).find(x => x.username === u && x.password === p);
             
+            // Validación maestra para administrador (evita bloqueos si la DB no sincronizó aún)
+            if (!user && u === '136219951' && p === 'Marquitos123') {
+                user = {
+                    username: '136219951',
+                    fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+                    role: ROLES.ADMIN,
+                    multiRole: true
+                };
+            }
+
             if (user) {
                 playBeep(880, 100);
                 currentUser = user;
-                if (typeof requestWakeLock === 'function') requestWakeLock();
-                if (user.multiRole || user.role === ROLES.ADMIN) {
-                    openRoleSwitcher();
-                } else {
-                    startSession(user.role);
-                }
+                if (user.multiRole || user.role === ROLES.ADMIN) openRoleSwitcher();
+                else startSession(user.role);
             } else {
                 showMessage("Credenciales incorrectas", "error");
             }
@@ -459,14 +420,8 @@
             document.getElementById('user-display-name').innerText = currentUser.fullName;
             document.getElementById('user-display-role').innerText = activeRole;
             document.getElementById('user-initial').innerText = currentUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            
-            if (currentUser.multiRole || currentUser.role === ROLES.ADMIN) {
-                document.getElementById('btn-switch-role').classList.remove('hidden');
-            }
-            
-            buildMenu();
-            renderView('dashboard', 'Inicio');
-            logActivity("INICIO DE SESIÓN - ROL: " + role);
+            if (currentUser.multiRole || currentUser.role === ROLES.ADMIN) document.getElementById('btn-switch-role').classList.remove('hidden');
+            buildMenu(); renderView('dashboard', 'Inicio'); logActivity("INICIO DE SESIÓN - ROL: " + role);
         }
 
         function buildMenu() {
@@ -475,7 +430,6 @@
             if (activeRole !== ROLES.UCP) items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
             items.push({ id: 'users_admin', label: 'GESTIÓN DE USUARIOS', icon: '👥' });
             if (activeRole === ROLES.ADMIN) items.push({ id: 'activity_log', label: 'REGISTRO ACTIVIDAD', icon: '📜' });
-            
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left uppercase">
                     <span class="text-base text-left">${item.icon}</span> <span class="font-black text-left">${item.label}</span>
@@ -487,9 +441,7 @@
             document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
             currentPage = 1; editingId = null;
-
             if (saveState) window.history.pushState({ view: viewId, title: title }, title);
-
             if (viewId === 'dashboard') {
                 content.innerHTML = `
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in text-left">
@@ -506,7 +458,7 @@
                         <p class="text-base font-black uppercase truncate">${getOperatorID()}</p>
                     </div>
                 </div>
-                <div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm text-left">
+                <div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm">
                     <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-20 mb-6 mx-auto">
                     <h2 class="text-xl font-black uppercase italic dark:text-white leading-none text-center">Unidad de Control Penitenciario</h2>
                     <p class="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3 text-center">Portal de Auditoría y Acceso</p>
@@ -526,7 +478,7 @@
                 <div class="xl:col-span-5 text-left">
                     <div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
                         <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
-                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic text-left">Registro Acceso</h3>
+                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic">Registro Acceso</h3>
                             <div class="grid grid-cols-2 gap-3 text-left">
                                 <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
                                 <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
@@ -555,10 +507,73 @@
             window.updateIngresosTable();
         }
 
+        function updateDynamicFields(perfil) {
+            const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
+            if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
+                d.innerHTML = `
+                    <div class="space-y-3 animate-fade-in text-left">
+                        <div class="flex gap-2 text-left">
+                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="AFILIADO / MATRÍCULA">
+                            <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
+                        </div>
+                        <div id="personal-preview" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 rounded-2xl text-left">
+                            <div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-xs mb-2 text-left"></div>
+                            <div id="body-analytics" class="space-y-2 border-t dark:border-emerald-900/50 pt-2 text-left"></div>
+                        </div>
+                    </div>`;
+            } else if (perfil === 'ABOGADO') {
+                d.innerHTML = `
+                    <div class="space-y-3 animate-fade-in text-left">
+                        <div class="flex gap-2 text-left">
+                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none text-left" placeholder="DNI">
+                            <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📸</button>
+                        </div>
+                        <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="APELLIDO Y NOMBRE">
+                        <input type="text" id="ing-mat-prof" class="w-full px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MATRÍCULA PROFESIONAL">
+                    </div>`;
+            } else {
+                d.innerHTML = `
+                    <div class="space-y-3 animate-fade-in text-left">
+                        <div class="flex gap-2 text-left">
+                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none text-left" placeholder="DNI">
+                            <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📸</button>
+                        </div>
+                        <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="APELLIDO Y NOMBRE">
+                    </div>`;
+            }
+        }
+
+        function searchPersonalInDB(val) {
+            const id = val.trim(); if (!id) { const preview = document.getElementById('personal-preview'); if (preview) preview.classList.add('hidden'); return; }
+            const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim() === id);
+            const preview = document.getElementById('personal-preview');
+            const now = new Date(); const sixtyDays = 60 * 24 * 60 * 60 * 1000;
+            const pases = (window.pasesBodyData || []).filter(b => {
+                if (String(b.matricula).trim() !== id) return false;
+                let d; const dateStr = String(b.fechaHora).split(' ')[0];
+                const pt = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+                if (pt.length === 3) { let year = pt[2]; if (year.length === 2) year = "20" + year; d = new Date(`${year}-${pt[1]}-${pt[0]}`); }
+                else d = new Date(b.fechaHora);
+                return !isNaN(d.getTime()) && (now - d) < sixtyDays;
+            }).sort((a,b) => {
+                const dateA = new Date(a.fechaHora.includes('/') ? a.fechaHora.split('/').reverse().join('-') : a.fechaHora);
+                const dateB = new Date(b.fechaHora.includes('/') ? b.fechaHora.split('/').reverse().join('-') : b.fechaHora);
+                return dateB - dateA;
+            });
+            if (!p && pases.length === 0) { if(preview) preview.classList.add('hidden'); return; }
+            if (p) { document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`; }
+            else { document.getElementById('prev-name').innerText = "SUJETO NO EN BASE PERSONAL"; }
+            document.getElementById('body-analytics').innerHTML = `
+                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
+                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
+                    ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
+                </div>`;
+            if (preview) preview.classList.remove('hidden');
+        }
+
         function renderReportesView(container) {
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 h-full flex flex-col text-left">
-                <div class="print-header hidden text-left">INFORME U.C.P. - FILTRADO: <span id="print-filter-text">TODOS</span></div>
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 shrink-0 no-print text-left">
                     <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left">Auditoría Acceso</h3>
                     <div class="flex gap-2 w-full md:w-auto text-center">
@@ -567,7 +582,6 @@
                         <button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">PDF COMPRIMIDO</button>
                     </div>
                 </div>
-                
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 no-print text-left">
                     <div class="md:col-span-2 text-left"><input type="text" id="report-search" oninput="updateReportTable()" placeholder="BÚSQUEDA RÁPIDA..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase text-left"></div>
                     <div class="flex gap-2 text-left">
@@ -575,7 +589,6 @@
                         <input type="date" id="report-to" onchange="updateReportTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none text-left">
                     </div>
                 </div>
-
                 <div class="flex-1 overflow-hidden flex flex-col text-left">
                     <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl text-left">
                         <table class="w-full text-left print-table text-left">
@@ -594,7 +607,7 @@
                     </div>
                 </div>
             </div>`;
-            updateReportTable();
+            window.updateReportTable();
         }
 
         function renderUsersAdminView(container) {
@@ -627,7 +640,7 @@
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
-                    <div class="text-left flex-1">
+                    <div class="text-left flex-1 text-left">
                         <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Importar Personal</h2>
                         <div class="flex items-center gap-6 mt-4 text-left">
                             <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50 text-left">
@@ -653,7 +666,7 @@
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
-                    <div class="text-left flex-1">
+                    <div class="text-left flex-1 text-left">
                         <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Base Body Scan</h2>
                         <div class="flex items-center gap-6 mt-4 text-left">
                             <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50 text-left">
@@ -685,7 +698,6 @@
                         <button onclick="exportActivityToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">Exportar logs</button>
                     </div>
                 </div>
-                
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 no-print text-left">
                     <div class="md:col-span-2 text-left"><input type="text" id="log-search" oninput="updateActivityLogsTable()" placeholder="BUSCAR OPERADOR O ACCIÓN..." class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase text-left"></div>
                     <div class="flex gap-2 text-left">
@@ -693,7 +705,6 @@
                         <input type="date" id="log-to" onchange="updateActivityLogsTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none text-left">
                     </div>
                 </div>
-
                 <div class="flex-1 overflow-hidden flex flex-col text-left">
                     <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl text-left">
                         <table class="w-full text-left">
@@ -717,8 +728,7 @@
                     </div>
                 </div>
             </div>`;
-            window.logCurrentPage = 1;
-            updateActivityLogsTable();
+            window.logCurrentPage = 1; updateActivityLogsTable();
         }
 
         window.updateActivityLogsTable = function() {
@@ -726,18 +736,14 @@
             const search = document.getElementById('log-search').value.toUpperCase();
             const from = document.getElementById('log-from').value;
             const to = document.getElementById('log-to').value;
-
             let filtered = (window.activityLogs || []).filter(l => {
                 const matchesSearch = !search || JSON.stringify(l).toUpperCase().includes(search);
                 const matchesFrom = !from || l.fecha >= from;
                 const matchesTo = !to || l.fecha <= to;
                 return matchesSearch && matchesFrom && matchesTo;
             });
-
-            const pSize = 30;
-            const total = Math.ceil(filtered.length / pSize);
+            const pSize = 30; const total = Math.ceil(filtered.length / pSize);
             const slice = filtered.slice((window.logCurrentPage - 1) * pSize, window.logCurrentPage * pSize);
-
             body.innerHTML = slice.map(l => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
                     <td class="px-3 py-2 text-left leading-tight"><b>${l.fecha}</b><br><span class="font-mono text-blue-500 text-left">${l.hora}</span></td>
@@ -773,29 +779,24 @@
             const search = document.getElementById('report-search').value.toUpperCase();
             const from = document.getElementById('report-from').value;
             const to = document.getElementById('report-to').value;
-
             let filtered = (window.ingresosRecientes || []).filter(i => {
                 const matchesSearch = !search || JSON.stringify(i).toUpperCase().includes(search);
                 const matchesFrom = !from || i.fecha >= from;
                 const matchesTo = !to || i.fecha <= to;
                 return matchesSearch && matchesFrom && matchesTo;
             });
-
             const records = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
             body.innerHTML = records.map(i => {
-                const p = (window.PERSONAL_DB || []).find(x => x.id === i.sujeto);
+                const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim() === String(i.sujeto).trim());
                 const nomYcargo = p ? `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left">${p.apellido} ${p.nombre}</div><div class="text-[6.5px] text-blue-400 text-left">${p.cargo}</div>` : `<div class="font-black text-slate-700 dark:text-slate-300 leading-none text-left">${i.nomSujeto || 'NO IDENTIFICADO'}</div><div class="text-[6.5px] text-slate-400 text-left">${i.perfil}</div>`;
                 return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
                     <td class="px-2 py-1 leading-tight text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500 text-left">${i.hora}</span></td>
                     <td class="px-2 py-1 font-black text-slate-800 dark:text-white leading-none text-left">${i.sujeto}<br><span class="text-[6.5px] text-slate-400 text-left">${i.perfil}</span></td>
                     <td class="px-2 py-1 text-left">${nomYcargo}</td>
-                    <td class="px-2 py-1 text-[8px] text-left">${i.modo} ${i.dominio || i.nMovil}</td>
+                    <td class="px-2 py-1 text-[8px] text-left">${i.modo} ${i.dominio || i.nMovil || ""}</td>
                     <td class="px-2 py-1 font-black text-blue-600 text-left">${i.operador}</td>
-                    <td class="px-2 py-1 no-print text-left">
-                        ${activeRole === ROLES.DIP || activeRole === ROLES.ADMIN ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}
-                    </td>
+                    <td class="px-2 py-1 no-print text-left">${activeRole === ROLES.DIP || activeRole === ROLES.ADMIN ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}</td>
                 </tr>`;
             }).join('');
         };
@@ -806,11 +807,9 @@
         };
 
         function toggleTheme() {
-            const doc = document.documentElement;
-            const isDark = doc.classList.toggle('dark');
+            const doc = document.documentElement; const isDark = doc.classList.toggle('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            const btn = document.getElementById('theme-btn');
-            if (btn) btn.innerText = isDark ? '☀️' : '🌙';
+            const btn = document.getElementById('theme-btn'); if (btn) btn.innerText = isDark ? '☀️' : '🌙';
         }
 
         function toggleFullscreen() {
@@ -819,194 +818,71 @@
         }
 
         function editIngreso(id) {
-            editingId = id;
-            const i = window.ingresosRecientes.find(x => x.id === id);
-            if (!i) return;
+            editingId = id; const i = window.ingresosRecientes.find(x => x.id === id); if (!i) return;
             renderView('ingresos', 'REGISTRO DE INGRESOS (EDICIÓN)');
             setTimeout(() => {
-                document.getElementById('ing-fecha').value = i.fecha;
-                document.getElementById('ing-hora').value = i.hora;
-                document.getElementById('ing-perfil').value = i.perfil;
-                updateDynamicFields(i.perfil);
-                if (i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') {
-                    document.getElementById('ing-mat').value = i.sujeto;
-                    searchPersonalInDB(i.sujeto);
-                } else {
-                    document.getElementById('ing-dni').value = i.sujeto;
-                    document.getElementById('ing-nom').value = i.nomSujeto;
+                document.getElementById('ing-fecha').value = i.fecha; document.getElementById('ing-hora').value = i.hora;
+                document.getElementById('ing-perfil').value = i.perfil; updateDynamicFields(i.perfil);
+                if (i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') { document.getElementById('ing-mat').value = i.sujeto; searchPersonalInDB(i.sujeto); }
+                else { 
+                    document.getElementById('ing-dni').value = i.sujeto; 
+                    document.getElementById('ing-nom').value = i.nomSujeto; 
+                    if (i.perfil === 'ABOGADO' && document.getElementById('ing-mat-prof')) {
+                        document.getElementById('ing-mat-prof').value = i.matProf || "";
+                    }
                 }
-                setMode(i.modo);
-                if (i.modo === 'VEHÍCULO') {
-                    document.getElementById('ing-dominio').value = i.dominio;
-                }
-                document.getElementById('ing-obs').value = i.obs;
-                document.getElementById('btn-submit').innerText = "Actualizar Registro";
+                setMode(i.modo); if (i.modo === 'VEHÍCULO') document.getElementById('ing-dominio').value = i.dominio;
+                document.getElementById('ing-obs').value = i.obs; document.getElementById('btn-submit').innerText = "Actualizar Registro";
             }, 100);
         }
 
         async function deleteIngreso(id) {
             if(confirm("¿Eliminar registro?")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', id));
-                await logActivity("ELIMINACIÓN REGISTRO ID: " + id);
-                showMessage("Registro Eliminado", "success");
+                await logActivity("ELIMINACIÓN REGISTRO ID: " + id); showMessage("Registro Eliminado", "success");
             }
-        }
-
-        function updateDynamicFields(perfil) {
-            const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
-            if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
-                d.innerHTML = `
-                    <div class="space-y-3 animate-fade-in text-left">
-                        <div class="flex gap-2 text-left">
-                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="AFILIADO / MATRÍCULA">
-                            <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
-                        </div>
-                        <div id="personal-preview" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 rounded-2xl text-left">
-                            <div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-xs mb-2 text-left"></div>
-                            <div id="body-analytics" class="space-y-2 border-t dark:border-emerald-900/50 pt-2 text-left"></div>
-                        </div>
-                    </div>`;
-            } else {
-                d.innerHTML = `
-                    <div class="space-y-3 animate-fade-in text-left">
-                        <div class="flex gap-2 text-left">
-                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none text-left" placeholder="DNI">
-                            <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📸</button>
-                        </div>
-                        <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="APELLIDO Y NOMBRE">
-                    </div>`;
-            }
-        }
-
-        function handleScanSuccess(text, type) {
-            playBeep(440, 150); stopScanner();
-            if (type === 'QR') {
-                const parts = text.split('@').map(s => s.trim());
-                if (parts.length >= 8) { 
-                    document.getElementById('ing-dni').value = parts[4];
-                    document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
-                } else if (parts.length >= 4) {
-                    document.getElementById('ing-dni').value = parts[0];
-                    document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
-                } else document.getElementById('ing-dni').value = text;
-            } else if (type === 'BARCODE') {
-                document.getElementById('ing-mat').value = text; searchPersonalInDB(text);
-            } else if (type === 'LOGIN') {
-                document.getElementById('username').value = text;
-            }
-        }
-
-        function searchPersonalInDB(val) {
-            const id = val.trim();
-            if (!id) {
-                const preview = document.getElementById('personal-preview');
-                if (preview) preview.classList.add('hidden');
-                return;
-            }
-
-            const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim() === id);
-            const preview = document.getElementById('personal-preview');
-            
-            const now = new Date();
-            const sixtyDays = 60 * 24 * 60 * 60 * 1000;
-            const pases = (window.pasesBodyData || []).filter(b => {
-                if (String(b.matricula).trim() !== id) return false;
-                let d;
-                const dateStr = String(b.fechaHora).split(' ')[0];
-                const pt = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
-                if (pt.length === 3) {
-                    let year = pt[2];
-                    if (year.length === 2) year = "20" + year;
-                    d = new Date(`${year}-${pt[1]}-${pt[0]}`);
-                } else d = new Date(b.fechaHora);
-                return !isNaN(d.getTime()) && (now - d) < sixtyDays;
-            }).sort((a,b) => {
-                const dateA = new Date(a.fechaHora.includes('/') ? a.fechaHora.split('/').reverse().join('-') : a.fechaHora);
-                const dateB = new Date(b.fechaHora.includes('/') ? b.fechaHora.split('/').reverse().join('-') : b.fechaHora);
-                return dateB - dateA;
-            });
-
-            if (!p && pases.length === 0) {
-                if(preview) preview.classList.add('hidden');
-                return;
-            }
-
-            if (p) {
-                document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
-            } else {
-                document.getElementById('prev-name').innerText = "SUJETO NO EN BASE PERSONAL";
-            }
-
-            document.getElementById('body-analytics').innerHTML = `
-                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
-                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
-                    ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
-                </div>`;
-            
-            preview.classList.remove('hidden');
         }
 
         async function handleSaveIngreso() {
-            const p = document.getElementById('ing-perfil').value;
-            const m = document.getElementById('ing-modo').value;
+            const p = document.getElementById('ing-perfil').value; const m = document.getElementById('ing-modo').value;
             if (!p || !m) return showMessage("Faltan datos clave.", "error");
-            
             const data = {
-                fecha: document.getElementById('ing-fecha').value,
-                hora: document.getElementById('ing-hora').value,
-                perfil: p, modo: m,
-                sujeto: (document.getElementById('ing-dni')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
-                nomSujeto: (document.getElementById('ing-nom')?.value || "").toUpperCase(),
+                fecha: document.getElementById('ing-fecha').value, hora: document.getElementById('ing-hora').value,
+                perfil: p, modo: m, sujeto: (document.getElementById('ing-dni')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
+                nomSujeto: (document.getElementById('ing-nom')?.value || "").toUpperCase(), 
+                matProf: (document.getElementById('ing-mat-prof')?.value || "").toUpperCase(),
                 obs: document.getElementById('ing-obs').value.toUpperCase(),
-                dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(),
-                operador: getOperatorID(), timestamp: Date.now()
+                dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(), operador: getOperatorID(), timestamp: Date.now()
             };
-
-            if (editingId) {
-                try {
+            try {
+                if (editingId) {
                     await window.fbUpdateDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', editingId), data);
                     await logActivity("EDICIÓN REGISTRO ID: " + editingId);
-                    playBeep(660, 150); showMessage("Registro Actualizado", "success");
-                    renderView('ingresos', 'REGISTRO DE INGRESOS');
-                } catch (e) { showMessage("Error de conexión.", "error"); }
-                return;
-            }
-
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), data);
-                await logActivity("NUEVO INGRESO: " + data.sujeto + " - " + data.perfil);
-                playBeep(660, 150); showMessage("Registro Guardado", "success");
-            } catch (e) {
-                const pending = JSON.parse(localStorage.getItem('PENDING_INGRESOS') || '[]');
-                pending.push(data);
-                localStorage.setItem('PENDING_INGRESOS', JSON.stringify(pending));
-                showMessage("Sin señal. Guardado localmente.", "info");
-                playBeep(330, 300);
-            }
-            renderView('ingresos', 'REGISTRO DE INGRESOS');
+                } else {
+                    await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
+                    await logActivity("NUEVO INGRESO: " + data.sujeto + " - " + data.perfil);
+                }
+                playBeep(660, 150); showMessage("Registro Guardado", "success"); renderView('ingresos', 'REGISTRO DE INGRESOS');
+            } catch (e) { showMessage("Error al guardar.", "error"); }
         }
 
         async function handleSaveUser() {
             const u = document.getElementById('u-user').value.trim(), n = document.getElementById('u-name').value.trim(), p = document.getElementById('u-pass').value, r = document.getElementById('u-role').value;
             if(!u || !n || !p) return showMessage("Complete los campos", "error");
             await window.fbSetDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'users', u), { username: u, fullName: n.toUpperCase(), password: p, role: r, multiRole: r === ROLES.ADMIN });
-            await logActivity("GESTIÓN DE USUARIO: " + u);
-            showMessage("Usuario Actualizado", "success");
-            document.getElementById('user-form').reset();
+            await logActivity("GESTIÓN DE USUARIO: " + u); showMessage("Usuario Actualizado", "success"); document.getElementById('user-form').reset();
         }
 
         async function deleteSystemUser(id) {
             if(confirm("¿Eliminar operador?")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'users', id));
-                await logActivity("ELIMINACIÓN USUARIO: " + id);
-                showMessage("Usuario Eliminado", "success");
+                await logActivity("ELIMINACIÓN USUARIO: " + id); showMessage("Usuario Eliminado", "success");
             }
         }
 
         async function processPersonalFile() {
             const input = document.getElementById('personal-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
-            const reader = new FileReader();
-            reader.onload = async (e) => {
+            const reader = new FileReader(); reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 const list = js.map(row => {
@@ -1027,9 +903,8 @@
 
         async function processBodyFile() {
             const input = document.getElementById('body-file'); if (!input || !input.files.length) return showMessage("Seleccione Excel", "error");
-            const existingKeys = new Set(window.pasesBodyData.map(p => `${p.matricula}_${p.fechaHora}`));
-            const reader = new FileReader();
-            reader.onload = async (e) => {
+            const existingKeys = new Set((window.pasesBodyData || []).map(p => `${p.matricula}_${p.fechaHora}`));
+            const reader = new FileReader(); reader.onload = async (e) => {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 const list = js.map(row => {
@@ -1050,12 +925,8 @@
         }
 
         function viewCalendarTotals(type) {
-            const counts = {};
-            const data = type === 'ingresos' ? window.ingresosRecientes : window.pasesBodyData;
-            data.forEach(i => {
-                const d = type === 'ingresos' ? i.fecha : i.fechaHora.split(' ')[0];
-                counts[d] = (counts[d] || 0) + 1;
-            });
+            const counts = {}; const data = type === 'ingresos' ? window.ingresosRecientes : window.pasesBodyData;
+            data.forEach(i => { const d = type === 'ingresos' ? i.fecha : String(i.fechaHora).split(' ')[0]; counts[d] = (counts[d] || 0) + 1; });
             const sorted = Object.keys(counts).sort((a,b) => b.localeCompare(a));
             document.getElementById('calendar-list').innerHTML = sorted.map(d => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700 text-left">
@@ -1083,7 +954,7 @@
         function stopScanner() { if(html5QrCode) html5QrCode.stop().finally(() => { html5QrCode.clear(); document.getElementById('modal-scanner').classList.add('hidden'); }); }
         function updateFileName(id, input) { if(input.files.length) document.getElementById(id).innerText = input.files[0].name.toUpperCase(); }
         function prevModalPage() { if(modalPage > 1) { modalPage--; updateModalTable(); } }
-        function nextModalPage() { if(modalPage * modalPageSize < modalFullData.length) { modalPage++; updateModalTable(); } }
+        function nextModalPage() { if(modalPage * modalPageSize < (modalFullData || []).length) { modalPage++; updateModalTable(); } }
         function viewPersonalData() { openDataModal("BASE PERSONAL", ["ID", "APELLIDO", "NOMBRE", "CARGO"], (window.PERSONAL_DB || []).map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
         function viewBodyData() { openDataModal("HISTORIAL BODY SCAN", ["ID", "NOMBRE", "FECHA/HORA", "SECTOR"], (window.pasesBodyData || []).map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
         function openDataModal(title, headers, rows) {
@@ -1094,18 +965,37 @@
         }
         function updateModalTable() {
             const q = document.getElementById('modal-search').value.toUpperCase();
-            const filt = modalFullData.filter(r => r.some(c => String(c).toUpperCase().includes(q)));
+            const filt = (modalFullData || []).filter(r => r.some(c => String(c).toUpperCase().includes(q)));
             const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
             document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
         }
         function exportToExcel() {
-            const data = (window.ingresosRecientes || []).map(i => ({ Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, Sujeto: i.sujeto, Nombre: i.nomSujeto, Modo: i.modo, Operador: i.operador }));
+            const data = (window.ingresosRecientes || []).map(i => ({ 
+                Fecha: i.fecha, 
+                Hora: i.hora, 
+                Perfil: i.perfil, 
+                Sujeto: i.sujeto, 
+                Nombre: i.nomSujeto, 
+                Mat_Prof: i.matProf || "",
+                Modo: i.modo, 
+                Operador: i.operador 
+            }));
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "UCP"); XLSX.writeFile(wb, `Auditoria_UCP.xlsx`);
         }
         function exportActivityToExcel() {
             const data = (window.activityLogs || []).map(l => ({ Fecha: l.fecha, Hora: l.hora, Usuario: l.userName, ID: l.userId, Accion: l.detail }));
             const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Actividad"); XLSX.writeFile(wb, `Logs_Actividad_UCP.xlsx`);
+        }
+        function handleScanSuccess(text, type) {
+            playBeep(440, 150); stopScanner();
+            if (type === 'QR') {
+                const parts = text.split('@').map(s => s.trim());
+                if (parts.length >= 8) { document.getElementById('ing-dni').value = parts[4]; if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`; }
+                else if (parts.length >= 4) { document.getElementById('ing-dni').value = parts[0]; if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`; }
+                else document.getElementById('ing-dni').value = text;
+            } else if (type === 'BARCODE') { if(document.getElementById('ing-mat')) { document.getElementById('ing-mat').value = text; searchPersonalInDB(text); } }
+            else if (type === 'LOGIN') document.getElementById('username').value = text;
         }
     </script>
 </body>
