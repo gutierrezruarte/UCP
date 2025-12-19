@@ -14,32 +14,22 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, query, getDocs, deleteDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Manejo seguro de configuración para evitar bloqueos en GitHub
-        let firebaseConfig = {};
-        try {
-            if (typeof __firebase_config !== 'undefined') {
-                firebaseConfig = JSON.parse(__firebase_config);
-            }
-        } catch (e) { console.error("Config Error:", e); }
-
+        // Global variables provided by environment (MANDATORY RULES)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ucp-spc-v1';
-        let app, auth, db;
 
-        if (Object.keys(firebaseConfig).length > 0) {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            
-            // Exponer a global para funciones tradicionales
-            window.fbDb = db;
-            window.fbAppId = appId;
-            window.fbDoc = doc;
-            window.fbSetDoc = setDoc;
-            window.fbAddDoc = addDoc;
-            window.fbCollection = collection;
-            window.fbDeleteDoc = deleteDoc;
-            window.fbUpdateDoc = updateDoc;
-        }
+        // Exponer a global para funciones tradicionales
+        window.fbDb = db;
+        window.fbAppId = appId;
+        window.fbDoc = doc;
+        window.fbSetDoc = setDoc;
+        window.fbAddDoc = addDoc;
+        window.fbCollection = collection;
+        window.fbDeleteDoc = deleteDoc;
+        window.fbUpdateDoc = updateDoc;
 
         // Caché local para uso ágil (Offline-First)
         window.PERSONAL_DB = JSON.parse(localStorage.getItem('ucp_cache_personal') || '[]');
@@ -61,24 +51,23 @@
             const loaderTimeout = setTimeout(hideLoader, 4000);
 
             try {
-                if (auth) {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    
-                    if (db) {
-                        const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                        await setDoc(adminRef, {
-                            username: '136219951',
-                            password: 'Marquitos123',
-                            fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
-                            role: 'ADMINISTRADOR',
-                            multiRole: true
-                        }, { merge: true });
-                    }
+                // RULE 3: Auth Before Queries
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
                 }
+                
+                // Asegurar existencia de admin
+                const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
+                await setDoc(adminRef, {
+                    username: '136219951',
+                    password: 'Marquitos123',
+                    fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+                    role: 'ADMINISTRADOR',
+                    multiRole: true
+                }, { merge: true });
+                
             } catch (error) {
                 console.error("Auth Error:", error);
             } finally {
@@ -87,54 +76,60 @@
             }
         };
 
-        if (auth && db) {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    const errorLog = (err) => console.warn("Sync Error:", err);
+        // Escuchas en tiempo real - Sincronización de colecciones (RULE 1 Paths)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                const errorLog = (err) => console.warn("Sync Error:", err);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
-                        let data = [];
-                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                        window.ingresosRecientes = data;
-                        localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
-                        if (window.updateIngresosTable) window.updateIngresosTable();
-                        if (window.updateReportTable) window.updateReportTable();
-                    }, errorLog);
+                // Ingresos
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
+                    let data = [];
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    window.ingresosRecientes = data;
+                    localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
+                    if (window.updateIngresosTable) window.updateIngresosTable();
+                    if (window.updateReportTable) window.updateReportTable();
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
-                        const data = [];
-                        snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
-                        window.SYSTEM_USERS = data;
-                        if (window.refreshUsersList) window.refreshUsersList();
-                    }, errorLog);
+                // Usuarios del sistema
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
+                    const data = [];
+                    snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
+                    window.SYSTEM_USERS = data;
+                    if (window.refreshUsersList) window.refreshUsersList();
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
-                        const data = [];
-                        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-                        window.PERSONAL_DB = data;
-                        localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
-                        updateUIStats();
-                    }, errorLog);
+                // Base de Datos de Personal (Agentes)
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
+                    const data = [];
+                    snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                    window.PERSONAL_DB = data;
+                    localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
+                    updateUIStats();
+                    if (window.updateModalTable && document.getElementById('modal-data-title')?.innerText === "BASE PERSONAL") window.updateModalTable();
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
-                        const data = [];
-                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        window.pasesBodyData = data;
-                        localStorage.setItem('ucp_cache_body', JSON.stringify(data));
-                        updateUIStats();
-                    }, errorLog);
+                // Registros de Body Scan
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
+                    const data = [];
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                    window.pasesBodyData = data;
+                    localStorage.setItem('ucp_cache_body', JSON.stringify(data));
+                    updateUIStats();
+                    if (window.updateModalTable && document.getElementById('modal-data-title')?.innerText === "HISTORIAL BODY SCAN") window.updateModalTable();
+                }, errorLog);
 
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
-                        let data = [];
-                        snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-                        data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                        window.activityLogs = data;
-                        if (window.updateActivityLogsTable) window.updateActivityLogsTable();
-                    }, errorLog);
-                }
-            });
-        }
+                // Logs de Actividad
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
+                    let data = [];
+                    snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+                    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    window.activityLogs = data;
+                    if (window.updateActivityLogsTable) window.updateActivityLogsTable();
+                }, errorLog);
+            }
+        });
 
         function updateUIStats() {
             if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = window.PERSONAL_DB.length;
@@ -164,7 +159,6 @@
         };
 
         window.fbUpdatePersonal = async (list) => {
-            if (!db) return;
             const chunks = [];
             for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
@@ -176,7 +170,6 @@
         };
 
         window.fbUpdateBody = async (list) => {
-            if (!db) return;
             const chunks = [];
             for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
@@ -212,7 +205,7 @@
             <div class="absolute inset-0 flex items-center justify-center font-black text-blue-600 text-[9px]">UCP</div>
         </div>
         <h2 class="text-white font-black uppercase text-sm mb-1">Iniciando Portal</h2>
-        <p class="text-slate-500 font-bold uppercase text-[7px] tracking-widest animate-pulse">Sincronización Ágil</p>
+        <p class="text-slate-500 font-bold uppercase text-[7px] tracking-widest animate-pulse">Sincronización Ágil Activa</p>
     </div>
 
     <div id="toast-wrapper" class="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none"></div>
