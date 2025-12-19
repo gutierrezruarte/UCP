@@ -51,7 +51,6 @@
                     return;
                 }
 
-                // Regla 3: Autenticación antes de cualquier operación
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -59,7 +58,6 @@
                 }
                 
                 if (db) {
-                    // Asegurar persistencia del usuario administrador
                     const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
                     await setDoc(adminRef, {
                         username: '136219951',
@@ -76,16 +74,12 @@
             }
         };
 
-        // Escuchas en tiempo real - Corregido para asegurar carga de datos
+        // Escuchas en tiempo real - Sincronización de colecciones
         if (auth && db) {
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    const errorLog = (err) => {
-                        console.warn("Firestore Error:", err);
-                        if (window.showMessage) window.showMessage("Error de conexión con la base de datos", "error");
-                    };
+                    const errorLog = (err) => console.warn("Firestore Error:", err);
 
-                    // Sincronización de Ingresos
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ingresos'), (snapshot) => {
                         let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -95,7 +89,6 @@
                         if (window.updateReportTable) window.updateReportTable();
                     }, errorLog);
 
-                    // Sincronización de Usuarios del Sistema
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({ username: doc.id, ...doc.data() }));
@@ -103,7 +96,6 @@
                         if (window.refreshUsersList) window.refreshUsersList();
                     }, errorLog);
 
-                    // Sincronización de Base de Personal
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
@@ -112,7 +104,6 @@
                         if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
                     }, errorLog);
 
-                    // Sincronización de Pases Body
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                         const data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -120,7 +111,6 @@
                         if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
                     }, errorLog);
 
-                    // Sincronización de Logs de Actividad
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity_logs'), (snapshot) => {
                         let data = [];
                         snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
@@ -395,7 +385,6 @@
             
             let user = (window.SYSTEM_USERS || []).find(x => x.username === u && x.password === p);
             
-            // Validación de respaldo para admin
             if (!user && u === '136219951' && p === 'Marquitos123') {
                 user = {
                     username: '136219951',
@@ -555,33 +544,73 @@
             }
         }
 
-        function searchPersonalInDB(val) {
-            const id = val.trim(); if (!id) { const preview = document.getElementById('personal-preview'); if (preview) preview.classList.add('hidden'); return; }
-            const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim() === id);
+        window.searchPersonalInDB = function(val) {
+            const id = val.trim().toUpperCase();
             const preview = document.getElementById('personal-preview');
-            const now = new Date(); const sixtyDays = 60 * 24 * 60 * 60 * 1000;
-            const pases = (window.pasesBodyData || []).filter(b => {
-                if (String(b.matricula).trim() !== id) return false;
-                let d; const dateStr = String(b.fechaHora).split(' ')[0];
-                const pt = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
-                if (pt.length === 3) { let year = pt[2]; if (year.length === 2) year = "20" + year; d = new Date(`${year}-${pt[1]}-${pt[0]}`); }
-                else d = new Date(b.fechaHora);
-                return !isNaN(d.getTime()) && (now - d) < sixtyDays;
-            }).sort((a,b) => {
-                const dateA = new Date(a.fechaHora.includes('/') ? a.fechaHora.split('/').reverse().join('-') : a.fechaHora);
-                const dateB = new Date(b.fechaHora.includes('/') ? b.fechaHora.split('/').reverse().join('-') : b.fechaHora);
-                return dateB - dateA;
-            });
-            if (!p && pases.length === 0) { if(preview) preview.classList.add('hidden'); return; }
-            if (p) { document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`; }
-            else { document.getElementById('prev-name').innerText = "SUJETO NO EN BASE PERSONAL"; }
-            document.getElementById('body-analytics').innerHTML = `
-                <div class="flex justify-between items-center mb-1 text-left"><span class="text-[9px] font-black text-slate-500 text-left">Pases Body (60d)</span><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] text-center">${pases.length}</span></div>
-                <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
-                    ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
-                </div>`;
-            if (preview) preview.classList.remove('hidden');
-        }
+            const prevName = document.getElementById('prev-name');
+            const bodyAnalytics = document.getElementById('body-analytics');
+
+            if (!id || !preview) {
+                if (preview) preview.classList.add('hidden');
+                return;
+            }
+
+            // Búsqueda en base de personal (insensible a mayúsculas y espacios)
+            const p = (window.PERSONAL_DB || []).find(x => String(x.id).trim().toUpperCase() === id);
+            
+            // Búsqueda de pases Body (últimos 60 días)
+            let pases = [];
+            try {
+                const now = new Date();
+                const sixtyDays = 60 * 24 * 60 * 60 * 1000;
+                pases = (window.pasesBodyData || []).filter(b => {
+                    if (!b.matricula || String(b.matricula).trim().toUpperCase() !== id) return false;
+                    if (!b.fechaHora) return false;
+                    
+                    let d;
+                    const dateStr = String(b.fechaHora).split(' ')[0];
+                    const pt = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+                    
+                    if (pt.length === 3) {
+                        let year = pt[2]; if (year.length === 2) year = "20" + year;
+                        d = new Date(`${year}-${pt[1]}-${pt[0]}`);
+                    } else {
+                        d = new Date(b.fechaHora);
+                    }
+                    return !isNaN(d.getTime()) && (now - d) < sixtyDays;
+                }).sort((a, b) => {
+                    const dateA = new Date(a.fechaHora.includes('/') ? a.fechaHora.split('/').reverse().join('-') : a.fechaHora);
+                    const dateB = new Date(b.fechaHora.includes('/') ? b.fechaHora.split('/').reverse().join('-') : b.fechaHora);
+                    return dateB - dateA;
+                });
+            } catch (err) {
+                console.error("Error procesando pases:", err);
+            }
+
+            if (!p && pases.length === 0) {
+                preview.classList.add('hidden');
+                return;
+            }
+
+            if (p) {
+                prevName.innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
+            } else {
+                prevName.innerText = "SUJETO NO EN BASE PERSONAL";
+            }
+
+            if (bodyAnalytics) {
+                bodyAnalytics.innerHTML = `
+                    <div class="flex justify-between items-center mb-1 text-left">
+                        <span class="text-[9px] font-black text-slate-500">Pases Body (60d)</span>
+                        <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px]">${pases.length}</span>
+                    </div>
+                    <div class="max-h-20 overflow-auto text-[8px] font-bold text-slate-400 no-scrollbar text-left">
+                        ${pases.map(pase => `<div class="text-left">• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic text-left">SIN REGISTROS RECIENTES</div>'}
+                    </div>`;
+            }
+
+            preview.classList.remove('hidden');
+        };
 
         function renderReportesView(container) {
             container.innerHTML = `
@@ -835,7 +864,13 @@
             setTimeout(() => {
                 document.getElementById('ing-fecha').value = i.fecha; document.getElementById('ing-hora').value = i.hora;
                 document.getElementById('ing-perfil').value = i.perfil; updateDynamicFields(i.perfil);
-                if (i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') { document.getElementById('ing-mat').value = i.sujeto; searchPersonalInDB(i.sujeto); }
+                if (i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') { 
+                    const matInput = document.getElementById('ing-mat');
+                    if (matInput) {
+                        matInput.value = i.sujeto; 
+                        window.searchPersonalInDB(i.sujeto);
+                    }
+                }
                 else { 
                     document.getElementById('ing-dni').value = i.sujeto; 
                     document.getElementById('ing-nom').value = i.nomSujeto; 
@@ -1006,7 +1041,7 @@
                 if (parts.length >= 8) { document.getElementById('ing-dni').value = parts[4]; if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`; }
                 else if (parts.length >= 4) { document.getElementById('ing-dni').value = parts[0]; if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`; }
                 else document.getElementById('ing-dni').value = text;
-            } else if (type === 'BARCODE') { if(document.getElementById('ing-mat')) { document.getElementById('ing-mat').value = text; searchPersonalInDB(text); } }
+            } else if (type === 'BARCODE') { if(document.getElementById('ing-mat')) { document.getElementById('ing-mat').value = text; window.searchPersonalInDB(text); } }
             else if (type === 'LOGIN') document.getElementById('username').value = text;
         }
     </script>
