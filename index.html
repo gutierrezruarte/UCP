@@ -37,6 +37,14 @@
         window.fbGetDocs = getDocs;
 
         const initAuth = async () => {
+            const hideLoader = () => {
+                const loader = document.getElementById('global-loader');
+                if (loader) {
+                    loader.classList.add('opacity-0');
+                    setTimeout(() => loader.remove(), 300);
+                }
+            };
+
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -44,22 +52,23 @@
                     await signInAnonymously(auth);
                 }
                 
-                const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
-                await setDoc(adminRef, {
-                    username: '136219951',
-                    password: 'Marquitos123',
-                    fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
-                    role: 'ADMINISTRADOR',
-                    multiRole: true
-                }, { merge: true });
+                // Intento de asegurar usuario administrador
+                try {
+                    const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', '136219951');
+                    await setDoc(adminRef, {
+                        username: '136219951',
+                        password: 'Marquitos123',
+                        fullName: 'MARCOS MAGÍN GUTIÉRREZ RUARTE',
+                        role: 'ADMINISTRADOR',
+                        multiRole: true
+                    }, { merge: true });
+                } catch (e) { console.warn("Admin registration deferred:", e); }
 
-                const loader = document.getElementById('global-loader');
-                if (loader) {
-                    loader.classList.add('opacity-0');
-                    setTimeout(() => loader.remove(), 300);
-                }
             } catch (error) {
                 console.error("Auth Error:", error);
+            } finally {
+                // Aseguramos que el loader se quite siempre
+                hideLoader();
             }
         };
 
@@ -571,8 +580,8 @@
             container.innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left">
                 <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left text-left">
-                    <div class="text-left flex-1 text-left text-left text-left text-left">
-                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left">Importar Personal</h2>
+                    <div class="text-left flex-1 text-left text-left text-left text-left text-left">
+                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left text-left">Importar Personal</h2>
                         <div class="flex items-center gap-6 mt-4 text-left">
                             <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50 text-left text-left">
                                 <span class="text-[10px] font-black text-blue-600 block mb-1 uppercase text-left">Agentes</span>
@@ -795,7 +804,7 @@
             if(confirm("¿Eliminar registro?")) {
                 await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', id));
                 await logActivity("ELIMINACIÓN REGISTRO ID: " + id);
-                showMessage("Registro Eliminado", "success");
+                showMessage("Registro Eliminar", "success");
             }
         }
 
@@ -1038,7 +1047,7 @@
             const q = document.getElementById('modal-search').value.toUpperCase();
             const filt = modalFullData.filter(r => r.some(c => String(c).toUpperCase().includes(q)));
             const slice = filt.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
-            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
             document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${Math.ceil(filt.length / modalPageSize) || 1}`;
         }
         function exportToExcel() {
