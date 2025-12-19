@@ -37,10 +37,20 @@
         window.fbDeleteDoc = deleteDoc;
         window.fbUpdateDoc = updateDoc;
         window.fbGetDocs = getDocs;
-        window.isFirebaseReady = false;
+
+        let dataLoaded = { ingresos: false, personal: false, body: false, users: false };
+
+        const checkLoadingStatus = () => {
+            if (Object.values(dataLoaded).every(v => v === true)) {
+                const loader = document.getElementById('global-loader');
+                if (loader) {
+                    loader.classList.add('opacity-0');
+                    setTimeout(() => loader.remove(), 500);
+                }
+            }
+        };
 
         const initFirebase = async () => {
-            window.isFirebaseReady = true; 
             try {
                 await signInAnonymously(auth);
                 const adminRef = doc(db, 'artifacts', appId, 'users', '136219951');
@@ -51,9 +61,7 @@
                     role: 'ADMINISTRADOR',
                     multiRole: true
                 }, { merge: true });
-            } catch (error) {
-                console.error("Firebase Error:", error);
-            }
+            } catch (error) { console.error("Firebase Error:", error); }
         };
         initFirebase();
 
@@ -65,30 +73,35 @@
                     window.ingresosRecientes = data.sort((a,b) => b.timestamp - a.timestamp);
                     if (window.updateIngresosTable) window.updateIngresosTable();
                     if (window.updateReportTable) window.updateReportTable();
-                }, (err) => console.error("Error cuota ingresos:", err));
+                    dataLoaded.ingresos = true;
+                    checkLoadingStatus();
+                }, (err) => { dataLoaded.ingresos = true; checkLoadingStatus(); });
 
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'personal'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push(doc.data()));
                     window.PERSONAL_DB = data;
                     if(document.getElementById('total-personal')) document.getElementById('total-personal').innerText = data.length;
-                    if(document.getElementById('dash-total-personal')) document.getElementById('dash-total-personal').innerText = data.length;
-                }, (err) => console.error("Error cuota personal:", err));
+                    dataLoaded.personal = true;
+                    checkLoadingStatus();
+                }, (err) => { dataLoaded.personal = true; checkLoadingStatus(); });
 
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push(doc.data()));
                     window.pasesBodyData = data;
-                    if(document.getElementById('total-body')) document.getElementById('total-body').innerText = data.length;
-                    if(document.getElementById('dash-total-body')) document.getElementById('dash-total-body').innerText = data.length;
-                }, (err) => console.error("Error cuota body:", err));
+                    dataLoaded.body = true;
+                    checkLoadingStatus();
+                }, (err) => { dataLoaded.body = true; checkLoadingStatus(); });
 
                 onSnapshot(collection(db, 'artifacts', appId, 'users'), (snapshot) => {
                     const data = [];
                     snapshot.forEach(doc => data.push(doc.data()));
                     window.SYSTEM_USERS = data;
                     if (window.refreshUsersList) window.refreshUsersList();
-                }, (err) => console.error("Error cuota usuarios:", err));
+                    dataLoaded.users = true;
+                    checkLoadingStatus();
+                }, (err) => { dataLoaded.users = true; checkLoadingStatus(); });
             }
         });
 
@@ -96,15 +109,10 @@
 
         window.fbUpdatePersonal = async (list) => {
             const chunks = [];
-            for (let i = 0; i < list.length; i += 400) {
-                chunks.push(list.slice(i, i + 400));
-            }
+            for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
                 const batch = writeBatch(db);
-                chunk.forEach(p => {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'personal', p.id);
-                    batch.set(ref, p, { merge: true });
-                });
+                chunk.forEach(p => batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'personal', p.id), p, { merge: true }));
                 await batch.commit();
                 await sleep(300);
             }
@@ -112,157 +120,143 @@
 
         window.fbUpdateBody = async (list) => {
             const chunks = [];
-            for (let i = 0; i < list.length; i += 400) {
-                chunks.push(list.slice(i, i + 400));
-            }
+            for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
             for (const chunk of chunks) {
                 const batch = writeBatch(db);
-                chunk.forEach(p => {
-                    const ref = doc(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body'));
-                    batch.set(ref, p);
-                });
+                chunk.forEach(p => batch.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'pases_body')), p));
                 await batch.commit();
                 await sleep(300);
             }
         };
     </script>
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { colors: { darkBg: '#0f172a', darkCard: '#1e293b' } } }
-        }
-    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.2s ease, color 0.2s ease; }
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.2s ease; }
         .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         input[type="text"], textarea { text-transform: uppercase; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #reader { width: 100% !important; border: none !important; min-height: 250px; background: #000; overflow: hidden; }
-        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
-        
+        #reader video { object-fit: cover !important; }
         @media print {
             aside, header, .no-print, .pagination-controls { display: none !important; }
-            main { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow: visible !important; }
+            main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
             .print-table { display: table !important; width: 100% !important; font-size: 8pt !important; }
-            th, td { border: 1px solid #eee !important; padding: 4px !important; }
         }
     </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden text-left">
 
-    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 text-left"></div>
-    
-    <!-- OVERLAY MEJORADO -->
-    <div id="sidebar-overlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[45] hidden transition-opacity duration-300 opacity-0"></div>
-
-    <!-- LOGIN -->
-    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
-        <div id="login-box" class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-2xl animate-fade-in text-center"></div>
+    <div id="global-loader" class="fixed inset-0 z-[1000] bg-slate-900 flex flex-col items-center justify-center text-center">
+        <div class="mb-6 relative">
+            <div class="w-20 h-20 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center font-black text-blue-600 text-xs text-center">UCP</div>
+        </div>
+        <h2 class="text-white font-black uppercase italic tracking-tighter text-xl mb-2 text-center">U.C.P. - ANALYTICS</h2>
+        <p class="text-slate-500 font-bold uppercase text-[9px] tracking-[0.3em] animate-pulse text-center">Estableciendo conexión segura...</p>
     </div>
 
-    <!-- ESTRUCTURA PRINCIPAL -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2"></div>
+    <div id="sidebar-overlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[45] hidden transition-opacity opacity-0"></div>
+
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
+        <div id="login-box" class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-2xl animate-fade-in"></div>
+    </div>
+
     <div id="app-container" class="hidden h-full flex overflow-hidden">
         <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-[50] w-64 bg-slate-800 dark:bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 sidebar-transition shadow-2xl flex flex-col shrink-0">
             <div class="p-5 flex flex-col h-full text-left">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="bg-blue-600 p-2 rounded-xl shadow-lg font-black text-xs text-center">UCP</div>
+                    <div class="bg-blue-600 p-2 rounded-xl font-black text-xs text-center">UCP</div>
                     <div class="text-left">
-                        <span class="font-black text-base tracking-tighter uppercase block leading-none text-left">Portal U.C.P.</span>
-                        <span class="text-[7px] text-blue-400 font-bold uppercase tracking-widest text-left">Seguridad Penitenciaria</span>
+                        <span class="font-black text-base tracking-tighter uppercase block leading-none">Portal U.C.P.</span>
+                        <span class="text-[7px] text-blue-400 font-bold uppercase tracking-widest">Seguridad Penitenciaria</span>
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto no-scrollbar py-2">
-                    <nav id="sidebar-nav" class="space-y-1"></nav>
-                </div>
+                <div class="flex-1 overflow-y-auto no-scrollbar py-2"><nav id="sidebar-nav" class="space-y-1"></nav></div>
                 <div class="mt-auto pt-4 border-t border-slate-700/50">
                     <div class="flex items-center gap-3 mb-4 p-3 bg-slate-700/30 rounded-xl">
-                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white text-center">?</div>
+                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-center">?</div>
                         <div class="overflow-hidden text-left flex-1">
-                            <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100 text-left">Cargando...</p>
-                            <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter text-left">Rol</p>
+                            <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100">Cargando...</p>
+                            <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Rol</p>
                         </div>
                     </div>
                     <div class="flex gap-2 items-center">
-                        <button id="btn-role-switch" onclick="openRoleSwitcher()" class="hidden p-2.5 bg-slate-700/50 hover:bg-blue-600 rounded-lg transition-all text-center" title="Cambiar Rol">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                        </button>
+                        <button id="btn-role-switch" onclick="openRoleSwitcher()" class="hidden p-2.5 bg-slate-700/50 hover:bg-blue-600 rounded-lg transition-all text-center">🔄</button>
                         <button onclick="logout()" class="flex-1 py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-widest border border-red-500/20 text-center">Cerrar Sesión</button>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative overflow-hidden">
-            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0 no-print text-left">
-                <div class="flex items-center gap-4 text-left">
-                    <button onclick="toggleSidebar(true)" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                    </button>
-                    <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter text-left">Inicio</h2>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 relative overflow-hidden text-left">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 shadow-sm shrink-0 no-print">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar(true)" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg">☰</button>
+                    <h2 id="view-title" class="text-base md:text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Inicio</h2>
                 </div>
                 <div class="flex items-center gap-3">
-                    <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest text-left"></div>
+                    <div id="current-date" class="hidden md:block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase italic tracking-widest"></div>
                     <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                         <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-center">🌙</button>
-                        <button onclick="toggleFullscreen()" class="p-2 text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all text-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
-                        </button>
                     </div>
                 </div>
             </header>
-            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar text-left"></div>
+            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar"></div>
         </main>
     </div>
 
-    <!-- MODALES -->
-    <div id="modal-roles" class="hidden fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-xs rounded-3xl overflow-hidden shadow-2xl text-center">
-            <div class="p-4 bg-blue-600 text-white font-black text-center text-[10px] uppercase italic text-center text-center">Cambiar Perfil Activo</div>
-            <div class="p-2 space-y-1 text-left" id="roles-list-container"></div>
-            <button onclick="closeRoleModal()" class="w-full p-3 text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 text-center">Cancelar</button>
-        </div>
-    </div>
-
+    <!-- MODAL DE BASES (MODAL-DATA) -->
     <div id="modal-data" class="hidden fixed inset-0 z-[120] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-4xl h-[80vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col text-left">
-            <div class="p-6 bg-blue-600 text-white flex justify-between items-center shrink-0 text-left">
-                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest italic text-left text-left">Registros</h3>
-                <button onclick="closeDataModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center text-center">✕</button>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-5xl h-[85vh] rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-5 bg-blue-600 text-white flex justify-between items-center shrink-0">
+                <h3 id="modal-data-title" class="font-black uppercase text-sm tracking-widest italic">Base de Datos</h3>
+                <button onclick="closeDataModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center">✕</button>
             </div>
-            <div class="flex-1 overflow-auto p-4 no-scrollbar text-left">
-                <table class="w-full text-left text-[11px] text-left text-left">
-                    <thead id="modal-data-head" class="bg-slate-50 dark:bg-slate-800 sticky top-0 font-black uppercase text-[9px] text-left text-left"></thead>
-                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-500 text-left text-left"></tbody>
+            <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 flex flex-wrap gap-3 items-center">
+                <input type="text" id="modal-search" oninput="updateModalTable()" placeholder="BUSCAR EN ESTA BASE..." class="flex-1 min-w-[200px] px-4 py-2 bg-white dark:bg-slate-900 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase">
+                <div class="flex gap-2">
+                    <button onclick="prevModalPage()" class="p-2 bg-white dark:bg-slate-900 border-2 rounded-xl text-xs font-black">←</button>
+                    <span id="modal-page-num" class="px-4 py-2 font-black text-[10px] uppercase pt-3">Pág 1</span>
+                    <button onclick="nextModalPage()" class="p-2 bg-white dark:bg-slate-900 border-2 rounded-xl text-xs font-black">→</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-auto p-2 no-scrollbar">
+                <table class="w-full text-left text-[11px]">
+                    <thead id="modal-data-head" class="bg-slate-50 dark:bg-slate-800 sticky top-0 font-black uppercase text-[9px] text-left"></thead>
+                    <tbody id="modal-data-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col text-left">
-            <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20 shrink-0 text-left text-left">
-                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic text-left text-left">Escaneo Activo</span>
+    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
+            <div class="p-4 bg-blue-600 text-white flex justify-between items-center z-20">
+                <span id="scanner-title" class="font-black uppercase text-xs tracking-widest italic">Escaneo Activo</span>
                 <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition-all text-center">✕</button>
             </div>
-            <div id="reader-container" class="relative">
-                <div id="reader"></div>
-            </div>
-            <div class="p-4 text-center bg-slate-50 dark:bg-slate-800 border-t dark:border-slate-700">
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Escaneo de campo completo activo</p>
+            <div id="reader"></div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 border-t dark:border-slate-700">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Inicie el proceso de escaneo</p>
             </div>
         </div>
     </div>
 
-    <div id="modal-warning" class="hidden fixed inset-0 z-[150] bg-red-700/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
-        <div class="max-w-md w-full animate-fade-in text-center text-white">
-            <h2 class="text-3xl font-black uppercase mb-4 text-center">DNI NO COMPATIBLE</h2>
-            <p class="bg-white/10 p-6 rounded-3xl border-2 border-white/20 mb-8 font-black italic text-center">CARGAR MANUALMENTE Y MANIFESTAR A LA VISITA QUE ACTUALICE EL EJEMPLAR DE DNI</p>
-            <button onclick="closeWarningModal()" class="w-full bg-white text-red-700 py-5 rounded-2xl font-black uppercase tracking-widest text-center">Entendido</button>
+    <!-- MODAL CALENDARIO / TOTALES -->
+    <div id="modal-calendar" class="hidden fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl flex flex-col text-center">
+            <div class="p-5 bg-blue-600 text-white font-black uppercase text-sm tracking-widest italic flex justify-between">
+                <span>Resumen de Totales</span>
+                <button onclick="document.getElementById('modal-calendar').classList.add('hidden')" class="text-white text-lg">✕</button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[60vh] no-scrollbar">
+                <div id="calendar-list" class="space-y-2"></div>
+            </div>
+            <button onclick="document.getElementById('modal-calendar').classList.add('hidden')" class="w-full p-4 bg-slate-100 dark:bg-slate-800 font-black uppercase text-[10px] text-slate-500 hover:text-blue-600">Cerrar</button>
         </div>
     </div>
 
@@ -279,501 +273,488 @@
         let html5QrCode = null;
         let currentPage = 1;
         const pageSize = 50;
+        let editingId = null;
 
-        const SVG_BARCODE = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/></svg>`;
-        const SVG_QR = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>`;
+        // Variables Modal Bases
+        let modalFullData = [];
+        let modalHeaders = [];
+        let modalPage = 1;
+        const modalPageSize = 30;
 
-        function init() {
-            document.getElementById('login-box').innerHTML = LOGIN_HTML_BASE;
-            updateHeaderDate();
+        function playBeep(freq = 440, duration = 150) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+                oscillator.start(); setTimeout(() => oscillator.stop(), duration);
+            } catch(e) {}
         }
 
-        const LOGIN_HTML_BASE = `
-            <div class="text-center mb-6 text-center">
-                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white font-black text-xl text-center">SP</div>
-                <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-1 text-center">Control U.C.P.</h1>
-                <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center">Acceso Restringido</p>
-            </div>
-            <form id="login-form" class="space-y-4 text-center" onsubmit="event.preventDefault(); handleLogin();">
-                <div class="flex gap-2">
-                    <input type="text" id="username" class="flex-1 px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA / DNI">
-                    <button type="button" onclick="startScanner('LOGIN')" class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm text-center">
-                        ${SVG_BARCODE}
-                    </button>
+        function init() {
+            document.getElementById('login-box').innerHTML = `
+                <div class="text-center mb-6">
+                    <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl text-white font-black text-xl text-center">SP</div>
+                    <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter mb-1 text-center">Control U.C.P.</h1>
+                    <p class="text-slate-500 text-[9px] font-bold uppercase tracking-widest italic text-center text-center">Acceso Restringido</p>
                 </div>
-                <input type="password" id="password" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="CONTRASEÑA">
-                <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px] text-center">Ingresar</button>
-            </form>
-        `;
+                <form id="login-form" class="space-y-4 text-center" onsubmit="event.preventDefault(); handleLogin();">
+                    <div class="flex gap-2">
+                        <input type="text" id="username" class="flex-1 px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white uppercase" placeholder="MATRÍCULA / DNI">
+                        <button type="button" onclick="startScanner('LOGIN')" class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
+                    </div>
+                    <input type="password" id="password" class="w-full px-4 py-3 rounded-xl border-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center text-base font-black outline-none focus:border-blue-500 dark:text-white" placeholder="CONTRASEÑA">
+                    <button type="submit" class="w-full bg-slate-800 dark:bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest text-[10px] text-center">Ingresar</button>
+                </form>`;
+            updateHeaderDate();
+        }
 
         async function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
-            if (!window.fbGetDocs) return showNotification("Sincronizando base de datos...", "error");
+            if (!window.fbGetDocs) return;
             try {
                 const snapshot = await window.fbGetDocs(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'users'));
                 const userDoc = snapshot.docs.find(doc => doc.id === u && doc.data().password === p);
-                if (userDoc) startSession(userDoc.data());
-                else showNotification("Credenciales incorrectas", "error");
-            } catch (e) { 
-                console.error(e);
-                showNotification("Error de conexión. Intente nuevamente.", "error");
-            }
+                if (userDoc) { playBeep(880, 100); startSession(userDoc.data()); }
+                else alert("Credenciales incorrectas");
+            } catch (e) {}
         }
 
         function startSession(userData) {
-            currentUser = userData;
-            activeRole = userData.role;
+            currentUser = userData; activeRole = userData.role;
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('user-display-name').innerText = currentUser.fullName;
             document.getElementById('user-display-role').innerText = activeRole;
             document.getElementById('user-initial').innerText = currentUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            if(currentUser.multiRole || activeRole === ROLES.ADMIN) {
-                document.getElementById('btn-role-switch').classList.remove('hidden');
-            }
+            if(currentUser.multiRole || activeRole === ROLES.ADMIN) document.getElementById('btn-role-switch').classList.remove('hidden');
             buildMenu(); renderView('dashboard', 'Inicio');
         }
 
         function buildMenu() {
             const nav = document.getElementById('sidebar-nav');
-            const items = [{ id: 'ingresos', label: 'REGISTRO DE INGRESOS', icon: '📝' }, { id: 'reportes', label: 'MÓDULO REPORTES', icon: '📊' }];
-            items.push({ id: 'users_admin', label: 'GESTIÓN DE USUARIOS', icon: '👥' });
-            if (activeRole !== ROLES.UCP) {
-                items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
-            }
+            const items = [{ id: 'ingresos', label: 'REGISTRO DE INGRESOS', icon: '📝' }, { id: 'reportes', label: 'MÓDULO REPORTES', icon: '📊' }, { id: 'users_admin', label: 'GESTIÓN DE USUARIOS', icon: '👥' }];
+            if (activeRole !== ROLES.UCP) items.push({ id: 'importar_personal', label: 'IMPORTAR PERSONAL', icon: '📥' }, { id: 'pases_body', label: 'PASES BODY', icon: '🔍' });
             nav.innerHTML = items.map(item => `
-                <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left">
-                    <span class="text-base">${item.icon}</span> <span class="uppercase font-black text-left">${item.label}</span>
+                <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg hover:bg-slate-700 transition-all text-left uppercase">
+                    <span class="text-base">${item.icon}</span> <span class="font-black">${item.label}</span>
                 </button>`).join('');
         }
 
         function renderView(viewId, title) {
-            // Cierre automático en móviles al seleccionar vista
             if (window.innerWidth < 1024) toggleSidebar(false);
-
             document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
-            currentPage = 1;
+            currentPage = 1; editingId = null;
+
             if (viewId === 'dashboard') {
-                content.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in text-left">
-                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm text-left">
-                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Registros Hoy</p>
-                        <p class="text-2xl font-black text-blue-600 text-left">${window.ingresosRecientes.length}</p>
+                content.innerHTML = `
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 animate-fade-in text-left">
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
+                        <p class="text-[8px] font-black uppercase text-slate-400">Registros Hoy</p>
+                        <p class="text-2xl font-black text-blue-600">${window.ingresosRecientes.length}</p>
                     </div>
                     <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm text-left">
-                        <p class="text-[8px] font-black uppercase text-slate-400 text-left text-left">Personal Base</p>
-                        <p class="text-2xl font-black text-emerald-600 text-left" id="dash-total-personal">${window.PERSONAL_DB.length}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400">Personal Base</p>
+                        <p class="text-2xl font-black text-emerald-600" id="dash-total-personal">${window.PERSONAL_DB.length}</p>
                     </div>
                     <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm text-left">
-                        <p class="text-[8px] font-black uppercase text-slate-400 text-left">Operador Activo</p>
-                        <p class="text-base font-black uppercase truncate text-left text-left">${getOperatorID()}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400">Operador Activo</p>
+                        <p class="text-base font-black uppercase truncate">${getOperatorID()}</p>
                     </div>
-                </div><div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm text-center text-center">
+                </div>
+                <div class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-[3rem] border dark:border-slate-800 text-center shadow-sm">
                     <img src="https://raw.githubusercontent.com/gutierrezruarte/BibliotecaSPC/main/Escudo-1-279x300-removebg-preview.png" class="w-32 mb-6 drop-shadow-lg mx-auto text-center">
                     <h2 class="text-xl font-black uppercase italic dark:text-white leading-none text-center">Unidad de Control Penitenciario</h2>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-3 text-center">Portal de Control de Acceso</p>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-3 text-center">Portal de Gestión y Auditoría de Acceso</p>
                 </div>`;
             } else if (viewId === 'ingresos') renderIngresosView(content);
-            else if (viewId === 'users_admin') renderUsersAdminView(content);
             else if (viewId === 'reportes') renderReportesView(content);
+            else if (viewId === 'users_admin') renderUsersAdminView(content);
             else if (viewId === 'importar_personal') renderImportPersonalView(content);
             else if (viewId === 'pases_body') renderPasesBodyView(content);
         }
 
-        function getOperatorID() {
-            if (!currentUser) return "S/D";
-            const initials = currentUser.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-            const last3 = currentUser.username.slice(-3);
-            return `${initials}-${last3}`;
-        }
-
-        function renderUsersAdminView(container) {
-            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
-                <div class="xl:col-span-4 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
-                    <h3 class="text-xs font-black uppercase mb-4 italic text-left">Alta de Usuario</h3>
-                    <form id="user-form" class="space-y-3 text-left" onsubmit="event.preventDefault(); handleSaveUser();">
-                        <input type="text" id="u-user" oninput="autocompleteUserInfo(this.value)" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="DNI / MATRÍCULA">
-                        <input type="text" id="u-name" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="NOMBRE COMPLETO">
-                        <input type="password" id="u-pass" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="CONTRASEÑA">
-                        <select id="u-role" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs uppercase text-left">
-                            ${getAvailableRolesForCreation().map(r => `<option value="${r}">${r}</option>`).join('')}
-                        </select>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] shadow-lg text-center">Crear Usuario</button>
-                    </form></div></div>
-                <div class="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 shadow-sm flex flex-col text-left">
-                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest text-left">Operadores de Sistema</div>
-                    <div class="flex-1 overflow-auto no-scrollbar text-left text-left"><table class="w-full text-left text-[11px] text-left"><tbody id="users-list-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
-                </div></div>`;
-            window.refreshUsersList();
-        }
-
-        function autocompleteUserInfo(val) {
-            const p = window.PERSONAL_DB.find(x => x.id === val.trim());
-            const nameInput = document.getElementById('u-name');
-            if(p && nameInput) nameInput.value = `${p.apellido} ${p.nombre}`.toUpperCase();
-        }
-
-        window.refreshUsersList = function() {
-            const body = document.getElementById('users-list-body');
-            if (!body) return;
-            const filteredUsers = window.SYSTEM_USERS.filter(u => {
-                if (activeRole === ROLES.ADMIN) return true;
-                if (activeRole === ROLES.DIP) return u.role !== ROLES.ADMIN;
-                return u.role === ROLES.UCP;
-            });
-            body.innerHTML = filteredUsers.map(u => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left"><td class="px-5 py-4 text-left"><div class="font-black uppercase text-left">${u.fullName}</div><div class="text-[8px] text-slate-400 uppercase font-bold text-left">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right space-x-2 text-left"><button onclick="blanquearUser('${u.username}')" class="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg text-xs" title="Reset Clave">🔑</button>${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
-        };
-
-        async function blanquearUser(id) {
-            const n = prompt("Nueva clave para ID "+id+":", "123456");
-            if(n) { await window.fbUpdateDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'users', id), { password: n }); showNotification("Clave actualizada", "success"); }
-        }
-
-        async function handleSaveUser() {
-            const u = document.getElementById('u-user').value.trim();
-            const n = document.getElementById('u-name').value.trim();
-            const p = document.getElementById('u-pass').value;
-            const r = document.getElementById('u-role').value;
-            if (!u || !n || !p) return showNotification("Faltan datos", "error");
-            await window.fbSetDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'users', u), { username: u, fullName: n.toUpperCase(), password: p, role: r, multiRole: r === ROLES.ADMIN });
-            showNotification("Usuario guardado", "success");
-            document.getElementById('user-form').reset();
-        }
-
-        function getAvailableRolesForCreation() {
-            if (activeRole === ROLES.ADMIN) return [ROLES.ADMIN, ROLES.DIP, ROLES.UCP];
-            if (activeRole === ROLES.DIP) return [ROLES.DIP, ROLES.UCP];
-            return [ROLES.UCP];
-        }
-
-        async function deleteSystemUser(id) {
-            if(confirm("¿Eliminar usuario?")) { await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'users', id)); showNotification("Eliminado", "success"); }
-        }
-
-        function openRoleSwitcher() {
-            document.getElementById('modal-roles').classList.remove('hidden');
-            const list = document.getElementById('roles-list-container');
-            const avail = activeRole === ROLES.ADMIN ? [ROLES.ADMIN, ROLES.DIP, ROLES.UCP] : [ROLES.DIP, ROLES.UCP];
-            list.innerHTML = avail.map(r => `<button onclick="setActiveRole('${r}')" class="w-full p-3 text-left font-black uppercase text-[9px] rounded-xl flex justify-between items-center ${activeRole === r ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-slate-500 hover:bg-slate-50 text-left'}"><span>${r}</span>${activeRole === r ? '<span>●</span>' : ''}</button>`).join('');
-        }
-
-        function setActiveRole(r) { activeRole = r; document.getElementById('user-display-role').innerText = r; buildMenu(); renderView('dashboard', 'Inicio'); closeRoleModal(); showNotification("Perfil: " + r, "success"); }
-        function closeRoleModal() { document.getElementById('modal-roles').classList.add('hidden'); }
-
         function renderIngresosView(container) {
             const now = new Date();
-            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full text-left">
-                <div class="xl:col-span-5 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left text-left">
-                    <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
-                        <div class="grid grid-cols-2 gap-3 text-left">
-                            <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
-                            <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none text-left">
-                        </div>
-                        <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black uppercase text-[10px] outline-none text-left text-left">
-                            <option value="" disabled selected>Perfil...</option>${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
-                        </select>
-                        <div id="dyn-fields" class="space-y-3 text-left"></div>
-                        <div class="grid grid-cols-2 gap-2 text-left">
-                            <select id="ing-sexo" class="px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black text-[10px] outline-none text-left"><option value="">Género</option><option value="M">MASCULINO</option><option value="F">FEMENINO</option></select>
-                            <div class="flex gap-1 text-left" id="transport-options">
-                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚶</button>
-                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚗</button>
+            container.innerHTML = `
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fade-in h-full text-left">
+                <div class="xl:col-span-5 text-left">
+                    <div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
+                        <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
+                            <h3 id="form-label" class="text-[10px] font-black uppercase text-blue-600 mb-2 italic">Nuevo Registro Acceso</h3>
+                            <div class="grid grid-cols-2 gap-3 text-left">
+                                <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
+                                <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[11px] outline-none">
                             </div>
-                        </div>
-                        <div id="vehicle-fields" class="hidden space-y-1 text-left text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
-                        <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px] text-left" placeholder="DESTINO / OBSERVACIONES"></textarea>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg active:scale-95 transition-transform text-center">Registrar Ingreso</button>
-                    </form></div></div>
-                <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col text-left">
-                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest flex justify-between text-left"><span>Recientes</span><span>OP: ${getOperatorID()}</span></div>
-                    <div class="flex-1 overflow-auto no-scrollbar text-left text-left"><table class="w-full text-left text-[11px] text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
-                    <div class="p-2 border-t dark:border-slate-800 flex justify-center gap-2 pagination-controls text-left">
-                         <button onclick="prevPage('ingresos')" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-center">←</button>
-                         <span class="text-[9px] font-black uppercase pt-1.5 text-left text-left" id="page-num-ingresos">Pág. 1</span>
-                         <button onclick="nextPage('ingresos')" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black text-center">→</button>
+                            <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black uppercase text-[10px] outline-none">
+                                <option value="" disabled selected>Perfil...</option>${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
+                            </select>
+                            <div id="dyn-fields" class="space-y-3 text-left"></div>
+                            <div class="grid grid-cols-2 gap-2 text-left">
+                                <select id="ing-sexo" class="px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-black text-[10px] outline-none"><option value="">Género</option><option value="M">MASCULINO</option><option value="F">FEMENINO</option></select>
+                                <div class="flex gap-1 text-left" id="transport-options">
+                                    <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚶</button>
+                                    <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center">🚗</button>
+                                </div>
+                            </div>
+                            <div id="vehicle-fields" class="hidden space-y-1 text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 rounded-lg text-lg font-black text-center text-blue-800 dark:text-blue-300" placeholder="PATENTE"></div>
+                            <input type="hidden" id="ing-modo" value=""><textarea id="ing-obs" rows="2" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg font-bold text-[10px] text-left" placeholder="DESTINO / OBSERVACIONES"></textarea>
+                            <button type="submit" id="btn-submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-lg text-center">Registrar Ingreso</button>
+                        </form>
                     </div>
-                </div></div>`;
+                </div>
+                <div class="xl:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden shadow-sm flex flex-col text-left">
+                    <div class="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 font-black text-slate-400 uppercase text-[8px] tracking-widest flex justify-between"><span>Control Reciente</span><span>ID OPERADOR: ${getOperatorID()}</span></div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-left text-[11px]"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                </div>
+            </div>`;
             window.updateIngresosTable();
         }
 
         async function handleSaveIngreso() {
             const perfil = document.getElementById('ing-perfil').value;
             const modo = document.getElementById('ing-modo').value;
-            if (!perfil || !modo) return showNotification("Faltan datos", "error");
-            await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), {
+            if (!perfil || !modo) return alert("Faltan datos");
+            const data = {
                 fecha: document.getElementById('ing-fecha').value,
                 hora: document.getElementById('ing-hora').value,
                 perfil, modo,
-                sujeto: (document.getElementById('ing-nom')?.value || document.getElementById('ing-mat')?.value || "S/D").toUpperCase(),
+                sujeto: (document.getElementById('ing-nom')?.value || document.getElementById('ing-mat')?.value || document.getElementById('ing-dni')?.value || "S/D").toUpperCase(),
                 sexo: document.getElementById('ing-sexo').value,
                 obs: document.getElementById('ing-obs').value.toUpperCase(),
                 dominio: (document.getElementById('ing-dominio')?.value || "").toUpperCase(),
                 nMovil: (document.getElementById('ing-n-movil')?.value || "").toUpperCase(),
-                operador: getOperatorID(),
-                timestamp: Date.now()
-            });
-            showNotification("Ingreso guardado", "success");
-            renderView('ingresos', 'REGISTRO DE INGRESOS');
+                matPro: (document.getElementById('ing-mat-pro')?.value || "").toUpperCase(),
+                operador: getOperatorID(), timestamp: Date.now()
+            };
+            try {
+                if (editingId) await window.fbUpdateDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', editingId), data);
+                else await window.fbAddDoc(window.fbCollection(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos'), data);
+                playBeep(660, 200); renderView('ingresos', 'REGISTRO DE INGRESOS');
+            } catch (e) { alert("Error al guardar"); }
         }
 
         window.updateIngresosTable = function() {
             const b = document.getElementById('ingresos-table'); if (!b) return;
-            const records = window.ingresosRecientes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-            const total = Math.ceil(window.ingresosRecientes.length / pageSize);
-            b.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left text-left text-left"><td class="px-5 py-4 font-mono text-blue-600 font-black text-sm text-left">${i.hora}</td><td class="px-5 py-4 text-left"><div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left text-left">${i.sujeto}</div><div class="text-[8px] text-slate-400 italic uppercase font-bold text-left text-left">${i.perfil} | ${i.modo} | OP: ${i.operador}</div></td></tr>`).join('');
-            if(document.getElementById('page-num-ingresos')) document.getElementById('page-num-ingresos').innerText = `Pág. ${currentPage} de ${total || 1}`;
+            const records = window.ingresosRecientes.slice(0, 15);
+            b.innerHTML = records.map(i => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
+                    <td class="px-5 py-4 font-mono text-blue-600 font-black text-sm">${i.hora}</td>
+                    <td class="px-5 py-4">
+                        <div class="font-black text-[10px] text-slate-800 dark:text-white uppercase leading-none mb-1 text-left">${i.sujeto}</div>
+                        <div class="text-[8px] text-slate-400 italic uppercase font-bold text-left">${i.perfil} | ${i.modo}</div>
+                    </td>
+                    <td class="px-5 py-4 text-right">
+                        ${(activeRole === ROLES.UCP || activeRole === ROLES.ADMIN) ? `<button onclick="editIngreso('${i.id}')" class="text-blue-500 mr-2">✏️</button>` : ''}
+                        ${(activeRole === ROLES.DIP || activeRole === ROLES.ADMIN) ? `<button onclick="deleteIngreso('${i.id}')" class="text-red-500">🗑️</button>` : ''}
+                    </td>
+                </tr>`).join('');
         };
 
+        async function editIngreso(id) {
+            const rec = window.ingresosRecientes.find(x => x.id === id); if (!rec) return;
+            editingId = id; renderView('ingresos', 'REGISTRO DE INGRESOS');
+            document.getElementById('form-label').innerText = "MODIFICANDO REGISTRO";
+            document.getElementById('btn-submit').innerText = "Guardar Cambios";
+            document.getElementById('ing-fecha').value = rec.fecha;
+            document.getElementById('ing-hora').value = rec.hora;
+            document.getElementById('ing-perfil').value = rec.perfil;
+            updateDynamicFields(rec.perfil);
+            if(document.getElementById('ing-mat')) document.getElementById('ing-mat').value = rec.sujeto;
+            if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = rec.sujeto;
+            if(document.getElementById('ing-dni')) document.getElementById('ing-dni').value = rec.sujeto;
+            document.getElementById('ing-sexo').value = rec.sexo; setMode(rec.modo);
+            if(rec.dominio) document.getElementById('ing-dominio').value = rec.dominio;
+            if(rec.nMovil) document.getElementById('ing-n-movil').value = rec.nMovil;
+            if(document.getElementById('ing-mat-pro')) document.getElementById('ing-mat-pro').value = rec.matPro || "";
+            document.getElementById('ing-obs').value = rec.obs || "";
+        }
+
+        async function deleteIngreso(id) {
+            if(confirm("¿Eliminar registro permanentemente?")) {
+                await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'ingresos', id));
+            }
+        }
+
+        // --- REPORTES CON BÚSQUEDA INTELIGENTE, FILTROS Y CALENDARIO ---
+        let reportSortCol = 'timestamp';
+        let reportSortDir = 'desc';
+
         function renderReportesView(container) {
-            container.innerHTML = `<div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 mb-6 animate-fade-in h-full flex flex-col text-left">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 no-print text-left"><h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left text-left">Auditoría Acceso</h3><div class="flex gap-2 w-full md:w-auto text-left"><button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-md text-center">Excel</button><button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-md text-center">PDF / Impresora</button></div></div>
-                <div class="flex-1 overflow-hidden flex flex-col text-left"><div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl shadow-inner text-left"><table class="w-full text-left text-[10px] md:text-[11px] print-table text-left"><thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0 text-left text-left"><tr><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left">FECHA/HORA</th><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left">SUJETO / ID</th><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left">TRANSPORTE</th><th class="px-5 py-4 border-b dark:border-slate-700 text-left text-left text-left">OPERADOR</th></tr></thead><tbody id="report-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400 text-left text-left text-left"></tbody></table></div><div class="mt-4 flex justify-between items-center no-print text-left text-left"><p id="records-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left text-left text-left"></p><div class="flex gap-2 pagination-controls text-left text-left"><button onclick="prevPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">←</button><span class="text-[10px] font-black uppercase pt-2 text-left text-left text-left" id="page-num-report">Pág. 1</span><button onclick="nextPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">→</button></div></div></div></div>`;
-            currentPage = 1; window.updateReportTable();
+            const today = new Date().toISOString().split('T')[0];
+            container.innerHTML = `
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border dark:border-slate-800 h-full flex flex-col text-left">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shrink-0 no-print text-left">
+                    <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left">Auditoría Inteligente</h3>
+                    <div class="flex gap-2 w-full md:w-auto text-left">
+                        <button onclick="viewCalendarTotals()" class="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-blue-600 hover:text-white transition-all text-center">📅</button>
+                        <button onclick="exportToExcel()" class="flex-1 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">Excel</button>
+                        <button onclick="window.print()" class="flex-1 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase text-center">Imprimir</button>
+                    </div>
+                </div>
+                
+                <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 no-print text-left">
+                    <div class="md:col-span-2 text-left">
+                        <input type="text" id="report-search" oninput="updateReportTable()" placeholder="BÚSQUEDA INTELIGENTE (NOMBRE, ID, DOMINIO, OPERADOR...)" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[10px] font-black outline-none focus:border-blue-500 uppercase">
+                    </div>
+                    <div class="flex gap-2 text-left">
+                        <input type="date" id="report-from" onchange="updateReportTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none">
+                        <input type="date" id="report-to" onchange="updateReportTable()" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl text-[9px] font-black outline-none">
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-hidden flex flex-col text-left">
+                    <div class="overflow-auto flex-1 no-scrollbar border dark:border-slate-800 rounded-2xl text-left">
+                        <table class="w-full text-left text-[11px] print-table text-left">
+                            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 font-black uppercase text-[8px] sticky top-0 text-left">
+                                <tr>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 cursor-pointer text-left" onclick="sortReport('timestamp')">FECHA/HORA ↕</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 text-left">IDENTIDAD / PERFIL</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 text-left">PERSONAL / CARGO</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 text-left">MODO / DOMINIO</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 text-left">OPERADOR</th>
+                                    <th class="px-4 py-4 border-b dark:border-slate-700 no-print text-left">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body" class="divide-y dark:divide-slate-800 font-bold uppercase text-slate-600 dark:text-slate-400 text-left"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center no-print text-left">
+                        <p id="records-count" class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-left"></p>
+                        <div class="flex gap-2 text-left">
+                            <button onclick="prevPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">←</button>
+                            <span class="text-[10px] font-black uppercase pt-2 text-left" id="page-num-report">Pág. 1</span>
+                            <button onclick="nextPage('report')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl font-black text-xs text-center">→</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            updateReportTable();
+        }
+
+        function sortReport(col) {
+            if(reportSortCol === col) reportSortDir = reportSortDir === 'asc' ? 'desc' : 'asc';
+            else { reportSortCol = col; reportSortDir = 'desc'; }
+            updateReportTable();
         }
 
         window.updateReportTable = function() {
             const body = document.getElementById('report-table-body'); if (!body) return;
-            const records = window.ingresosRecientes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-            const total = Math.ceil(window.ingresosRecientes.length / pageSize);
-            body.innerHTML = records.map(i => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left"><td class="px-5 py-4 leading-tight text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500 text-left">${i.hora}</span></td><td class="px-5 py-4 font-black uppercase text-slate-800 dark:text-white leading-none text-left text-left">${i.sujeto} <br> <span class="text-[8px] text-slate-400 font-bold uppercase text-left text-left">${i.perfil}</span></td><td class="px-5 py-4 font-bold text-slate-500 text-left text-left text-left text-left">${i.modo} ${i.dominio || i.nMovil}</td><td class="px-5 py-4 font-black text-blue-600 dark:text-blue-400 text-left text-left text-left text-left">${i.operador}</td></tr>`).join('');
-            if(document.getElementById('records-count')) document.getElementById('records-count').innerText = `TOTAL: ${window.ingresosRecientes.length} REGISTROS`;
-            if(document.getElementById('page-num-report')) document.getElementById('page-num-report').innerText = `Pág. ${currentPage} de ${total || 1}`;
+            const search = document.getElementById('report-search').value.toUpperCase();
+            const from = document.getElementById('report-from').value;
+            const to = document.getElementById('report-to').value;
+
+            let filtered = window.ingresosRecientes.filter(i => {
+                const matchesSearch = !search || JSON.stringify(i).toUpperCase().includes(search);
+                const matchesFrom = !from || i.fecha >= from;
+                const matchesTo = !to || i.fecha <= to;
+                return matchesSearch && matchesFrom && matchesTo;
+            });
+
+            // Sorting
+            filtered.sort((a,b) => {
+                let valA = a[reportSortCol], valB = b[reportSortCol];
+                if(reportSortDir === 'asc') return valA > valB ? 1 : -1;
+                return valA < valB ? 1 : -1;
+            });
+
+            const records = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+            const total = Math.ceil(filtered.length / pageSize);
+
+            body.innerHTML = records.map(i => {
+                const p = window.PERSONAL_DB.find(x => x.id === i.sujeto);
+                const jerarquia = p ? p.cargo : "EXTERNO";
+                const nomCompleto = p ? `${p.apellido} ${p.nombre}` : (i.matPro ? "ABOGADO" : "VISITA/OTROS");
+                return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
+                    <td class="px-4 py-3 text-left"><b>${i.fecha}</b><br><span class="font-mono text-blue-500">${i.hora}</span></td>
+                    <td class="px-4 py-3 text-left font-black text-slate-800 dark:text-white leading-none">${i.sujeto}<br><span class="text-[8px] text-slate-400 font-bold">${i.perfil}</span></td>
+                    <td class="px-4 py-3 text-left"><div class="font-black text-slate-700 dark:text-slate-300 leading-none">${nomCompleto}</div><div class="text-[8px] text-blue-400 italic">${jerarquia}</div></td>
+                    <td class="px-4 py-3 text-left">${i.modo} ${i.dominio || i.nMovil}</td>
+                    <td class="px-4 py-3 text-left font-black text-blue-600">${i.operador}</td>
+                    <td class="px-4 py-3 text-left no-print"><div class="flex gap-2">
+                        ${(activeRole === ROLES.UCP || activeRole === ROLES.ADMIN) ? `<button onclick="editIngreso('${i.id}')">✏️</button>` : ''}
+                        ${(activeRole === ROLES.DIP || activeRole === ROLES.ADMIN) ? `<button onclick="deleteIngreso('${i.id}')">🗑️</button>` : ''}
+                    </div></td>
+                </tr>`;
+            }).join('');
+            document.getElementById('records-count').innerText = `TOTAL FILTRADO: ${filtered.length} REGISTROS`;
+            document.getElementById('page-num-report').innerText = `Pág. ${currentPage} de ${total || 1}`;
+        };
+
+        function viewCalendarTotals() {
+            const counts = {};
+            window.ingresosRecientes.forEach(i => counts[i.fecha] = (counts[i.fecha] || 0) + 1);
+            const sortedDates = Object.keys(counts).sort((a,b) => b.localeCompare(a));
+            document.getElementById('calendar-list').innerHTML = sortedDates.map(d => `
+                <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border dark:border-slate-700">
+                    <span class="font-black text-[10px] text-slate-500">${d}</span>
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full font-black text-xs">${counts[d]}</span>
+                </div>`).join('');
+            document.getElementById('modal-calendar').classList.remove('hidden');
         }
 
-        function nextPage(type) { if(currentPage < Math.ceil(window.ingresosRecientes.length / pageSize)) { currentPage++; updateTable(type); } }
-        function prevPage(type) { if(currentPage > 1) { currentPage--; updateTable(type); } }
-        function updateTable(type) { if(type === 'ingresos') window.updateIngresosTable(); else window.updateReportTable(); }
-
-        function renderImportPersonalView(container) {
-            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left text-left">
-                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left text-left">
-                    <div class="text-left flex-1 text-left text-left text-left">
-                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left text-left text-left">Importar Personal</h2>
-                        <div class="flex items-center gap-6 mt-4 text-left text-left">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 rounded-2xl border dark:border-blue-900/50 text-left text-left">
-                                <span class="text-[10px] font-black text-blue-600 block mb-1 uppercase text-left text-left">Agentes en Base</span>
-                                <span id="total-personal" class="text-2xl font-black dark:text-white text-left text-left">${window.PERSONAL_DB.length}</span>
-                            </div>
-                            <button onclick="viewPersonalData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-md text-center">👁️</button>
-                        </div>
-                    </div>
-                    <div class="w-full max-w-sm flex flex-col gap-4 text-left text-left text-left">
-                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all text-center" onclick="document.getElementById('personal-file').click()">
-                            <input type="file" id="personal-file" class="hidden" onchange="updateFileName('personal-file-label', this)">
-                            <p id="personal-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center text-center">Seleccionar archivo .xlsx</p>
-                        </div>
-                        <button onclick="processPersonalFile()" class="bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center">Actualizar Base</button>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        const cleanStr = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-
-        async function processPersonalFile() {
-            const input = document.getElementById('personal-file'); if (!input || !input.files.length) return showNotification("Seleccione un archivo", "error");
-            const existingPersonal = new Map(window.PERSONAL_DB.map(p => [p.id, p]));
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const list = js.map(row => {
-                    let id = "", nom = "", ape = "", jer = "AGENTE";
-                    Object.keys(row).forEach(key => {
-                        const ck = cleanStr(key);
-                        if(ck === "MATRICULA" || ck === "AFILIADO" || ck === "ID") id = String(row[key]).split('.')[0].trim();
-                        if(ck === "NOMBRE" || ck === "NOMBRES") nom = String(row[key]).trim().toUpperCase();
-                        if(ck === "APELLIDO" || ck === "APELLIDOS") ape = String(row[key]).trim().toUpperCase();
-                        if(ck === "JERARQUIA" || ck === "CARGO") jer = String(row[key]).trim().toUpperCase();
-                    });
-                    return { id, nombre: nom, apellido: ape, cargo: jer };
-                }).filter(p => {
-                    if (!p.id || p.id.length < 2) return false;
-                    const existing = existingPersonal.get(p.id);
-                    return !existing || existing.nombre !== p.nombre || existing.apellido !== p.apellido || existing.cargo !== p.cargo;
-                });
-                if (list.length === 0) return showNotification("Sin cambios detectados", "error");
-                await window.fbUpdatePersonal(list);
-                showNotification(`Personal actualizado: ${list.length} cambios`, "success");
-            };
-            reader.readAsArrayBuffer(input.files[0]);
-        }
-
-        function renderPasesBodyView(container) {
-            container.innerHTML = `<div class="max-w-4xl mx-auto space-y-6 animate-fade-in text-left text-left text-left">
-                <div class="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border dark:border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left text-left text-left">
-                    <div class="text-left flex-1 text-left text-left">
-                        <h2 class="text-2xl font-black uppercase mb-1 tracking-tighter italic text-left text-left text-left">Body Scan</h2>
-                        <div class="flex items-center gap-6 mt-4 text-left text-left text-left">
-                            <div class="bg-amber-50 dark:bg-amber-900/20 px-6 py-3 rounded-2xl border dark:border-amber-900/50 text-left text-left text-left text-left">
-                                <span class="text-[10px] font-black text-amber-600 block mb-1 uppercase text-left text-left">Pases en Base</span>
-                                <span id="total-body" class="text-2xl font-black dark:text-white text-left text-left text-left text-left">${window.pasesBodyData.length}</span>
-                            </div>
-                            <button onclick="viewBodyData()" class="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-amber-500 hover:text-white transition-all shadow-md text-center">👁️</button>
-                        </div>
-                    </div>
-                    <div class="w-full max-w-sm flex flex-col gap-4 text-left text-left">
-                        <div class="border-2 border-dashed dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-950 text-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-all text-center" onclick="document.getElementById('body-file').click()">
-                            <input type="file" id="body-file" class="hidden" onchange="updateFileName('body-file-label', this)">
-                            <p id="body-file-label" class="text-[11px] text-slate-400 font-black italic uppercase text-center text-center text-center">Seleccionar archivo .xlsx</p>
-                        </div>
-                        <button onclick="processBodyFile()" class="bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg text-center">Sincronizar Body</button>
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        async function processBodyFile() {
-            const input = document.getElementById('body-file'); if (!input || !input.files.length) return showNotification("Seleccione un archivo", "error");
-            const existingKeys = new Set(window.pasesBodyData.map(p => `${p.matricula}_${p.fechaHora}`));
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                const js = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const list = js.map(row => {
-                    let mat = "", nom = "", fec = "", sec = "SCANNER";
-                    Object.keys(row).forEach(key => {
-                        const ck = cleanStr(key);
-                        if(ck === "MATRICULA" || ck === "AFILIADO") mat = String(row[key]).split('.')[0].trim();
-                        if(ck === "NOMBRE" || ck === "SUJETO") nom = String(row[key]).trim().toUpperCase();
-                        if(ck.includes("FECHA") || ck.includes("HORA")) fec = String(row[key]).trim();
-                        if(ck.includes("SECTOR")) sec = String(row[key]).trim().toUpperCase();
-                    });
-                    return { matricula: mat, nombre: nom, fechaHora: fec, sector: sec };
-                }).filter(p => p.matricula && p.matricula.length >= 2 && !existingKeys.has(`${p.matricula}_${p.fechaHora}`));
-                if (list.length === 0) return showNotification("Sin registros nuevos de Body", "error");
-                await fbUpdateBody(list);
-                showNotification(`Body Scan sincronizado: ${list.length} pases nuevos`, "success");
-            };
-            reader.readAsArrayBuffer(input.files[0]);
-        }
-
-        function viewPersonalData() { openDataModal("BASE DE PERSONAL", ["MATRÍCULA", "APELLIDO", "NOMBRE", "CARGO"], window.PERSONAL_DB.map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
-        function viewBodyData() { openDataModal("REGISTROS BODY SCAN", ["MATRÍCULA", "NOMBRE", "FECHA/HORA", "SECTOR"], window.pasesBodyData.map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
+        // --- BASES CON BÚSQUEDA Y PAGINACIÓN ---
         function openDataModal(title, headers, rows) {
-            const modal = document.getElementById('modal-data');
-            const head = document.getElementById('modal-data-head');
-            const body = document.getElementById('modal-data-body');
+            modalFullData = rows; modalHeaders = headers; modalPage = 1;
             document.getElementById('modal-data-title').innerText = title;
-            head.innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left text-left">${h}</th>`).join('')}</tr>`;
-            body.innerHTML = rows.slice(0, 100).map(row => `<tr class="text-left text-left text-left text-left">${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left text-left text-left">${cell}</td>`).join('')}</tr>`).join('');
-            if(rows.length > 100) body.innerHTML += `<tr><td colspan="${headers.length}" class="p-4 text-center font-black italic text-slate-400 text-center">Primeros 100 registros mostrados...</td></tr>`;
-            modal.classList.remove('hidden');
+            document.getElementById('modal-search').value = "";
+            document.getElementById('modal-data-head').innerHTML = `<tr>${headers.map(h => `<th class="px-4 py-4 border-b dark:border-slate-700 font-black text-left">${h}</th>`).join('')}</tr>`;
+            updateModalTable();
+            document.getElementById('modal-data').classList.remove('hidden');
         }
+
+        function updateModalTable() {
+            const query = document.getElementById('modal-search').value.toUpperCase();
+            const filtered = modalFullData.filter(row => row.some(cell => String(cell).toUpperCase().includes(query)));
+            const total = Math.ceil(filtered.length / modalPageSize);
+            const slice = filtered.slice((modalPage - 1) * modalPageSize, modalPage * modalPageSize);
+            document.getElementById('modal-data-body').innerHTML = slice.map(row => `<tr>${row.map(cell => `<td class="px-4 py-3 border-b dark:border-slate-800 text-left">${cell}</td>`).join('')}</tr>`).join('');
+            document.getElementById('modal-page-num').innerText = `Pág ${modalPage} de ${total || 1}`;
+        }
+        function nextModalPage() { modalPage++; updateModalTable(); }
+        function prevModalPage() { if(modalPage > 1) { modalPage--; updateModalTable(); } }
         function closeDataModal() { document.getElementById('modal-data').classList.add('hidden'); }
-        function exportToExcel() {
-            const dataToExport = window.ingresosRecientes.map(i => ({ Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, Sujeto: i.sujeto, Modo: i.modo, Patente: i.dominio || i.nMovil, Operador: i.operador, Obs: i.obs }));
-            const ws = XLSX.utils.json_to_sheet(dataToExport); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Auditoria"); XLSX.writeFile(wb, `Reporte_UCP_${new Date().toISOString().split('T')[0]}.xlsx`);
-        }
-        function updateFileName(labelId, input) { if(input.files.length) document.getElementById(labelId).innerText = input.files[0].name.toUpperCase(); }
-        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
-        function showNotification(m, t) { const c = document.getElementById('toast-container'); const e = document.createElement('div'); e.className = `${t==='success'?'bg-slate-800':'bg-red-600'} text-white px-5 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in border border-white/10 text-left text-left text-left text-left`; e.innerHTML = `<span class="font-black text-[9px] uppercase tracking-widest text-left text-left text-left text-left">${m}</span>`; c.appendChild(e); setTimeout(() => e.remove(), 4000); }
-        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
 
-        // LÓGICA DE SIDEBAR MEJORADA PARA MÓVIL
-        function toggleSidebar(force) {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            const isClosing = force === false || (!force && !sidebar.classList.contains('-translate-x-full'));
-
-            if (isClosing) {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.replace('opacity-100', 'opacity-0');
-                setTimeout(() => overlay.classList.add('hidden'), 300);
-            } else {
-                overlay.classList.remove('hidden');
-                setTimeout(() => overlay.classList.replace('opacity-0', 'opacity-100'), 10);
-                sidebar.classList.remove('-translate-x-full');
-            }
-        }
-
-        function logout() { window.location.reload(); }
-        function closeWarningModal() { document.getElementById('modal-warning').classList.add('hidden'); }
-        function updateHeaderDate() { document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase(); }
-        
+        // --- DINAMISMO Y LÓGICA DE AGENTE (BODY SCAN 60 DÍAS) ---
         function updateDynamicFields(perfil) {
             const d = document.getElementById('dyn-fields'); if (!d) return; d.innerHTML = '';
             if (perfil === 'MOVIL' || perfil === 'PERSONAL') {
-                d.innerHTML = `<div class="space-y-3 animate-fade-in text-left text-left"><div class="flex gap-2 text-left text-left">
-                        <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MATRÍCULA">
-                        <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center text-center">${SVG_BARCODE}</button>
-                    </div><div id="personal-preview" class="hidden p-3 bg-emerald-50 dark:bg-emerald-900/20 border rounded-xl text-left"><div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-[10px] text-left"></div><div id="body-info" class="text-[8px] mt-1 font-bold text-left"></div></div>
-                    ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center text-center text-center" placeholder="NRO UNIDAD">` : ''}</div>`;
+                d.innerHTML = `
+                    <div class="space-y-3 animate-fade-in text-left">
+                        <div class="flex gap-2">
+                            <input type="text" id="ing-mat" oninput="this.value = this.value.toUpperCase(); searchPersonalInDB(this.value)" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="MATRÍCULA / AFILIADO">
+                            <button type="button" onclick="startScanner('BARCODE')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📟</button>
+                        </div>
+                        <div id="personal-preview" class="hidden p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-900/50 rounded-2xl text-left">
+                            <div id="prev-name" class="font-black uppercase text-emerald-800 dark:text-emerald-400 text-xs mb-2"></div>
+                            <div id="body-analytics" class="space-y-2 border-t dark:border-emerald-900/50 pt-2 text-left"></div>
+                        </div>
+                        ${perfil === 'MOVIL' ? `<input type="text" id="ing-n-movil" class="w-full px-4 py-3 bg-white dark:bg-slate-900 border-2 rounded-lg text-xl font-black text-center" placeholder="NRO UNIDAD">` : ''}
+                    </div>`;
             } else {
-                d.innerHTML = `<div class="space-y-3 animate-fade-in text-left text-left"><div class="flex gap-2 text-left text-left">
-                        <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none text-left text-left" placeholder="DNI SIN PUNTOS">
-                        <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center text-center">${SVG_QR}</button>
-                    </div><input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="APELLIDO Y NOMBRE">
-                    ${perfil === 'ABOGADO' ? `<input type="text" id="ing-mat-pro" class="w-full px-4 py-2.5 border-2 border-blue-200 dark:border-blue-900 rounded-lg text-xs font-black uppercase outline-none text-left" placeholder="MATRÍCULA PROFESIONAL text-left">` : ''}</div>`;
+                d.innerHTML = `
+                    <div class="space-y-3 animate-fade-in text-left">
+                        <div class="flex gap-2">
+                            <input type="text" id="ing-dni" class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black outline-none" placeholder="DNI SIN PUNTOS">
+                            <button type="button" onclick="startScanner('QR')" class="p-2.5 bg-slate-100 dark:bg-slate-800 border-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-center">📸</button>
+                        </div>
+                        <input type="text" id="ing-nom" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-lg text-xs font-black uppercase outline-none" placeholder="APELLIDO Y NOMBRE">
+                        ${perfil === 'ABOGADO' ? `<input type="text" id="ing-mat-pro" class="w-full px-4 py-2.5 border-2 border-amber-400 rounded-lg text-xs font-black outline-none" placeholder="MATRÍCULA PROFESIONAL">` : ''}
+                    </div>`;
             }
         }
 
         function searchPersonalInDB(val) {
-            const p = window.PERSONAL_DB.find(x => x.id === val.trim());
-            const preview = document.getElementById('personal-preview');
-            if (p) {
-                document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre}`;
-                const bodyHits = window.pasesBodyData.filter(b => b.matricula === val.trim());
-                const infoEl = document.getElementById('body-info');
-                if (bodyHits.length > 0) {
-                    const ult = bodyHits.sort((a,b) => String(b.fechaHora).localeCompare(String(a.fechaHora)))[0];
-                    infoEl.innerHTML = `✅ BODY OK: ${ult.fechaHora}`; infoEl.className = "text-[8px] text-emerald-600 font-bold uppercase mt-1 text-left";
-                } else {
-                    infoEl.innerHTML = `⚠️ SIN PASES BODY SCAN`; infoEl.className = "text-[8px] text-red-500 font-bold uppercase mt-1 text-left";
-                }
-                preview.classList.remove('hidden');
-                if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${p.apellido} ${p.nombre}`;
-            } else if (preview) preview.classList.add('hidden');
+            const id = val.trim(); const p = window.PERSONAL_DB.find(x => x.id === id);
+            const preview = document.getElementById('personal-preview'); if (!p) { if(preview) preview.classList.add('hidden'); return; }
+            
+            document.getElementById('prev-name').innerText = `${p.apellido}, ${p.nombre} [${p.cargo}]`;
+            
+            // Cálculo de 60 días
+            const now = new Date(); const sixtyDaysAgo = new Date(); sixtyDaysAgo.setDate(now.getDate() - 60);
+            
+            const pases = window.pasesBodyData.filter(b => {
+                if (b.matricula !== id) return false;
+                const [d, m, y] = b.fechaHora.split(' ')[0].split('/');
+                const dateB = new Date(`${y}-${m}-${d}`);
+                return dateB >= sixtyDaysAgo;
+            }).sort((a,b) => String(b.fechaHora).localeCompare(String(a.fechaHora)));
+
+            const analytics = document.getElementById('body-analytics');
+            analytics.innerHTML = `
+                <div class="flex justify-between items-center mb-1 text-left">
+                    <span class="text-[9px] font-black uppercase text-slate-500">Pases Body (60d)</span>
+                    <span class="px-2 py-0.5 bg-blue-600 text-white rounded-lg text-[10px] font-black">${pases.length}</span>
+                </div>
+                <div class="max-h-24 overflow-y-auto text-[8px] font-bold text-slate-400 space-y-1 no-scrollbar text-left">
+                    ${pases.map(pase => `<div>• ${pase.fechaHora} [${pase.sector}]</div>`).join('') || '<div class="text-red-500 italic">SIN REGISTROS RECIENTES</div>'}
+                </div>`;
+            preview.classList.remove('hidden');
+            if(document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${p.apellido} ${p.nombre}`;
         }
 
+        // --- AUXILIARES ---
+        function startScanner(type) {
+            document.getElementById('scanner-title').innerText = type === 'QR' ? "ESCANEO DNI" : "ESCANEO CREDENCIAL";
+            document.getElementById('modal-scanner').classList.remove('hidden');
+            if(html5QrCode) html5QrCode.clear(); html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 30, aspectRatio: 1.0 }, (text) => {
+                playBeep(440, 150); stopScanner();
+                if(type==='LOGIN') document.getElementById('username').value = text;
+                else if(type==='BARCODE') { document.getElementById('ing-mat').value = text; searchPersonalInDB(text); }
+                else if(type==='QR') {
+                    const parts = text.split('@').map(s => s.trim());
+                    if(parts.length >= 4) {
+                        document.getElementById('ing-dni').value = parts[0].length > 10 ? parts[4] : parts[0];
+                        document.getElementById('ing-nom').value = `${parts[1]} ${parts[2]}`;
+                    }
+                }
+            }).catch(() => stopScanner());
+        }
+        function stopScanner() { if(html5QrCode) html5QrCode.stop().finally(() => { html5QrCode.clear(); document.getElementById('modal-scanner').classList.add('hidden'); }); }
+        function getOperatorID() { return currentUser ? `${currentUser.fullName.split(' ').map(n=>n[0]).join('')}-${currentUser.username.slice(-3)}` : "S/D"; }
+        function toggleSidebar(f) {
+            const s = document.getElementById('sidebar'), o = document.getElementById('sidebar-overlay');
+            if(f === false || (!f && !s.classList.contains('-translate-x-full'))) { s.classList.add('-translate-x-full'); o.classList.add('hidden'); }
+            else { s.classList.remove('-translate-x-full'); o.classList.remove('hidden'); }
+        }
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+        function logout() { window.location.reload(); }
+        function updateHeaderDate() { document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase(); }
         function setMode(m) {
             document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center ${m==='PEATÓN'?'bg-blue-600 border-blue-600 shadow-lg text-white':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
-            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg transition-all text-xl text-center ${m==='VEHÍCULO'?'bg-blue-600 border-blue-600 shadow-lg text-white':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
-            if (m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden');
-            else document.getElementById('vehicle-fields').classList.add('hidden');
+            document.getElementById('btn-p').className = `flex-1 py-2 border-2 rounded-lg text-xl text-center ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-lg':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
+            document.getElementById('btn-v').className = `flex-1 py-2 border-2 rounded-lg text-xl text-center ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-lg':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`;
+            if (m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
         }
+        function viewPersonalData() { openDataModal("BASE DE PERSONAL", ["ID/MATRÍCULA", "APELLIDO", "NOMBRE", "JERARQUÍA"], window.PERSONAL_DB.map(p => [p.id, p.apellido, p.nombre, p.cargo])); }
+        function viewBodyData() { openDataModal("HISTORIAL BODY SCAN", ["MATRÍCULA", "NOMBRE", "FECHA/HORA", "SECTOR"], window.pasesBodyData.map(p => [p.matricula, p.nombre, p.fechaHora, p.sector])); }
+        function exportToExcel() {
+            const data = window.ingresosRecientes.map(i => {
+                const p = window.PERSONAL_DB.find(x => x.id === i.sujeto);
+                return { Fecha: i.fecha, Hora: i.hora, Perfil: i.perfil, ID: i.sujeto, Nombre: p ? `${p.apellido} ${p.nombre}` : (i.matPro ? "ABOGADO" : "OTRO"), Cargo: p ? p.cargo : "-", Modo: i.modo, Operador: i.operador };
+            });
+            const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "UCP"); XLSX.writeFile(wb, `Reporte_UCP.xlsx`);
+        }
+        function prevPage() { if(currentPage > 1) { currentPage--; updateReportTable(); } }
+        function nextPage() { if(currentPage < Math.ceil(window.ingresosRecientes.length / pageSize)) { currentPage++; updateReportTable(); } }
 
-        function startScanner(type) {
-            const title = document.getElementById('scanner-title');
-            if (type === 'QR') title.innerText = "ESCANEO DNI (QR)";
-            else title.innerText = "ESCANEO CREDENCIAL (BARRAS)";
-            document.getElementById('modal-scanner').classList.remove('hidden');
-            if (html5QrCode) { html5QrCode.clear(); }
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 30, aspectRatio: undefined };
-            html5QrCode.start({ facingMode: "environment" }, config, (text) => { handleScanSuccess(text, type); stopScanner(); }, (errorMessage) => { }).catch(err => { console.error(err); showNotification("Error de cámara", "error"); stopScanner(); });
+        // Mantenemos la gestión de usuarios
+        function renderUsersAdminView(container) {
+            container.innerHTML = `<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
+                <div class="xl:col-span-4 text-left"><div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border dark:border-slate-800 shadow-xl text-left">
+                    <h3 class="text-xs font-black uppercase mb-4 italic text-left">Alta de Usuario</h3>
+                    <form id="user-form" class="space-y-3 text-left" onsubmit="event.preventDefault(); handleSaveUser();">
+                        <input type="text" id="u-user" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="DNI / MATRÍCULA">
+                        <input type="text" id="u-name" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="NOMBRE COMPLETO">
+                        <input type="password" id="u-pass" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs text-left" placeholder="CONTRASEÑA">
+                        <select id="u-role" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl font-black text-xs uppercase text-left">
+                            <option value="${ROLES.UCP}">${ROLES.UCP}</option><option value="${ROLES.DIP}">${ROLES.DIP}</option><option value="${ROLES.ADMIN}">${ROLES.ADMIN}</option>
+                        </select>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] shadow-lg text-center">Crear Usuario</button>
+                    </form></div></div>
+                <div class="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2rem] border dark:border-slate-800 overflow-hidden text-left">
+                    <table class="w-full text-left text-[11px] text-left"><tbody id="users-list-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table>
+                </div></div>`;
+            window.refreshUsersList();
         }
-
-        function stopScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => { html5QrCode.clear(); document.getElementById('modal-scanner').classList.add('hidden'); }).catch(() => { document.getElementById('modal-scanner').classList.add('hidden'); });
-            } else { document.getElementById('modal-scanner').classList.add('hidden'); }
+        window.refreshUsersList = function() {
+            const body = document.getElementById('users-list-body'); if (!body) return;
+            body.innerHTML = window.SYSTEM_USERS.map(u => `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left"><td class="px-5 py-4 text-left"><div class="font-black uppercase">${u.fullName}</div><div class="text-[8px] text-slate-400 font-bold uppercase">${u.role} | ID: ${u.username}</div></td><td class="px-5 py-4 text-right">${u.username !== currentUser.username ? `<button onclick="deleteSystemUser('${u.username}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>` : ''}</td></tr>`).join('');
+        };
+        async function handleSaveUser() {
+            const u = document.getElementById('u-user').value.trim(), n = document.getElementById('u-name').value.trim(), p = document.getElementById('u-pass').value, r = document.getElementById('u-role').value;
+            if(!u || !n || !p) return;
+            await window.fbSetDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'users', u), { username: u, fullName: n.toUpperCase(), password: p, role: r, multiRole: r === ROLES.ADMIN });
+            document.getElementById('user-form').reset();
         }
-
-        function handleScanSuccess(text, type) {
-            if (text.includes('ILR:2.20') || text.includes('S/N: 0040') || (text.split('@').length > 15)) {
-                document.getElementById('modal-warning').classList.remove('hidden');
-                return;
-            }
-            const cleanValue = text.trim();
-            if (type === 'LOGIN') {
-                const usernameField = document.getElementById('username');
-                if (usernameField) usernameField.value = cleanValue;
-            } else if (type === 'BARCODE') {
-                const matField = document.getElementById('ing-mat');
-                if (matField) { matField.value = cleanValue; searchPersonalInDB(cleanValue); }
-            } else if (type === 'QR') {
-                const parts = text.split('@').map(s => s.trim());
-                let dni = "", nom = "", ape = "";
-                if (parts.length >= 8) { dni = parts[4]; ape = parts[1]; nom = parts[2]; }
-                else if (parts.length >= 4) { dni = parts[0]; ape = parts[1]; nom = parts[2]; }
-                if (document.getElementById('ing-dni')) document.getElementById('ing-dni').value = dni;
-                if (document.getElementById('ing-nom')) document.getElementById('ing-nom').value = `${ape} ${nom}`.trim();
-            }
-        }
+        async function deleteSystemUser(id) { if(confirm("¿Eliminar usuario?")) await window.fbDeleteDoc(window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'users', id)); }
 
         window.onload = init;
     </script>
