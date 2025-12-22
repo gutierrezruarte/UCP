@@ -34,12 +34,10 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, writeBatch, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
+        // Proyectos específicos del SPC
         const configPersonal = { apiKey: "AIzaSyDly2M3_eGocS28O-EcO6FreL3be0wfZEE", authDomain: "ucp-personal.firebaseapp.com", projectId: "ucp-personal", appId: "1:715461905934:web:3e2dd5fe658ca5d61cb65f" };
         const configBody = { apiKey: "AIzaSyAUiha-utdBuHMe-pcQxeperw0pa3VlnHA", authDomain: "ucp-body.firebaseapp.com", projectId: "ucp-body", appId: "1:422629681048:web:007824b4fee476ac46aded" };
         const configRegistros = { apiKey: "AIzaSyBmvj542a67pQpa-2Ls5WJrun9OqlFH0Js", authDomain: "ucp-registros.firebaseapp.com", projectId: "ucp-registros", appId: "1:450418291282:web:b810cfcbf02df79708a58b" };
@@ -65,53 +63,54 @@
         const initAuth = async () => {
             const loader = document.getElementById('global-loader');
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await Promise.all([
-                        signInAnonymously(authP),
-                        signInAnonymously(authB),
-                        signInAnonymously(authR)
-                    ]);
-                } else {
-                    await Promise.all([
-                        signInAnonymously(authP),
-                        signInAnonymously(authB),
-                        signInAnonymously(authR)
-                    ]);
-                }
-            } catch (e) { console.error(e); }
-            if(loader) loader.remove();
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                const authTask = async (authInst) => {
+                    if (token) await signInWithCustomToken(authInst, token);
+                    else await signInAnonymously(authInst);
+                };
+                // Intento de conexión paralelo
+                await Promise.allSettled([authTask(authP), authTask(authB), authTask(authR)]);
+                
+                // Configuración de escuchas de datos post-auth
+                setupDataListeners();
+            } catch (e) { console.error("Error crítico de inicio:", e); }
+            finally { if(loader) loader.remove(); }
         };
 
-        onSnapshot(collection(dbP, 'artifacts', 'ucp-personal', 'public', 'data', 'personal'), (snap) => {
-            const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-            window.PERSONAL_DB = data; localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
-            updateUIStats();
-            if(window.currentViewId === 'importar_personal') renderView('importar_personal', 'PERSONAL');
-            if(window.updateFullReport) window.updateFullReport();
-        });
+        function setupDataListeners() {
+            onSnapshot(collection(dbP, 'artifacts', 'ucp-personal', 'public', 'data', 'personal'), (snap) => {
+                const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                window.PERSONAL_DB = data; localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
+                updateUIStats();
+                if(window.currentViewId === 'importar_personal') renderView('importar_personal', 'PERSONAL');
+                if(window.updateFullReport) window.updateFullReport();
+            });
 
-        onSnapshot(collection(dbB, 'artifacts', 'ucp-body', 'public', 'data', 'pases_body'), (snap) => {
-            const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-            window.pasesBodyData = data; localStorage.setItem('ucp_cache_body', JSON.stringify(data));
-            updateUIStats();
-            if(window.currentViewId === 'importar_body') renderView('importar_body', 'BODY SCAN');
-        });
+            onSnapshot(collection(dbB, 'artifacts', 'ucp-body', 'public', 'data', 'pases_body'), (snap) => {
+                const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                window.pasesBodyData = data; localStorage.setItem('ucp_cache_body', JSON.stringify(data));
+                updateUIStats();
+                if(window.currentViewId === 'importar_body') renderView('importar_body', 'BODY SCAN');
+                // Si el usuario está viendo el previo de un agente, refrescar historial
+                const matInput = document.getElementById('ing-mat');
+                if(matInput && matInput.value) window.searchPersonalInDB(matInput.value);
+            });
 
-        onSnapshot(collection(dbR, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos'), (snap) => {
-            let data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-            data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-            window.ingresosRecientes = data; localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
-            if (window.updateIngresosTable) window.updateIngresosTable();
-            if (window.updateFullReport) window.updateFullReport();
-            updateUIStats();
-        });
+            onSnapshot(collection(dbR, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos'), (snap) => {
+                let data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                window.ingresosRecientes = data; localStorage.setItem('ucp_cache_ingresos', JSON.stringify(data.slice(0, 100)));
+                if (window.updateIngresosTable) window.updateIngresosTable();
+                if (window.updateFullReport) window.updateFullReport();
+                updateUIStats();
+            });
 
-        onSnapshot(collection(dbR, 'artifacts', 'ucp-registros', 'public', 'data', 'users'), (snap) => {
-            const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-            window.SYSTEM_USERS = data;
-            if (window.refreshUsersList) window.refreshUsersList();
-            if (window.updateFullReport) window.updateFullReport();
-        });
+            onSnapshot(collection(dbR, 'artifacts', 'ucp-registros', 'public', 'data', 'users'), (snap) => {
+                const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                window.SYSTEM_USERS = data;
+                if (window.refreshUsersList) window.refreshUsersList();
+            });
+        }
 
         function updateUIStats() {
             const set = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
@@ -155,7 +154,7 @@
 
     <!-- Modal de Doble Confirmación (DIP) -->
     <div id="confirm-modal" class="hidden fixed inset-0 z-[4000] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 w-full max-sm rounded-[2rem] p-8 border-4 border-red-600 shadow-2xl text-center">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-8 border-4 border-red-600 shadow-2xl text-center">
             <div class="text-4xl mb-4 text-center">⚠️</div>
             <h3 class="text-lg font-black uppercase dark:text-white mb-2 leading-tight">¿Confirmar Eliminación?</h3>
             <p id="confirm-text" class="text-xs font-bold text-slate-500 mb-6 uppercase tracking-tighter">Esta acción es irreversible y afectará los registros históricos.</p>
@@ -171,14 +170,14 @@
     </div>
 
     <div id="upload-overlay" class="hidden fixed inset-0 z-[3000] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-        <div class="bg-white dark:bg-slate-800 w-full max-sm p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-700">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-700">
             <div class="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <h3 class="text-xs font-black uppercase text-slate-800 dark:text-white mb-1 tracking-widest">Sincronizando Nube</h3>
-            <p id="upload-status" class="text-[9px] font-bold text-slate-400 uppercase mb-4">Iniciando transferencia...</p>
-            <div class="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">
+            <h3 class="text-xs font-black uppercase text-slate-800 dark:text-white mb-1 tracking-widest text-center">Sincronizando Nube</h3>
+            <p id="upload-status" class="text-[9px] font-bold text-slate-400 uppercase mb-4 text-center">Iniciando transferencia...</p>
+            <div class="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden text-center">
                 <div id="upload-bar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
             </div>
-            <p id="upload-count" class="text-[8px] font-black text-blue-600 mt-2 uppercase">0 / 0 registros</p>
+            <p id="upload-count" class="text-[8px] font-black text-blue-600 mt-2 uppercase text-center">0 / 0 registros</p>
         </div>
     </div>
 
@@ -186,13 +185,13 @@
 
     <div id="role-screen" class="hidden fixed inset-0 z-[200] bg-slate-900/90 flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl text-center">
-            <h2 class="text-xl font-black uppercase tracking-tighter mb-1 dark:text-white italic text-center text-center">Acceso Jerárquico</h2>
-            <div id="role-options" class="grid grid-cols-1 gap-3 mt-6 text-center text-center"></div>
+            <h2 class="text-xl font-black uppercase tracking-tighter mb-1 dark:text-white italic text-center">Acceso Jerárquico</h2>
+            <div id="role-options" class="grid grid-cols-1 gap-3 mt-6 text-center"></div>
         </div>
     </div>
 
-    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 transition-colors text-center text-center">
-        <div id="login-box" class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl text-center border border-slate-100 dark:border-slate-700 mx-auto text-center"></div>
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 transition-colors text-center">
+        <div id="login-box" class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl text-center border border-slate-100 dark:border-slate-700 mx-auto"></div>
     </div>
 
     <div id="app-container" class="hidden h-full flex overflow-hidden dark:bg-slate-950">
@@ -200,19 +199,19 @@
             <div class="p-5 flex flex-col h-full w-64 shrink-0">
                 <div class="flex items-center gap-3 mb-8">
                     <div class="bg-blue-600 p-2 rounded-xl font-black text-xs shrink-0">UCP</div>
-                    <span class="font-black text-base tracking-tighter uppercase block leading-none whitespace-nowrap text-left text-left">Portal Central</span>
+                    <span class="font-black text-base tracking-tighter uppercase block leading-none whitespace-nowrap text-left">Portal Central</span>
                 </div>
                 <nav id="sidebar-nav" class="flex-1 space-y-1 overflow-y-auto no-scrollbar"></nav>
                 <div class="pt-4 border-t border-slate-700/50">
                     <div id="sidebar-user-card" class="flex items-center gap-3 mb-4 p-3 bg-slate-700/30 dark:bg-slate-800/50 rounded-xl relative text-left">
-                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white uppercase shrink-0 text-center">?</div>
+                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white uppercase shrink-0">?</div>
                         <div class="overflow-hidden text-left flex-1">
                             <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100 italic">Usuario</p>
                             <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Perfil</p>
                         </div>
-                        <button id="btn-switch-role" onclick="openRoleSwitcher()" class="hidden absolute -top-2 -right-2 w-7 h-7 bg-blue-500 rounded-full border-2 border-slate-800 flex items-center justify-center text-[10px] shadow-lg hover:scale-110 transition-transform text-center">🔄</button>
+                        <button id="btn-switch-role" onclick="openRoleSwitcher()" class="hidden absolute -top-2 -right-2 w-7 h-7 bg-blue-500 rounded-full border-2 border-slate-800 flex items-center justify-center text-[10px] shadow-lg hover:scale-110 transition-transform">🔄</button>
                     </div>
-                    <button id="btn-logout" onclick="window.location.reload()" class="w-full py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg uppercase tracking-widest border border-red-500/20 flex items-center justify-center gap-2 overflow-hidden text-center">
+                    <button id="btn-logout" onclick="window.location.reload()" class="w-full py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg uppercase tracking-widest border border-red-500/20 flex items-center justify-center gap-2 overflow-hidden">
                         <span class="text-sm">🚪</span> <span>Cerrar Sesión</span>
                     </button>
                 </div>
@@ -220,37 +219,37 @@
         </aside>
 
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 overflow-hidden relative text-left">
-            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shrink-0 no-print text-left">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shrink-0 no-print">
                 <div class="flex items-center gap-4">
-                    <button onclick="handleHeaderBack()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
+                    <button onclick="handleHeaderBack()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
                         <span id="header-menu-icon" class="text-lg">☰</span>
                     </button>
-                    <h2 id="view-title" class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left text-left text-left">Inicio</h2>
+                    <h2 id="view-title" class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left">Inicio</h2>
                 </div>
-                <div class="flex items-center gap-2 text-center">
-                    <button onclick="toggleFullscreen()" title="Pantalla Completa" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleFullscreen()" title="Pantalla Completa" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
                         <span id="full-icon">⛶</span>
                     </button>
-                    <button onclick="toggleTheme()" title="Cambiar Tema" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
+                    <button onclick="toggleTheme()" title="Cambiar Tema" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
                         <span id="theme-icon">🌙</span>
                     </button>
                 </div>
             </header>
-            <div id="content-area" class="flex-1 overflow-y-auto p-6 no-scrollbar text-left dark:bg-slate-950 text-left"></div>
+            <div id="content-area" class="flex-1 overflow-y-auto p-6 no-scrollbar text-left dark:bg-slate-950"></div>
         </main>
     </div>
 
     <!-- Scanner Modal con Linterna -->
-    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 no-print text-center text-center">
+    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 no-print text-center">
         <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl text-center">
-            <div class="p-5 bg-blue-600 text-white flex justify-between items-center text-left text-left">
-                <span id="scanner-label" class="font-black uppercase text-xs tracking-widest text-left text-left text-left">Escaneo Activo</span>
+            <div class="p-5 bg-blue-600 text-white flex justify-between items-center text-left">
+                <span id="scanner-label" class="font-black uppercase text-xs tracking-widest text-left">Escaneo Activo</span>
                 <div class="flex gap-2">
-                    <button id="btn-torch" onclick="toggleTorch()" class="p-2 bg-white/20 rounded-full text-sm text-center">⚡</button>
-                    <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full text-center">✕</button>
+                    <button id="btn-torch" onclick="toggleTorch()" class="p-2 bg-white/20 rounded-full text-sm">⚡</button>
+                    <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full">✕</button>
                 </div>
             </div>
-            <div class="p-6 text-center text-center text-center"><div id="reader"></div></div>
+            <div class="p-6 text-center"><div id="reader"></div></div>
         </div>
     </div>
 
@@ -271,7 +270,7 @@
                 icon.innerText = '✕';
             } else {
                 sidebar.classList.replace('w-64', 'w-0');
-                icon.innerText = '☰';
+                icon.innerText = viewHistory.length > 1 ? '⬅️' : '☰';
             }
         }
 
@@ -279,8 +278,8 @@
             if (isSidebarOpen) {
                 toggleSidebar();
             } else if (viewHistory.length > 1) {
-                viewHistory.pop(); // Sacar la actual
-                const prev = viewHistory.pop(); // Obtener la anterior
+                viewHistory.pop(); // Sacar actual
+                const prev = viewHistory.pop(); // Sacar anterior para re-insertar
                 renderView(prev.id, prev.label, true);
             } else {
                 toggleSidebar();
@@ -334,7 +333,7 @@
                 <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase mb-1 leading-none text-center">Control UCP</h1>
                 <p class="text-[9px] font-bold text-slate-400 uppercase mb-8 tracking-[0.2em] text-center">Acceso Multi-Cloud SPC</p>
                 <form id="login-form" class="space-y-3 mx-auto max-w-xs text-center" onsubmit="event.preventDefault(); handleLogin();">
-                    <div class="flex gap-2 text-center text-center">
+                    <div class="flex gap-2 text-center">
                         <input type="text" id="username" class="flex-1 px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none text-center" placeholder="AFILIADO">
                         <button type="button" onclick="startScanner('LOGIN')" class="p-4 bg-slate-100 dark:bg-slate-700 dark:text-white rounded-xl text-center">📟</button>
                     </div>
@@ -401,7 +400,9 @@
             }
             window.currentViewId = viewId; document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
+            const headerIcon = document.getElementById('header-menu-icon');
             if (isSidebarOpen) toggleSidebar();
+            if (headerIcon) headerIcon.innerText = viewHistory.length > 1 ? '⬅️' : '☰';
 
             if (viewId === 'dashboard') {
                 content.innerHTML = `
@@ -441,32 +442,32 @@
             const now = new Date();
             container.innerHTML = `
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print text-left">
-                <div class="xl:col-span-5 text-left">
+                <div class="xl:col-span-5 text-left text-left text-left">
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm text-left text-left">
                         <form id="ingreso-form" class="space-y-4 text-left" onsubmit="event.preventDefault(); handleSaveIngreso();">
-                            <div class="grid grid-cols-2 gap-3 text-left text-left">
+                            <div class="grid grid-cols-2 gap-3 text-left">
                                 <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left">
-                                <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left">
+                                <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left">
                             </div>
                             <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none text-left">
                                 <option value="" disabled selected>PERFIL DE ACCESO</option>
                                 ${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
                             </select>
-                            <div id="dyn-fields" class="space-y-4 text-left"></div>
-                            <div class="flex gap-2 text-center text-center">
-                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center">🚶</button>
-                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center">🚗</button>
+                            <div id="dyn-fields" class="space-y-4 text-left text-left"></div>
+                            <div class="flex gap-2 text-center">
+                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center text-center">🚶</button>
+                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center text-center">🚗</button>
                             </div>
-                            <div id="vehicle-fields" class="hidden text-center"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 dark:text-white border-2 border-blue-200 dark:border-blue-900/50 rounded-xl text-center text-lg font-black outline-none" placeholder="PATENTE"></div>
+                            <div id="vehicle-fields" class="hidden text-center text-center"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 dark:text-white border-2 border-blue-200 dark:border-blue-900/50 rounded-xl text-center text-lg font-black outline-none text-center" placeholder="PATENTE"></div>
                             <input type="hidden" id="ing-modo" value="">
-                            <textarea id="ing-obs" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="OBSERVACIONES / DESTINO"></textarea>
-                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest transition-all hover:opacity-90 text-center">Registrar Movimiento</button>
+                            <textarea id="ing-obs" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="OBSERVACIONES / DESTINO"></textarea>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest transition-all hover:opacity-90 text-center text-center text-center">Registrar Movimiento</button>
                         </form>
                     </div>
                 </div>
                 <div class="xl:col-span-7 bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden text-left backdrop-blur-sm text-left">
-                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left">Panel Reciente</div>
-                    <div class="flex-1 overflow-auto no-scrollbar text-left text-left"><table class="w-full text-[11px] text-left text-left text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left text-left">Panel Reciente</div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left text-left"><table class="w-full text-[11px] text-left text-left text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left text-left"></tbody></table></div>
                 </div>
             </div>`;
             window.updateIngresosTable();
@@ -475,22 +476,22 @@
         function renderReportesView(container) {
             const canDelete = activeRole === ROLES.DIP || activeRole === ROLES.ADMIN;
             container.innerHTML = `
-            <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col text-left backdrop-blur-sm text-left">
-                <div class="flex flex-wrap justify-between items-center gap-4 mb-6 no-print text-left">
+            <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col text-left backdrop-blur-sm text-left text-left text-left">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-6 no-print text-left text-left">
                     <div class="flex items-center gap-4 text-left">
                         <h3 class="font-black uppercase italic text-sm dark:text-white text-left">Auditoría Inteligente</h3>
                         ${canDelete ? `<button onclick="handleDeleteByDay()" class="bg-red-600/10 text-red-600 border border-red-600 px-4 py-2 rounded-xl font-black text-[8px] uppercase hover:bg-red-600 hover:text-white transition-all text-center">Eliminar Día Seleccionado</button>` : ''}
                     </div>
-                    <div class="flex gap-2 text-center text-center">
+                    <div class="flex gap-2 text-center text-center text-center">
                         <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">Excel</button>
                         <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">Generar PDF</button>
                     </div>
                 </div>
                 
-                <div id="report-header-print" class="hidden print-header-info text-left">
-                    <h1 class="text-xl font-black uppercase mb-1 text-left">UNIDAD DE CONTROL PENITENCIARIO</h1>
-                    <p class="text-[10px] font-black uppercase text-slate-600 text-left" id="report-filter-summary">REPORTE DE INGRESOS</p>
-                    <p class="text-[8px] font-bold text-slate-400 text-left">GENERADO: ${new Date().toLocaleString()}</p>
+                <div id="report-header-print" class="hidden print-header-info text-left text-left">
+                    <h1 class="text-xl font-black uppercase mb-1 text-left text-left">UNIDAD DE CONTROL PENITENCIARIO</h1>
+                    <p class="text-[10px] font-black uppercase text-slate-600 text-left text-left" id="report-filter-summary">REPORTE DE INGRESOS</p>
+                    <p class="text-[8px] font-bold text-slate-400 text-left text-left">GENERADO: ${new Date().toLocaleString()}</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-5 bg-slate-50 dark:bg-slate-800/80 rounded-3xl mb-6 no-print text-left">
@@ -528,15 +529,6 @@
             const start = document.getElementById('filter-start').value, end = document.getElementById('filter-end').value, prof = document.getElementById('filter-profile').value;
             const canDelete = activeRole === ROLES.DIP || activeRole === ROLES.ADMIN;
 
-            const infoBanner = document.getElementById('report-filter-summary');
-            if(infoBanner) {
-                let filters = [];
-                if(search) filters.push(`BÚSQUEDA: "${search}"`);
-                if(start || end) filters.push(`PERIODO: ${start || '?'} AL ${end || '?'}`);
-                if(prof) filters.push(`PERFIL: ${prof}`);
-                infoBanner.innerText = filters.length ? `REPORTE FILTRADO | ${filters.join(' | ')}` : "REPORTE TOTAL DE INGRESOS (SIN FILTROS)";
-            }
-
             const filtered = window.ingresosRecientes.filter(i => {
                 const ms = !search || [i.sujeto, i.nomSujeto, i.obs, i.dominio, i.matProf].some(f => f && String(f).toUpperCase().includes(search));
                 const mp = !prof || i.perfil === prof;
@@ -555,7 +547,7 @@
                 } else {
                     displaySubject = `DNI ${i.sujeto}, ${i.nomSujeto}`;
                 }
-                const vehicleInfo = i.dominio ? `<div class="text-[7pt] text-slate-400 dark:text-slate-500 font-black italic mt-0.5 text-left text-left text-left">DOMINIO: ${i.dominio}</div>` : "";
+                const vehicleInfo = i.dominio ? `<div class="text-[7pt] text-slate-400 dark:text-slate-500 font-black italic mt-0.5 text-left">DOMINIO: ${i.dominio}</div>` : "";
                 return `
                 <tr class="font-bold text-slate-600 dark:text-slate-400 text-left">
                     <td class="p-2 border-b border-slate-200 dark:border-slate-800 leading-tight text-left">${i.fecha}<br><span class="text-blue-500 text-[8px] text-left">${i.hora}</span></td>
@@ -568,38 +560,38 @@
                     <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] uppercase italic leading-tight text-left">${i.obs || '-'}</td>
                     <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] font-black text-right text-right">${window.getOpCode(i.operador)}</td>
                     ${canDelete ? `<td class="p-2 border-b border-slate-200 dark:border-slate-800 text-center no-print">
-                        <button onclick="handleDeleteIngreso('${i.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-center">🗑️</button>
+                        <button onclick="handleDeleteIngreso('${i.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-center text-center">🗑️</button>
                     </td>` : ''}
                 </tr>`;
             }).join('');
         };
 
         window.handleDeleteIngreso = (id) => {
-            openConfirmModal("¿Desea eliminar este registro individual?", async () => {
+            openConfirmModal("¿Eliminar registro individual?", async () => {
                 try {
                     await fbDeleteDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos', id));
-                    showMessage("Registro eliminado", "success");
+                    showMessage("Eliminado", "success");
                 } catch(e) { showMessage("Error", "error"); }
             });
         };
 
         window.handleDeleteByDay = () => {
             const date = document.getElementById('filter-start').value;
-            if(!date) return showMessage("Filtre por fecha de inicio", "error");
-            openConfirmModal(`¿Eliminar todo el día ${date}?`, async () => {
-                const toDelete = window.ingresosRecientes.filter(i => i.fecha === date);
-                if(!toDelete.length) return showMessage("Sin registros", "info");
+            if(!date) return showMessage("Filtre fecha inicial", "error");
+            openConfirmModal(`¿Eliminar día ${date} completo?`, async () => {
+                const items = window.ingresosRecientes.filter(i => i.fecha === date);
+                if(!items.length) return showMessage("Sin datos", "info");
                 const batch = fbWriteBatch(fbDbRegistros);
-                toDelete.forEach(i => batch.delete(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos', i.id)));
+                items.forEach(i => batch.delete(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos', i.id)));
                 await batch.commit(); showMessage("Día depurado", "success");
             });
         };
 
         function renderUsersAdminView(container) {
             container.innerHTML = `
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print text-left">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print text-left text-left">
                 <div class="xl:col-span-4 text-left">
-                    <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm text-left">
+                    <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm text-left text-left text-left">
                         <h3 class="text-xs font-black uppercase italic mb-6 dark:text-white text-center">Alta Operador</h3>
                         <form id="user-form" class="space-y-4 mx-auto text-center" onsubmit="event.preventDefault(); handleSaveUser();">
                             <input type="text" id="user-id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="MATRÍCULA">
@@ -610,39 +602,39 @@
                                 ${activeRole !== ROLES.UCP ? `<option value="${ROLES.DIP}">${ROLES.DIP}</option>` : ''}
                                 ${activeRole === ROLES.ADMIN ? `<option value="${ROLES.ADMIN}">${ROLES.ADMIN}</option>` : ''}
                             </select>
-                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] text-center">Crear</button>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] text-center text-center text-center">Crear</button>
                         </form>
                     </div>
                 </div>
                 <div class="xl:col-span-8 bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col text-left backdrop-blur-sm text-left">
-                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left">Listado</div>
-                    <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-[11px] text-left text-left"><tbody id="users-table-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left text-left">Listado</div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-[11px] text-left text-left text-left"><tbody id="users-table-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
                 </div>
             </div>`; window.refreshUsersList();
         }
 
         function renderImportModule(name, title, fileId, changeFn, labelStat, valStat, count, uploadFn) {
             return `
-            <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm text-left">
+            <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm text-left text-left">
                 <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-inner text-center">📥</div>
                 <h2 class="text-xl font-black uppercase mb-1 italic dark:text-white text-center">${name}</h2>
-                <div class="grid grid-cols-2 gap-3 my-8 text-left text-left">
+                <div class="grid grid-cols-2 gap-3 my-8 text-left text-left text-left text-left">
                     <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1 text-center">${labelStat}</p>
-                        <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 text-center">${valStat}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1 text-center text-center text-center text-center">${labelStat}</p>
+                        <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 text-center text-center text-center text-center text-center">${valStat}</p>
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1 text-center">Total</p>
-                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center">${count}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1 text-center text-center text-center text-center">Total</p>
+                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center text-center text-center">${count}</p>
                     </div>
                 </div>
                 <div class="space-y-4 text-left text-left">
                     <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-800 text-center">
                         <input type="file" id="${fileId}" class="hidden" onchange="${changeFn}">
-                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 text-center">EXCEL (.XLSX)</p>
+                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 text-center">PLANILLA EXCEL (.XLSX)</p>
                         <button onclick="document.getElementById('${fileId}').click()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 font-black px-6 py-3 rounded-xl uppercase text-[9px] text-center">1. Elegir</button>
                     </div>
-                    <button id="btn-upload-${fileId}" onclick="${uploadFn}" disabled class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] opacity-30 text-center">2. Subir</button>
+                    <button id="btn-upload-${fileId}" onclick="${uploadFn}" disabled class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] opacity-30 text-center text-center">2. Subir</button>
                 </div>
             </div>`;
         }
@@ -655,21 +647,22 @@
             if(!id || !name || !pass) return showMessage("Complete datos", "error");
             try {
                 await fbSetDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id), { id, fullName: name.toUpperCase(), password: pass, role, timestamp: Date.now() });
-                showMessage("Guardado", "success");
-            } catch(e) { showMessage("Error", "error"); }
+                showMessage("Operador guardado", "success");
+                document.getElementById('user-form').reset();
+            } catch(e) { showMessage("Error Nube", "error"); }
         };
 
         window.refreshUsersList = () => {
             const body = document.getElementById('users-table-body'); if(!body) return;
-            let v = window.SYSTEM_USERS;
-            if(activeRole === ROLES.UCP) v = v.filter(u => u.id === currentUser.username);
-            body.innerHTML = v.map(u => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left text-left">
+            let list = window.SYSTEM_USERS;
+            if(activeRole === ROLES.UCP) list = list.filter(u => u.id === currentUser.username);
+            body.innerHTML = list.map(u => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left text-left text-left text-left text-left">
                     <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-left">
-                        <div class="font-black uppercase text-[10px] dark:text-white text-left">${u.fullName}</div>
-                        <div class="text-[8px] text-slate-400 font-bold uppercase text-left">${u.role} | ID: ${u.id}</div>
+                        <div class="font-black uppercase text-[10px] dark:text-white text-left text-left text-left">${u.fullName}</div>
+                        <div class="text-[8px] text-slate-400 font-bold uppercase text-left text-left text-left">${u.role} | ID: ${u.id}</div>
                     </td>
-                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-right text-right">
+                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-right">
                         <button onclick="resetPass('${u.id}')" class="p-2 text-blue-500 text-center">🔑</button>
                         ${(activeRole === ROLES.ADMIN) ? `<button onclick="deleteUser('${u.id}')" class="p-2 text-red-500 text-center">🗑️</button>` : ''}
                     </td>
@@ -677,10 +670,10 @@
         };
 
         window.resetPass = async (id) => {
-            const n = prompt("Clave:"); if(n) { try { await fbUpdateDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id), { password: n }); showMessage("Actualizado", "success"); } catch(e) {} }
+            const n = prompt("Clave:"); if(n) { try { await fbUpdateDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id), { password: n }); showMessage("OK", "success"); } catch(e) {} }
         };
 
-        window.deleteUser = async (id) => { if(confirm("¿Eliminar?")) { try { await fbDeleteDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id)); showMessage("OK", "success"); } catch(e) {} } };
+        window.deleteUser = async (id) => { if(confirm("¿Eliminar operador?")) { try { await fbDeleteDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id)); showMessage("Eliminado", "success"); } catch(e) {} } };
 
         window.getOpCode = (opId) => {
             if(!opId) return "-";
@@ -688,7 +681,7 @@
             if(!op) return opId.slice(-3);
             const initials = op.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
             return initials + opId.slice(-3);
-        }
+        };
 
         window.toggleTorch = async () => {
             if (!html5QrCode) return;
@@ -696,18 +689,16 @@
                 isTorchOn = !isTorchOn;
                 await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] });
                 document.getElementById('btn-torch').classList.toggle('bg-amber-400', isTorchOn);
-            } catch (e) { showMessage("Linterna no soportada", "info"); }
-        }
+            } catch (e) { showMessage("Fallo linterna", "info"); }
+        };
 
         window.startScanner = (type) => {
             document.getElementById('modal-scanner').classList.remove('hidden');
             html5QrCode = new Html5Qrcode("reader");
             isTorchOn = false;
-            document.getElementById('btn-torch').classList.remove('bg-amber-400');
-
             html5QrCode.start(
                 { facingMode: "environment" }, 
-                { fps: 20, qrbox: { width: 250, height: 250 } }, 
+                { fps: 20, qrbox: 250 }, 
                 (t) => {
                     const parts = t.split('@'); const atCount = parts.length - 1;
                     if (atCount > 10) {
@@ -715,8 +706,8 @@
                         if(container) {
                             const alertBox = document.createElement('div');
                             alertBox.className = "w-full p-4 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase mb-4 italic animate-pulse text-center";
-                            alertBox.innerText = "EJEMPLAR DE DNI DESACTUALIZADO. CARGAR DE FORMA MANUAL Y ADVERTIR AL INGRESANTE ACTUALIZAR EL MISMO";
-                            container.prepend(alertBox); setTimeout(() => alertBox.remove(), 10000);
+                            alertBox.innerText = "DNI DESACTUALIZADO - CARGAR MANUAL";
+                            container.prepend(alertBox); setTimeout(() => alertBox.remove(), 8000);
                         } return;
                     }
                     if (atCount >= 7 && atCount <= 9) {
@@ -741,7 +732,7 @@
             const container = document.getElementById('dyn-fields'); if(!container) return;
             if (perfil === 'PERSONAL' || perfil === 'MOVIL') {
                 container.innerHTML = `
-                <div class="flex gap-2 w-full text-left text-left">
+                <div class="flex gap-2 w-full text-left">
                     <input type="text" id="ing-mat" oninput="window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="MATRÍCULA / AFILIADO">
                     <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📟</button>
                 </div>
@@ -750,13 +741,13 @@
                     <p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3 text-left"></p>
                     <div class="flex justify-between items-center bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-blue-900/30 mb-3 text-left">
                         <span class="text-[9px] font-black uppercase text-slate-400 text-left">Pases Body Scan (60d)</span>
-                        <span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs text-center">0</span>
+                        <span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs text-center text-center">0</span>
                     </div>
-                    <div id="prev-body-history" class="max-h-48 overflow-y-auto no-scrollbar space-y-1 text-left text-left"></div>
+                    <div id="prev-body-history" class="max-h-56 overflow-y-auto no-scrollbar space-y-1 text-left"></div>
                 </div>`;
             } else if (perfil === 'ABOGADO') {
                 container.innerHTML = `
-                <div class="flex gap-2 w-full text-left text-left text-left">
+                <div class="flex gap-2 w-full text-left">
                     <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="DNI">
                     <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📸</button>
                 </div>
@@ -764,9 +755,9 @@
                 <input type="text" id="ing-mat-prof" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="MATRÍCULA PROFESIONAL">`;
             } else {
                 container.innerHTML = `
-                <div class="flex gap-2 w-full text-left text-left">
-                    <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="DNI">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📸</button>
+                <div class="flex gap-2 w-full text-left">
+                    <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="DNI">
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0 text-center">📸</button>
                 </div>
                 <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="APELLIDO Y NOMBRE">`;
             }
@@ -787,10 +778,10 @@
                 if(h) {
                     const sorted = [...pases].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
                     h.innerHTML = sorted.length > 0 ? sorted.map(px => `
-                        <div class="flex justify-between items-center p-2.5 bg-white/50 dark:bg-slate-900/50 rounded-xl text-[8px] border border-blue-200 dark:border-blue-900/30 text-left">
+                        <div class="flex justify-between items-center p-3 bg-white/50 dark:bg-slate-900/50 rounded-xl text-[8px] border border-blue-200 dark:border-blue-900/30 animate-fade-in text-left">
                             <span class="font-black text-blue-800 dark:text-blue-300 text-left">${px.fechaHora}</span>
                             <span class="font-bold text-slate-500 dark:text-slate-400 text-right">${px.sector || 'S/D'}</span>
-                        </div>`).join('') : '<p class="text-[8px] text-center italic text-slate-400 py-4">Sin pases registrados recientemente</p>';
+                        </div>`).join('') : '<p class="text-[8px] text-center italic text-slate-400 py-4">Sin pases registrados en 60 días</p>';
                 }
             } else { p.classList.add('hidden'); }
         };
@@ -805,7 +796,7 @@
         window.updateIngresosTable = () => {
             const b = document.getElementById('ingresos-table'); if(!b) return;
             b.innerHTML = window.ingresosRecientes.slice(0, 15).map(i => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left text-left">
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors text-left text-left text-left text-left">
                     <td class="p-4 font-black text-blue-500 dark:text-blue-400 border-b border-slate-200 dark:border-slate-800 text-left">${i.hora}</td>
                     <td class="p-4 border-b border-slate-200 dark:border-slate-800 font-black uppercase text-[10px] dark:text-slate-300 text-left">${i.nomSujeto || i.sujeto}</td>
                 </tr>`).join('');
@@ -856,8 +847,8 @@
 
         window.setMode = (m) => {
             document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center'}`;
-            document.getElementById('btn-v').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center'}`;
+            document.getElementById('btn-p').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center text-center text-center'}`;
+            document.getElementById('btn-v').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center text-center text-center'}`;
             if(m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
         };
 
