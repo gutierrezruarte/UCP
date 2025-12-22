@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     
     <script>
-        // Configuración de Tailwind para soporte de modo oscuro
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -22,7 +21,6 @@
             }
         }
 
-        // Aplicación del tema guardado o preferencia del sistema
         const applyTheme = () => {
             const theme = localStorage.getItem('theme');
             if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -39,7 +37,6 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, collection, onSnapshot, writeBatch, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuración de los 3 proyectos de Firebase del SPC
         const configPersonal = { apiKey: "AIzaSyDly2M3_eGocS28O-EcO6FreL3be0wfZEE", authDomain: "ucp-personal.firebaseapp.com", projectId: "ucp-personal", appId: "1:715461905934:web:3e2dd5fe658ca5d61cb65f" };
         const configBody = { apiKey: "AIzaSyAUiha-utdBuHMe-pcQxeperw0pa3VlnHA", authDomain: "ucp-body.firebaseapp.com", projectId: "ucp-body", appId: "1:422629681048:web:007824b4fee476ac46aded" };
         const configRegistros = { apiKey: "AIzaSyBmvj542a67pQpa-2Ls5WJrun9OqlFH0Js", authDomain: "ucp-registros.firebaseapp.com", projectId: "ucp-registros", appId: "1:450418291282:web:b810cfcbf02df79708a58b" };
@@ -51,13 +48,11 @@
         const authP = getAuth(appP); const authB = getAuth(appB); const authR = getAuth(appR);
         const dbP = getFirestore(appP); const dbB = getFirestore(appB); const dbR = getFirestore(appR);
 
-        // Exposición global para funciones de la UI
         window.fbDbPersonal = dbP; window.fbDbBody = dbB; window.fbDbRegistros = dbR;
         window.fbAddDoc = addDoc; window.fbCollection = collection; window.fbDoc = doc; 
         window.fbWriteBatch = writeBatch; window.fbDeleteDoc = deleteDoc; window.fbUpdateDoc = updateDoc;
         window.fbSetDoc = setDoc;
 
-        // Caché local inicial
         window.PERSONAL_DB = JSON.parse(localStorage.getItem('ucp_cache_personal') || '[]');
         window.pasesBodyData = JSON.parse(localStorage.getItem('ucp_cache_body') || '[]');
         window.ingresosRecientes = JSON.parse(localStorage.getItem('ucp_cache_ingresos') || '[]');
@@ -74,12 +69,11 @@
                 };
                 await Promise.allSettled([authTask(authP), authTask(authB), authTask(authR)]);
                 setupDataListeners();
-            } catch (e) { console.error("Error de autenticación:", e); }
+            } catch (e) { console.error(e); }
             finally { if(loader) loader.remove(); }
         };
 
         function setupDataListeners() {
-            // Escucha de Personal
             onSnapshot(collection(dbP, 'artifacts', 'ucp-personal', 'public', 'data', 'personal'), (snap) => {
                 const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
                 window.PERSONAL_DB = data; localStorage.setItem('ucp_cache_personal', JSON.stringify(data));
@@ -88,7 +82,6 @@
                 if(window.updateFullReport) window.updateFullReport();
             });
 
-            // Escucha de Body Scan
             onSnapshot(collection(dbB, 'artifacts', 'ucp-body', 'public', 'data', 'pases_body'), (snap) => {
                 const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
                 window.pasesBodyData = data; localStorage.setItem('ucp_cache_body', JSON.stringify(data));
@@ -98,7 +91,6 @@
                 if(matInput && matInput.value) window.searchPersonalInDB(matInput.value);
             });
 
-            // Escucha de Ingresos
             onSnapshot(collection(dbR, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos'), (snap) => {
                 let data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
                 data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -108,7 +100,6 @@
                 updateUIStats();
             });
 
-            // Escucha de Usuarios
             onSnapshot(collection(dbR, 'artifacts', 'ucp-registros', 'public', 'data', 'users'), (snap) => {
                 const data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
                 window.SYSTEM_USERS = data;
@@ -127,14 +118,10 @@
             initAuth(); 
             initUI(); 
             updateThemeToggleIcon();
-            
-            // Lógica para interceptar botón "atrás" del sistema operativo móvil
             window.onpopstate = (event) => {
                 if (event.state && event.state.viewId) {
-                    // Navegar a la vista guardada en el historial sin crear una nueva entrada
                     renderView(event.state.viewId, event.state.label, true);
                 } else if (currentUser) {
-                    // Si el historial llega al inicio, forzar Dashboard
                     renderView('dashboard', 'Inicio', true);
                 }
             };
@@ -166,24 +153,21 @@
 </head>
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden text-left">
 
-    <!-- Pantalla de Carga Inicial -->
     <div id="global-loader" class="fixed inset-0 z-[1000] bg-slate-900 flex flex-col items-center justify-center text-center">
-        <div class="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4 text-center mx-auto"></div>
+        <div class="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4 mx-auto"></div>
         <h2 class="text-white font-black uppercase text-[10px] tracking-[0.3em]">Cruce de Datos SPC Activo</h2>
     </div>
 
-    <!-- Modales de Confirmación y Carga -->
     <div id="confirm-modal" class="hidden fixed inset-0 z-[4000] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-8 border-4 border-red-600 shadow-2xl text-center">
             <div class="text-4xl mb-4 text-center">⚠️</div>
             <h3 class="text-lg font-black uppercase dark:text-white mb-2 leading-tight">¿Confirmar Eliminación?</h3>
-            <p id="confirm-text" class="text-xs font-bold text-slate-500 mb-6 uppercase tracking-tighter">Esta acción es irreversible y afectará los registros históricos.</p>
+            <p id="confirm-text" class="text-xs font-bold text-slate-500 mb-6 uppercase tracking-tighter">Esta acción es irreversible.</p>
             <div id="confirm-stage-1" class="space-y-3">
                 <button onclick="stageConfirm(2)" class="w-full bg-red-600 text-white font-black py-4 rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700">Eliminar Registro</button>
                 <button onclick="closeConfirmModal()" class="w-full bg-slate-200 dark:bg-slate-800 dark:text-white font-black py-4 rounded-xl uppercase text-[10px] tracking-widest">Cancelar</button>
             </div>
             <div id="confirm-stage-2" class="hidden space-y-3">
-                <p class="text-[9px] text-red-600 font-black mb-2 animate-pulse">PRESIONE NUEVAMENTE PARA CONFIRMAR FINAL</p>
                 <button id="final-confirm-btn" class="w-full bg-red-700 text-white font-black py-4 rounded-xl uppercase text-[10px] tracking-widest border-2 border-white shadow-lg">CONFIRMACIÓN FINAL</button>
             </div>
         </div>
@@ -193,18 +177,16 @@
         <div class="bg-white dark:bg-slate-800 w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-700">
             <div class="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
             <h3 class="text-xs font-black uppercase text-slate-800 dark:text-white mb-1 tracking-widest text-center">Sincronizando Nube</h3>
-            <p id="upload-status" class="text-[9px] font-bold text-slate-400 uppercase mb-4 text-center">Iniciando transferencia...</p>
-            <div class="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden text-center">
+            <div class="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden mt-4">
                 <div id="upload-bar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
             </div>
-            <p id="upload-count" class="text-[8px] font-black text-blue-600 mt-2 uppercase text-center">0 / 0 registros</p>
+            <p id="upload-count" class="text-[8px] font-black text-blue-600 mt-2 uppercase">0 / 0 registros</p>
         </div>
     </div>
 
     <div id="toast-wrapper" class="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Interfaz de Usuario -->
-    <div id="role-screen" class="hidden fixed inset-0 z-[200] bg-slate-900/90 flex items-center justify-center p-4 text-center">
+    <div id="role-screen" class="hidden fixed inset-0 z-[200] bg-slate-900/90 flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl text-center">
             <h2 class="text-xl font-black uppercase tracking-tighter mb-1 dark:text-white italic text-center">Acceso Jerárquico</h2>
             <div id="role-options" class="grid grid-cols-1 gap-3 mt-6"></div>
@@ -216,7 +198,6 @@
     </div>
 
     <div id="app-container" class="hidden h-full flex overflow-hidden dark:bg-slate-950">
-        <!-- Sidebar Comprimida por Defecto -->
         <aside id="sidebar" class="w-0 bg-slate-800 dark:bg-slate-900 text-white flex flex-col shrink-0 transition-all duration-300 overflow-hidden no-print">
             <div class="p-5 flex flex-col h-full w-64 shrink-0">
                 <div class="flex items-center gap-3 mb-8">
@@ -225,35 +206,40 @@
                 </div>
                 <nav id="sidebar-nav" class="flex-1 space-y-1 overflow-y-auto no-scrollbar text-left"></nav>
                 <div class="pt-4 border-t border-slate-700/50">
-                    <div id="sidebar-user-card" class="flex items-center gap-3 mb-4 p-3 bg-slate-700/30 dark:bg-slate-800/50 rounded-xl relative text-left">
-                        <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white uppercase shrink-0">?</div>
-                        <div class="overflow-hidden text-left flex-1">
-                            <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100 italic">Usuario</p>
-                            <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Perfil</p>
+                    <div id="sidebar-user-card" class="flex flex-col gap-2 mb-4 p-3 bg-slate-700/30 dark:bg-slate-800/50 rounded-xl relative text-left">
+                        <div class="flex items-center gap-3">
+                            <div id="user-initial" class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center font-black text-base shadow-inner text-white uppercase shrink-0">?</div>
+                            <div class="overflow-hidden text-left flex-1">
+                                <p id="user-display-name" class="text-[10px] font-black truncate uppercase text-blue-100 italic">Usuario</p>
+                                <p id="user-display-role" class="text-[8px] text-slate-400 uppercase font-bold tracking-tighter">Perfil</p>
+                            </div>
+                            <button onclick="openRoleSwitcher()" class="shrink-0 w-7 h-7 bg-slate-600 rounded-full flex items-center justify-center text-[10px] shadow-lg hover:bg-blue-500 transition-colors">🔄</button>
                         </div>
-                        <button id="btn-switch-role" onclick="openRoleSwitcher()" class="hidden absolute -top-2 -right-2 w-7 h-7 bg-blue-500 rounded-full border-2 border-slate-800 flex items-center justify-center text-[10px] shadow-lg hover:scale-110 transition-transform">🔄</button>
+                        <button onclick="changeMyPassword()" class="w-full mt-2 py-1.5 bg-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest border border-white/5 hover:bg-white/20 transition-all flex items-center justify-center gap-2">
+                            <span>🔑</span> Cambiar mi clave
+                        </button>
                     </div>
                     <button id="btn-logout" onclick="window.location.reload()" class="w-full py-2.5 text-[9px] font-black text-red-400 hover:bg-red-500/10 rounded-lg uppercase tracking-widest border border-red-500/20 flex items-center justify-center gap-2 overflow-hidden">
-                        <span class="text-sm text-center">🚪</span> <span>Cerrar Sesión</span>
+                        <span class="text-sm">🚪</span> <span>Cerrar Sesión</span>
                     </button>
                 </div>
             </div>
         </aside>
 
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
-            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shrink-0 no-print text-left">
+            <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shrink-0 no-print">
                 <div class="flex items-center gap-4">
-                    <button onclick="handleHeaderBack()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
-                        <span id="header-menu-icon" class="text-lg text-center">☰</span>
+                    <button onclick="toggleSidebar()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
+                        <span class="text-lg">☰</span>
                     </button>
                     <h2 id="view-title" class="text-base font-black text-slate-800 dark:text-white uppercase tracking-tighter italic text-left">Inicio</h2>
                 </div>
-                <div class="flex items-center gap-2 text-center">
-                    <button onclick="toggleFullscreen()" title="Pantalla Completa" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
-                        <span id="full-icon" class="text-center">⛶</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleFullscreen()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
+                        <span id="full-icon">⛶</span>
                     </button>
-                    <button onclick="toggleTheme()" title="Cambiar Tema" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
-                        <span id="theme-icon" class="text-center">🌙</span>
+                    <button onclick="toggleTheme()" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-center">
+                        <span id="theme-icon">🌙</span>
                     </button>
                 </div>
             </header>
@@ -261,17 +247,16 @@
         </main>
     </div>
 
-    <!-- Scanner Modal -->
-    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 no-print text-center text-center">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl text-center">
+    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl">
             <div class="p-5 bg-blue-600 text-white flex justify-between items-center text-left">
-                <span id="scanner-label" class="font-black uppercase text-xs tracking-widest text-left">Escaneo Activo</span>
+                <span class="font-black uppercase text-xs tracking-widest">Escaneo Activo</span>
                 <div class="flex gap-2">
-                    <button id="btn-torch" onclick="toggleTorch()" class="p-2 bg-white/20 rounded-full text-sm text-center">⚡</button>
-                    <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full text-center">✕</button>
+                    <button id="btn-torch" onclick="toggleTorch()" class="p-2 bg-white/20 rounded-full text-sm">⚡</button>
+                    <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full">✕</button>
                 </div>
             </div>
-            <div class="p-6 text-center text-center"><div id="reader"></div></div>
+            <div class="p-6 text-center"><div id="reader"></div></div>
         </div>
     </div>
 
@@ -280,32 +265,19 @@
         const PROFILES = ['PERSONAL', 'MOVIL', 'MONOTRIBUTISTA', 'DOCENTE', 'ABOGADO', 'PASTORAL', 'VISITA', 'OTROS'];
         let currentUser = null, activeRole = null, html5QrCode = null;
         let isSidebarOpen = false, isTorchOn = false;
-        let viewHistory = []; // Rastreador de navegación interna
+        let viewHistory = [];
         window.currentViewId = 'dashboard';
 
         function toggleSidebar() {
             isSidebarOpen = !isSidebarOpen;
             const sidebar = document.getElementById('sidebar');
-            const icon = document.getElementById('header-menu-icon');
-            if (isSidebarOpen) {
-                sidebar.classList.replace('w-0', 'w-64');
-                icon.innerText = '✕';
-            } else {
-                sidebar.classList.replace('w-64', 'w-0');
-                // Al cerrar la barra, el icono vuelve a depender de si hay historial atrás
-                icon.innerText = viewHistory.length > 1 ? '⬅️' : '☰';
-            }
+            if (isSidebarOpen) sidebar.classList.replace('w-0', 'w-64');
+            else sidebar.classList.replace('w-64', 'w-0');
         }
 
         function handleHeaderBack() {
-            if (isSidebarOpen) {
-                toggleSidebar();
-            } else if (viewHistory.length > 1) {
-                // Dispara el retroceso del historial del navegador
-                history.back();
-            } else {
-                toggleSidebar();
-            }
+            // Ahora este botón solo dispara el toggle de menú lateral
+            toggleSidebar();
         }
 
         function showMessage(text, type = 'info') {
@@ -355,11 +327,11 @@
                 <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase mb-1 leading-none text-center">Control UCP</h1>
                 <p class="text-[9px] font-bold text-slate-400 uppercase mb-8 tracking-[0.2em] text-center">Acceso Multi-Cloud SPC</p>
                 <form id="login-form" class="space-y-3 mx-auto max-w-xs text-center" onsubmit="event.preventDefault(); handleLogin();">
-                    <div class="flex gap-2 text-center">
-                        <input type="text" id="username" class="flex-1 px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none text-center" placeholder="AFILIADO">
-                        <button type="button" onclick="startScanner('LOGIN')" class="p-4 bg-slate-100 dark:bg-slate-700 dark:text-white rounded-xl text-center">📟</button>
+                    <div class="flex gap-2">
+                        <input type="text" id="username" class="flex-1 px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none" placeholder="AFILIADO">
+                        <button type="button" onclick="startScanner('LOGIN')" class="p-4 bg-slate-100 dark:bg-slate-700 dark:text-white rounded-xl">📟</button>
                     </div>
-                    <input type="password" id="password" class="w-full px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none text-center" placeholder="CONTRASEÑA">
+                    <input type="password" id="password" class="w-full px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none" placeholder="CONTRASEÑA">
                     <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest mt-4 hover:opacity-90 transition-all text-center">Entrar al Sistema</button>
                 </form>
             `;
@@ -369,14 +341,14 @@
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
             if(u === '136219951' && p === 'Marquitos123') {
-                currentUser = { fullName: 'MARCOS GUTIÉRREZ', username: '136219951', multiRole: true, role: ROLES.ADMIN };
-                openRoleSwitcher(); return;
+                currentUser = { fullName: 'MARCOS GUTIÉRREZ', username: '136219951', role: ROLES.ADMIN };
+                startSession(ROLES.ADMIN); return;
             }
             const user = window.SYSTEM_USERS.find(x => x.id === u && x.password === p);
             if(user) {
-                currentUser = { fullName: user.fullName, username: user.id, multiRole: user.role === ROLES.ADMIN || user.role === ROLES.DIP, role: user.role };
-                if (currentUser.multiRole) openRoleSwitcher(); else startSession(user.role);
-            } else { showMessage("Credenciales incorrectas", "error"); }
+                currentUser = { fullName: user.fullName, username: user.id, role: user.role };
+                startSession(user.role);
+            } else showMessage("Credenciales incorrectas", "error");
         }
 
         function openRoleSwitcher() {
@@ -395,10 +367,7 @@
             document.getElementById('role-screen').classList.add('hidden'); document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('user-display-name').innerText = currentUser.fullName; document.getElementById('user-display-role').innerText = activeRole;
             document.getElementById('user-initial').innerText = currentUser.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-            if (currentUser.multiRole) document.getElementById('btn-switch-role').classList.remove('hidden');
-            buildMenu(); 
-            viewHistory = []; // Reset historial
-            renderView('dashboard', 'Inicio');
+            buildMenu(); viewHistory = []; renderView('dashboard', 'Inicio');
         }
 
         function buildMenu() {
@@ -413,67 +382,51 @@
             ];
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-3 px-3 py-3 text-[10px] font-black rounded-xl hover:bg-slate-700 transition-all uppercase text-left group">
-                    <span class="text-base group-hover:scale-110 transition-transform text-center">${item.icon}</span> 
-                    <span class="whitespace-nowrap text-left">${item.label}</span>
+                    <span class="text-base group-hover:scale-110 transition-transform">${item.icon}</span> 
+                    <span class="whitespace-nowrap">${item.label}</span>
                 </button>`).join('');
         }
 
         function renderView(viewId, title, isBack = false) {
             if (!isBack) {
-                // Registrar nueva entrada en historial de navegación interna y del navegador
                 viewHistory.push({ id: viewId, label: title });
                 history.pushState({ viewId, label: title }, title);
             }
-            
-            window.currentViewId = viewId; 
-            document.getElementById('view-title').innerText = title;
+            window.currentViewId = viewId; document.getElementById('view-title').innerText = title;
             const content = document.getElementById('content-area');
-            const headerIcon = document.getElementById('header-menu-icon');
-            
             if (isSidebarOpen) toggleSidebar();
-            // Cambiar icono de menú a flecha si hay pantallas atrás
-            if (headerIcon) headerIcon.innerText = viewHistory.length > 1 ? '⬅️' : '☰';
 
-            // Carga de contenido según la vista
             if (viewId === 'dashboard') {
                 content.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in text-left no-print">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in text-left">
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm backdrop-blur-sm text-left">
                         <p class="text-[9px] font-black text-blue-500 uppercase mb-1 italic text-left">Agentes SPC</p>
-                        <p class="text-4xl font-black dark:text-white text-left" id="dash-total-personal">${window.PERSONAL_DB.length}</p>
+                        <p class="text-4xl font-black dark:text-white" id="dash-total-personal">${window.PERSONAL_DB.length}</p>
                     </div>
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm backdrop-blur-sm text-left">
                         <p class="text-[9px] font-black text-emerald-500 uppercase mb-1 italic text-left">Pases Body Scan</p>
-                        <p class="text-4xl font-black dark:text-white text-left" id="dash-total-body">${window.pasesBodyData.length}</p>
+                        <p class="text-4xl font-black dark:text-white" id="dash-total-body">${window.pasesBodyData.length}</p>
                     </div>
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm backdrop-blur-sm text-left">
                         <p class="text-[9px] font-black text-amber-500 uppercase mb-1 italic text-left">Ingresos Totales</p>
-                        <p class="text-4xl font-black dark:text-white text-left" id="dash-total-ingresos">${window.ingresosRecientes.length}</p>
+                        <p class="text-4xl font-black dark:text-white" id="dash-total-ingresos">${window.ingresosRecientes.length}</p>
                     </div>
                 </div>`;
             } else if (viewId === 'ingresos') renderIngresosView(content);
             else if (viewId === 'reportes') renderReportesView(content);
             else if (viewId === 'users_admin') renderUsersAdminView(content);
             else if (viewId === 'importar_personal') {
-                content.innerHTML = renderImportModule("Personal", "Sincronización Agentes", "personal-file", "processPersonalFile(this)", "Fecha de última importación", window.importStats.personal.date, window.PERSONAL_DB.length, "uploadPersonal()");
+                content.innerHTML = renderImportModule("Personal", "personal-file", "processPersonalFile(this)", "Fecha de última importación", window.importStats.personal.date, window.PERSONAL_DB.length, "uploadPersonal()");
             } else if (viewId === 'importar_body') {
-                let latestMark = "-";
-                if(window.pasesBodyData.length) {
-                    const sorted = [...window.pasesBodyData].sort((a,b) => {
-                        const d1 = new Date(a.fechaHora.split(' ').reverse().join(' '));
-                        const d2 = new Date(b.fechaHora.split(' ').reverse().join(' '));
-                        return d2 - d1;
-                    }); latestMark = sorted[0].fechaHora || "-";
-                }
-                content.innerHTML = renderImportModule("Body Scan", "Sincronización Pases", "body-file", "processBodyFile(this)", "Última marca temporal detectada", latestMark, window.pasesBodyData.length, "uploadBody()");
+                content.innerHTML = renderImportModule("Body Scan", "body-file", "processBodyFile(this)", "Última marca temporal", "-", window.pasesBodyData.length, "uploadBody()");
             }
         }
 
         function renderIngresosView(container) {
             const now = new Date();
             container.innerHTML = `
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print">
-                <div class="xl:col-span-5 text-left">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
+                <div class="xl:col-span-5">
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm">
                         <form id="ingreso-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveIngreso();">
                             <div class="grid grid-cols-2 gap-3">
@@ -489,7 +442,7 @@
                                 <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center">🚶</button>
                                 <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center">🚗</button>
                             </div>
-                            <div id="vehicle-fields" class="hidden"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 dark:text-white border-2 border-blue-200 dark:border-blue-900/50 rounded-xl text-center text-lg font-black outline-none" placeholder="PATENTE"></div>
+                            <div id="vehicle-fields" class="hidden"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 dark:text-white border-2 border-blue-200 rounded-xl text-center text-lg font-black outline-none" placeholder="PATENTE"></div>
                             <input type="hidden" id="ing-modo" value="">
                             <textarea id="ing-obs" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="OBSERVACIONES / DESTINO"></textarea>
                             <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest transition-all hover:opacity-90 text-center">Registrar Movimiento</button>
@@ -509,45 +462,29 @@
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col text-left backdrop-blur-sm">
                 <div class="flex flex-wrap justify-between items-center gap-4 mb-6 no-print text-left">
-                    <div class="flex items-center gap-4 text-left">
-                        <h3 class="font-black uppercase italic text-sm dark:text-white text-left">Auditoría Inteligente</h3>
-                        ${canDelete ? `<button onclick="handleDeleteByDay()" class="bg-red-600/10 text-red-600 border border-red-600 px-4 py-2 rounded-xl font-black text-[8px] uppercase hover:bg-red-600 hover:text-white transition-all text-center">Eliminar Día Seleccionado</button>` : ''}
-                    </div>
+                    <h3 class="font-black uppercase italic text-sm dark:text-white text-left">Auditoría Inteligente</h3>
                     <div class="flex gap-2">
                         <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">Excel</button>
-                        <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">Generar PDF</button>
+                        <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">PDF</button>
                     </div>
                 </div>
-                
-                <div id="report-header-print" class="hidden print-header-info text-left">
-                    <h1 class="text-xl font-black uppercase mb-1">UNIDAD DE CONTROL PENITENCIARIO</h1>
-                    <p class="text-[10px] font-black uppercase text-slate-600" id="report-filter-summary">REPORTE DE INGRESOS</p>
-                    <p class="text-[8px] font-bold text-slate-400">GENERADO: ${new Date().toLocaleString()}</p>
-                </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-5 bg-slate-50 dark:bg-slate-800/80 rounded-3xl mb-6 no-print text-left">
                     <input type="text" id="filter-search" oninput="updateFullReport()" placeholder="BUSQUEDA..." class="md:col-span-2 px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left">
                     <input type="date" id="filter-start" onchange="updateFullReport()" class="px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left">
                     <input type="date" id="filter-end" onchange="updateFullReport()" class="px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left">
-                    <select id="filter-profile" onchange="updateFullReport()" class="md:col-span-4 px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] uppercase outline-none text-left">
-                        <option value="">TODOS LOS PERFILES</option>
-                        ${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
-                    </select>
                 </div>
                 <div class="flex-1 overflow-auto no-scrollbar rounded-3xl border border-slate-200 dark:border-slate-800 text-left">
                     <table class="w-full text-[10px] text-left print-table">
                         <thead class="bg-slate-50 dark:bg-slate-800 font-black uppercase text-[8px] sticky top-0 dark:text-slate-400">
                             <tr>
-                                <th class="p-3 text-left">FECHA/HORA</th>
-                                <th class="p-3 text-left">IDENTIFICACIÓN Y SUJETO</th>
-                                <th class="p-3 text-left">PERFIL</th>
-                                <th class="p-3 text-left">MODO</th>
-                                <th class="p-3 text-left">OBSERVACIÓN</th>
+                                <th class="p-3">FECHA/HORA</th>
+                                <th class="p-3">IDENTIFICACIÓN</th>
+                                <th class="p-3">PERFIL</th>
                                 <th class="p-3 text-right">OP.</th>
-                                ${canDelete ? `<th class="p-3 text-center no-print">ACCION</th>` : ''}
+                                ${canDelete ? `<th class="p-3 text-center no-print">ACCIÓN</th>` : ''}
                             </tr>
                         </thead>
-                        <tbody id="full-report-table" class="divide-y dark:divide-slate-800 font-medium text-left"></tbody>
+                        <tbody id="full-report-table" class="divide-y dark:divide-slate-800 font-medium"></tbody>
                     </table>
                 </div>
             </div>`;
@@ -557,44 +494,36 @@
         window.updateFullReport = () => {
             const b = document.getElementById('full-report-table'); if(!b) return;
             const search = document.getElementById('filter-search').value.toUpperCase();
-            const start = document.getElementById('filter-start').value, end = document.getElementById('filter-end').value, prof = document.getElementById('filter-profile').value;
+            const start = document.getElementById('filter-start').value, end = document.getElementById('filter-end').value;
             const canDelete = activeRole === ROLES.DIP || activeRole === ROLES.ADMIN;
-
             const filtered = window.ingresosRecientes.filter(i => {
                 const ms = !search || [i.sujeto, i.nomSujeto, i.obs, i.dominio, i.matProf].some(f => f && String(f).toUpperCase().includes(search));
-                const mp = !prof || i.perfil === prof;
                 const md = (!start || i.fecha >= start) && (!end || i.fecha <= end);
-                return ms && mp && md;
+                return ms && md;
             });
-
-            b.innerHTML = filtered.map(i => {
-                let ds = "";
-                if(i.perfil === 'PERSONAL' || i.perfil === 'MOVIL') {
-                    const a = window.PERSONAL_DB.find(p => String(p.id) === String(i.sujeto));
-                    const h = a ? `<span class="text-blue-600 dark:text-blue-400 font-black">${a.jerarquia}</span> ` : "";
-                    ds = `AFILIADO N° ${i.sujeto} Y ${h}${i.nomSujeto}`;
-                } else if(i.perfil === 'ABOGADO') { ds = `DNI ${i.sujeto}, ${i.nomSujeto} <span class="text-blue-500 font-black">MP:${i.matProf}</span>`; }
-                else { ds = `DNI ${i.sujeto}, ${i.nomSujeto}`; }
-                const vi = i.dominio ? `<div class="text-[7pt] text-slate-400 dark:text-slate-500 font-black italic mt-0.5 text-left">DOMINIO: ${i.dominio}</div>` : "";
-                return `
+            b.innerHTML = filtered.map(i => `
                 <tr class="font-bold text-slate-600 dark:text-slate-400 text-left">
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 leading-tight text-left">${i.fecha}<br><span class="text-blue-500 text-[8px] text-left">${i.hora}</span></td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase dark:text-slate-300 text-left">
-                        <div class="leading-tight text-left">${ds}</div>${vi}
-                    </td>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-left">${i.fecha} ${i.hora}</td>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase text-left">${i.nomSujeto || i.sujeto}</td>
                     <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-blue-500 uppercase text-left">${i.perfil}</td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase text-left">${i.modo}</td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] uppercase italic leading-tight text-left">${i.obs || '-'}</td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] font-black text-right">${window.getOpCode(i.operador)}</td>
-                    ${canDelete ? `<td class="p-2 border-b border-slate-200 dark:border-slate-800 text-center no-print"><button onclick="handleDeleteIngreso('${i.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">🗑️</button></td>` : ''}
-                </tr>`;
-            }).join('');
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-right">${window.getOpCode(i.operador)}</td>
+                    ${canDelete ? `<td class="p-2 border-b border-slate-200 dark:border-slate-800 text-center no-print"><button onclick="handleDeleteIngreso('${i.id}')" class="text-red-500">🗑️</button></td>` : ''}
+                </tr>`).join('');
+        };
+
+        window.handleDeleteIngreso = (id) => {
+            openConfirmModal("¿Eliminar registro?", async () => {
+                try {
+                    await fbDeleteDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'ingresos', id));
+                    showMessage("Eliminado", "success");
+                } catch(e) { showMessage("Error", "error"); }
+            });
         };
 
         function renderUsersAdminView(container) {
             container.innerHTML = `
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print">
-                <div class="xl:col-span-4 text-left">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left">
+                <div class="xl:col-span-4">
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm">
                         <h3 class="text-xs font-black uppercase italic mb-6 dark:text-white text-center">Alta Operador</h3>
                         <form id="user-form" class="space-y-4 mx-auto text-center" onsubmit="event.preventDefault(); handleSaveUser();">
@@ -603,7 +532,7 @@
                             <input type="password" id="user-pass" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="CLAVE">
                             <select id="user-role" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none text-left">
                                 <option value="${ROLES.UCP}">${ROLES.UCP}</option>
-                                ${activeRole !== ROLES.UCP ? `<option value="${ROLES.DIP}">${ROLES.DIP}</option>` : ''}
+                                <option value="${ROLES.DIP}">${ROLES.DIP}</option>
                                 ${activeRole === ROLES.ADMIN ? `<option value="${ROLES.ADMIN}">${ROLES.ADMIN}</option>` : ''}
                             </select>
                             <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] text-center">Crear</button>
@@ -618,74 +547,52 @@
         }
 
         window.lookupPersonalForUser = (val) => {
-            const id = val.trim().toUpperCase();
-            if(!id) return;
-            // Buscar en la base de datos de personal para autocompletar nombre
+            const id = val.trim().toUpperCase(); if(!id) return;
             const agent = window.PERSONAL_DB.find(a => String(a.id).toUpperCase() === id);
             const nameField = document.getElementById('user-name');
-            if(agent && nameField) {
-                nameField.value = agent.apellidoNombre.toUpperCase();
-            }
-        };
-
-        function renderImportModule(name, title, fileId, changeFn, labelStat, valStat, count, uploadFn) {
-            return `
-            <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm">
-                <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-inner text-center">📥</div>
-                <h2 class="text-xl font-black uppercase mb-1 italic dark:text-white text-center">${name}</h2>
-                <div class="grid grid-cols-2 gap-3 my-8 text-left">
-                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1 text-center">${labelStat}</p>
-                        <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 text-center">${valStat}</p>
-                    </div>
-                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1 text-center">Total</p>
-                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center">${count}</p>
-                    </div>
-                </div>
-                <div class="space-y-4 text-left">
-                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-800 text-center text-center">
-                        <input type="file" id="${fileId}" class="hidden" onchange="${changeFn}">
-                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 text-center">PLANILLA (.XLSX)</p>
-                        <button onclick="document.getElementById('${fileId}').click()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 font-black px-6 py-3 rounded-xl uppercase text-[9px] text-center">1. Elegir</button>
-                    </div>
-                    <button id="btn-upload-${fileId}" onclick="${uploadFn}" disabled class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] opacity-30 text-center">2. Subir</button>
-                </div>
-            </div>`;
-        }
-
-        window.handleSaveUser = async () => {
-            const id = document.getElementById('user-id').value.trim();
-            const name = document.getElementById('user-name').value.trim();
-            const pass = document.getElementById('user-pass').value;
-            const role = document.getElementById('user-role').value;
-            if(!id || !name || !pass) return showMessage("Complete datos", "error");
-            try {
-                await fbSetDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id), { id, fullName: name.toUpperCase(), password: pass, role, timestamp: Date.now() });
-                showMessage("Operador guardado", "success");
-                document.getElementById('user-form').reset();
-            } catch(e) { showMessage("Error Nube", "error"); }
+            if(agent && nameField) nameField.value = agent.apellidoNombre.toUpperCase();
         };
 
         window.refreshUsersList = () => {
             const body = document.getElementById('users-table-body'); if(!body) return;
             let list = window.SYSTEM_USERS;
-            if(activeRole === ROLES.UCP) list = list.filter(u => u.id === currentUser.username);
-            body.innerHTML = list.map(u => `
+            body.innerHTML = list.map(u => {
+                const canReset = (activeRole === ROLES.ADMIN) || 
+                                 (activeRole === ROLES.DIP && u.role === ROLES.UCP);
+                
+                return `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
                     <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-left">
-                        <div class="font-black uppercase text-[10px] dark:text-white text-left">${u.fullName}</div>
-                        <div class="text-[8px] text-slate-400 font-bold uppercase text-left">${u.role} | ID: ${u.id}</div>
+                        <div class="font-black uppercase text-[10px] dark:text-white">${u.fullName}</div>
+                        <div class="text-[8px] text-slate-400 font-bold uppercase">${u.role} | ID: ${u.id}</div>
                     </td>
                     <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-right">
-                        <button onclick="resetPass('${u.id}')" class="p-2 text-blue-500 text-center">🔑</button>
-                        ${(activeRole === ROLES.ADMIN) ? `<button onclick="deleteUser('${u.id}')" class="p-2 text-red-500 text-center">🗑️</button>` : ''}
+                        ${canReset ? `<button onclick="resetPass('${u.id}')" class="p-2 text-blue-500">🔑</button>` : ''}
+                        ${(activeRole === ROLES.ADMIN) ? `<button onclick="deleteUser('${u.id}')" class="p-2 text-red-500">🗑️</button>` : ''}
                     </td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
         };
 
         window.resetPass = async (id) => {
-            const n = prompt("Clave:"); if(n) { try { await fbUpdateDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id), { password: n }); showMessage("OK", "success"); } catch(e) {} }
+            const n = prompt("Nueva clave para " + id + ":");
+            if(n) {
+                try {
+                    await fbUpdateDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id), { password: n });
+                    showMessage("Blanqueo exitoso", "success");
+                } catch(e) { showMessage("Error", "error"); }
+            }
+        };
+
+        window.changeMyPassword = async () => {
+            if(!currentUser) return;
+            const n = prompt("Ingrese su nueva clave personal:");
+            if(n) {
+                try {
+                    await fbUpdateDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', currentUser.username), { password: n });
+                    showMessage("Su clave ha sido actualizada", "success");
+                } catch(e) { showMessage("Error de conexión", "error"); }
+            }
         };
 
         window.deleteUser = async (id) => { if(confirm("¿Eliminar operador?")) { try { await fbDeleteDoc(fbDoc(fbDbRegistros, 'artifacts', 'ucp-registros', 'public', 'data', 'users', id)); showMessage("Eliminado", "success"); } catch(e) {} } };
@@ -713,15 +620,6 @@
             isTorchOn = false;
             html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (t) => {
                 const parts = t.split('@'); const atCount = parts.length - 1;
-                if (atCount > 10) {
-                    stopScanner(); const container = document.getElementById('dyn-fields');
-                    if(container) {
-                        const alertBox = document.createElement('div');
-                        alertBox.className = "w-full p-4 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase mb-4 italic animate-pulse text-center";
-                        alertBox.innerText = "DNI DESACTUALIZADO - CARGAR MANUAL";
-                        container.prepend(alertBox); setTimeout(() => alertBox.remove(), 8000);
-                    } return;
-                }
                 if (atCount >= 7 && atCount <= 9) {
                     const dni = parts[4]?.trim() || ""; const apellido = parts[1]?.trim() || ""; const nombre = parts[2]?.trim() || "";
                     stopScanner(); 
@@ -744,14 +642,14 @@
                 container.innerHTML = `
                 <div class="flex gap-2 w-full text-left">
                     <input type="text" id="ing-mat" oninput="window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="MATRÍCULA / AFILIADO">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📟</button>
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors shrink-0">📟</button>
                 </div>
                 <div id="crossover-preview" class="hidden w-full p-5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-900/30 rounded-[2rem] animate-fade-in text-left">
-                    <p id="prev-name" class="font-black text-blue-800 dark:text-blue-300 uppercase text-xs mb-1 text-left"></p>
-                    <p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3 text-left"></p>
+                    <p id="prev-name" class="font-black text-blue-800 dark:text-blue-300 uppercase text-xs mb-1"></p>
+                    <p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3"></p>
                     <div class="flex justify-between items-center bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-blue-900/30 mb-3 text-left">
                         <span class="text-[9px] font-black uppercase text-slate-400 text-left">Pases Body Scan (60d)</span>
-                        <span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs text-center">0</span>
+                        <span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs">0</span>
                     </div>
                     <div id="prev-body-history" class="max-h-56 overflow-y-auto no-scrollbar space-y-1 text-left"></div>
                 </div>`;
@@ -759,7 +657,7 @@
                 container.innerHTML = `
                 <div class="flex gap-2 w-full text-left">
                     <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="DNI">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📸</button>
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors shrink-0">📸</button>
                 </div>
                 <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="APELLIDO Y NOMBRE">
                 <input type="text" id="ing-mat-prof" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="MATRÍCULA PROFESIONAL">`;
@@ -767,7 +665,7 @@
                 container.innerHTML = `
                 <div class="flex gap-2 w-full text-left">
                     <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="DNI">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📸</button>
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors shrink-0">📸</button>
                 </div>
                 <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="APELLIDO Y NOMBRE">`;
             }
@@ -792,7 +690,7 @@
                             <span class="font-bold text-slate-500 dark:text-slate-400 text-right">${px.sector || 'S/D'}</span>
                         </div>`).join('') : '<p class="text-[8px] text-center italic text-slate-400 py-4">Sin pases registrados en 60 días</p>';
                 }
-            } else { p.classList.add('hidden'); }
+            } else p.classList.add('hidden');
         };
 
         async function handleSaveIngreso() {
@@ -805,14 +703,14 @@
         window.updateIngresosTable = () => {
             const b = document.getElementById('ingresos-table'); if(!b) return;
             b.innerHTML = window.ingresosRecientes.slice(0, 15).map(i => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors">
-                    <td class="p-4 font-black text-blue-500 dark:text-blue-400 border-b border-slate-200 dark:border-slate-800 text-left">${i.hora}</td>
-                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 font-black uppercase text-[10px] dark:text-slate-300 text-left">${i.nomSujeto || i.sujeto}</td>
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left">
+                    <td class="p-4 font-black text-blue-500 dark:text-blue-400 border-b border-slate-200 dark:border-slate-800">${i.hora}</td>
+                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 font-black uppercase text-[10px] dark:text-slate-300">${i.nomSujeto || i.sujeto}</td>
                 </tr>`).join('');
         };
 
         async function processPersonalFile(input) {
-            if (!input.files.length) return; const file = input.files[0]; document.getElementById('file-label-personal-file').innerText = `Archivo: ${file.name}`;
+            if (!input.files.length) return; const file = input.files[0];
             const reader = new FileReader(); reader.onload = (e) => {
                 const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
                 const rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
@@ -822,7 +720,7 @@
         }
 
         async function processBodyFile(input) {
-            if (!input.files.length) return; const file = input.files[0]; document.getElementById('file-label-body-file').innerText = `Archivo: ${file.name}`;
+            if (!input.files.length) return; const file = input.files[0];
             const reader = new FileReader(); reader.onload = (e) => {
                 const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
                 const list = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(row => ({ matricula: String(row.Matricula || row.MATRICULA || row.ID || "").trim(), nombre: String(row.Nombre || row.NOMBRE || "").trim(), fechaHora: String(row['Fecha y Hora'] || row.FECHA_HORA || "").trim(), sector: String(row.Sector || row.SECTOR || "S/D").trim(), timestamp: Date.now() })).filter(p => p.matricula);
@@ -854,10 +752,35 @@
             setUploadProgress(false); renderView('importar_body', 'BODY SCAN'); showMessage("Completado", "success");
         };
 
+        function renderImportModule(name, fileId, changeFn, labelStat, valStat, count, uploadFn) {
+            return `
+            <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm">
+                <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-inner text-center">📥</div>
+                <h2 class="text-xl font-black uppercase mb-1 italic dark:text-white text-center">${name}</h2>
+                <div class="grid grid-cols-2 gap-3 my-8 text-left">
+                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">${labelStat}</p>
+                        <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400">${valStat}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Total</p>
+                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">${count}</p>
+                    </div>
+                </div>
+                <div class="space-y-4 text-left">
+                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-800 text-center">
+                        <input type="file" id="${fileId}" class="hidden" onchange="${changeFn}">
+                        <button onclick="document.getElementById('${fileId}').click()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 font-black px-6 py-3 rounded-xl uppercase text-[9px]">1. Elegir</button>
+                    </div>
+                    <button id="btn-upload-${fileId}" onclick="${uploadFn}" disabled class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] opacity-30">2. Subir</button>
+                </div>
+            </div>`;
+        }
+
         window.setMode = (m) => {
             document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center'}`;
-            document.getElementById('btn-v').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center'}`;
+            document.getElementById('btn-p').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:border-slate-700 text-center'}`;
+            document.getElementById('btn-v').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center':'bg-white dark:bg-slate-800 dark:border-slate-700 text-center'}`;
             if(m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
         };
 
@@ -879,11 +802,6 @@
             if (!document.fullscreenElement) document.documentElement.requestFullscreen();
             else document.exitFullscreen();
         };
-
-        document.addEventListener('fullscreenchange', () => {
-            const icon = document.getElementById('full-icon'); if(!icon) return;
-            icon.innerText = document.fullscreenElement ? '❐' : '⛶';
-        });
     </script>
 </body>
 </html>
