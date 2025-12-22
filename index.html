@@ -142,6 +142,19 @@
         <h2 class="text-white font-black uppercase text-[10px] tracking-[0.3em]">Cruce de Datos SPC Activo</h2>
     </div>
 
+    <!-- Indicador de Carga Firebase (Nuevo) -->
+    <div id="upload-overlay" class="hidden fixed inset-0 z-[3000] bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-700">
+            <div class="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <h3 class="text-xs font-black uppercase text-slate-800 dark:text-white mb-1 tracking-widest">Sincronizando Nube</h3>
+            <p id="upload-status" class="text-[9px] font-bold text-slate-400 uppercase mb-4">Iniciando transferencia...</p>
+            <div class="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">
+                <div id="upload-bar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
+            </div>
+            <p id="upload-count" class="text-[8px] font-black text-blue-600 mt-2 uppercase">0 / 0 registros</p>
+        </div>
+    </div>
+
     <div id="toast-wrapper" class="fixed top-4 right-4 z-[2000] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Selección Rol -->
@@ -221,13 +234,28 @@
             setTimeout(() => toast.remove(), 3500);
         }
 
+        // --- Utilidades de Progreso ---
+        function setUploadProgress(show, current = 0, total = 0) {
+            const overlay = document.getElementById('upload-overlay');
+            const bar = document.getElementById('upload-bar');
+            const count = document.getElementById('upload-count');
+            if (show) {
+                overlay.classList.remove('hidden');
+                const pct = Math.round((current / total) * 100) || 0;
+                bar.style.width = pct + '%';
+                count.innerText = `${current} / ${total} registros (${pct}%)`;
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
         function initUI() {
             document.getElementById('login-box').innerHTML = `
                 <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-black text-2xl shadow-xl">SP</div>
                 <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase mb-1 leading-none text-center">Control UCP</h1>
                 <p class="text-[9px] font-bold text-slate-400 uppercase mb-8 tracking-[0.2em] text-center">Acceso Multi-Cloud SPC</p>
                 <form id="login-form" class="space-y-3" onsubmit="event.preventDefault(); handleLogin();">
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 text-left">
                         <input type="text" id="username" class="flex-1 px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none" placeholder="AFILIADO">
                         <button type="button" onclick="startScanner('LOGIN')" class="p-4 bg-slate-100 dark:bg-slate-700 dark:text-white rounded-xl">📟</button>
                     </div>
@@ -354,7 +382,7 @@
         function renderReportesView(container) {
             container.innerHTML = `
             <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col text-left backdrop-blur-sm">
-                <div class="flex flex-wrap justify-between items-center gap-4 mb-6 no-print text-left">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-6 no-print text-left text-left">
                     <h3 class="font-black uppercase italic text-sm dark:text-white">Auditoría Inteligente</h3>
                     <div class="flex gap-2">
                         <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase">Excel</button>
@@ -389,10 +417,10 @@
                     <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm">
                         <h3 class="text-xs font-black uppercase italic mb-6 dark:text-white text-center">Alta de Operador</h3>
                         <form id="user-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveUser();">
-                            <input type="text" id="user-id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA / DNI">
-                            <input type="text" id="user-name" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">
-                            <input type="password" id="user-pass" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="CONTRASEÑA">
-                            <select id="user-role" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none">
+                            <input type="text" id="user-id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA / DNI">
+                            <input type="text" id="user-name" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">
+                            <input type="password" id="user-pass" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="CONTRASEÑA">
+                            <select id="user-role" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none">
                                 <option value="${ROLES.UCP}">${ROLES.UCP}</option>
                                 ${activeRole !== ROLES.UCP ? `<option value="${ROLES.DIP}">${ROLES.DIP}</option>` : ''}
                                 ${activeRole === ROLES.ADMIN ? `<option value="${ROLES.ADMIN}">${ROLES.ADMIN}</option>` : ''}
@@ -414,7 +442,7 @@
             <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm">
                 <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-inner">📥</div>
                 <h2 class="text-xl font-black uppercase mb-1 italic dark:text-white text-center">${name}</h2>
-                <div class="grid grid-cols-2 gap-3 my-8 text-left">
+                <div class="grid grid-cols-2 gap-3 my-8 text-left text-left">
                     <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <p class="text-[8px] font-black text-slate-400 uppercase">Última Sincronización</p>
                         <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400">${stats.date}</p>
@@ -427,7 +455,7 @@
                 <div class="space-y-4">
                     <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-800 text-center">
                         <input type="file" id="${fileId}" class="hidden" onchange="${changeFn}">
-                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest">Planilla Excel (.xlsx)</p>
+                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest text-center">Planilla Excel (.xlsx)</p>
                         <button onclick="document.getElementById('${fileId}').click()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 font-black px-6 py-3 rounded-xl uppercase text-[9px] tracking-widest hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
                             1. Elegir Planilla
                         </button>
@@ -459,7 +487,7 @@
             if(activeRole === ROLES.DIP) visibleUsers = window.SYSTEM_USERS.filter(u => u.role === ROLES.DIP || u.role === ROLES.UCP);
             else if(activeRole === ROLES.UCP) visibleUsers = window.SYSTEM_USERS.filter(u => u.id === currentUser.username);
             body.innerHTML = visibleUsers.map(u => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left">
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left text-left">
                     <td class="p-4 border-b border-slate-200 dark:border-slate-800">
                         <div class="font-black uppercase text-[10px] dark:text-white">${u.fullName}</div>
                         <div class="text-[8px] text-slate-400 font-bold uppercase">${u.role} | ID: ${u.id}</div>
@@ -512,11 +540,11 @@
         window.updateDynamicFields = (perfil) => {
             const container = document.getElementById('dyn-fields'); if(!container) return;
             if (perfil === 'PERSONAL' || perfil === 'MOVIL') {
-                container.innerHTML = `<div class="flex gap-2 text-left"><input type="text" id="ing-mat" oninput="window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA / AFILIADO"><button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white">📟</button></div><div id="crossover-preview" class="hidden p-5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-900/30 rounded-[2rem] animate-fade-in"><p id="prev-name" class="font-black text-blue-800 dark:text-blue-300 uppercase text-xs mb-1"></p><p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3"></p><div class="flex justify-between items-center bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-blue-900/30"><span class="text-[9px] font-black uppercase text-slate-400">Pases Body Scan (60d)</span><span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs">0</span></div></div>`;
+                container.innerHTML = `<div class="flex gap-2 text-left text-left"><input type="text" id="ing-mat" oninput="window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA / AFILIADO"><button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center">📟</button></div><div id="crossover-preview" class="hidden p-5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-900/30 rounded-[2rem] animate-fade-in"><p id="prev-name" class="font-black text-blue-800 dark:text-blue-300 uppercase text-xs mb-1"></p><p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3"></p><div class="flex justify-between items-center bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-blue-900/30"><span class="text-[9px] font-black uppercase text-slate-400">Pases Body Scan (60d)</span><span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs">0</span></div></div>`;
             } else if (perfil === 'ABOGADO') {
-                container.innerHTML = `<div class="flex gap-2 text-left"><input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="DNI"><button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white">📸</button></div><input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE"><input type="text" id="ing-mat-prof" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA PROFESIONAL">`;
+                container.innerHTML = `<div class="flex gap-2 text-left text-left"><input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="DNI"><button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center">📸</button></div><input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE"><input type="text" id="ing-mat-prof" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA PROFESIONAL">`;
             } else {
-                container.innerHTML = `<div class="flex gap-2 text-left"><input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="DNI"><button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white">📸</button></div><input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">`;
+                container.innerHTML = `<div class="flex gap-2 text-left text-left"><input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="DNI"><button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center">📸</button></div><input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">`;
             }
         };
 
@@ -541,7 +569,7 @@
         window.updateIngresosTable = () => {
             const b = document.getElementById('ingresos-table'); if(!b) return;
             b.innerHTML = window.ingresosRecientes.slice(0, 15).map(i => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors">
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors text-left">
                     <td class="p-4 font-black text-blue-500 dark:text-blue-400 border-b border-slate-200 dark:border-slate-800">${i.hora}</td>
                     <td class="p-4 border-b border-slate-200 dark:border-slate-800 font-black uppercase text-[10px] dark:text-slate-300">${i.nomSujeto || i.sujeto}</td>
                 </tr>`).join('');
@@ -562,7 +590,7 @@
             if (!input.files.length) return; const file = input.files[0]; document.getElementById('file-label-body-file').innerText = `Archivo: ${file.name}`;
             const reader = new FileReader(); reader.onload = (e) => {
                 const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-                const list = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(row => ({ matricula: String(row.Matricula || row.MATRICULA || "").trim(), nombre: String(row.Nombre || row.NOMBRE || "").trim(), fechaHora: String(row['Fecha y Hora'] || row.FECHA_HORA || "").trim(), sector: String(row.Sector || row.SECTOR || "S/D").trim(), timestamp: Date.now() })).filter(p => p.matricula);
+                const list = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(row => ({ matricula: String(row.Matricula || row.MATRICULA || row.ID || "").trim(), nombre: String(row.Nombre || row.NOMBRE || "").trim(), fechaHora: String(row['Fecha y Hora'] || row.FECHA_HORA || "").trim(), sector: String(row.Sector || row.SECTOR || "S/D").trim(), timestamp: Date.now() })).filter(p => p.matricula);
                 const existingKeys = new Set(window.pasesBodyData.map(p => `${p.matricula}|${p.fechaHora}`));
                 window.pendingBody = list.filter(p => !existingKeys.has(`${p.matricula}|${p.fechaHora}`));
                 const btn = document.getElementById('btn-upload-body-file'); btn.disabled = false; btn.classList.remove('opacity-30', 'cursor-not-allowed'); btn.innerText = `Subir ${window.pendingBody.length} Pases Nuevos`;
@@ -570,25 +598,60 @@
             }; reader.readAsArrayBuffer(file);
         }
 
-        // --- SUBIDA OPTIMIZADA ---
+        // --- SUBIDA OPTIMIZADA CON PROGRESO (FIREBASE DIVIDIDO) ---
         window.uploadPersonal = async () => {
             if (!window.pendingPersonal || !window.pendingPersonal.length) return;
-            const list = window.pendingPersonal; showMessage(`Sincronizando ${list.length} registros...`, "info");
-            const batch = fbWriteBatch(window.fbDbPersonal);
-            list.forEach(p => { const id = String(p.id).trim().toUpperCase(); batch.set(fbDoc(window.fbDbPersonal, 'artifacts', 'ucp-personal', 'public', 'data', 'personal', id), p, { merge: true }); });
-            await batch.commit(); window.importStats.personal = { date: new Date().toLocaleString(), count: window.PERSONAL_DB.length + list.length };
-            localStorage.setItem('ucp_import_stats', JSON.stringify(window.importStats)); window.pendingPersonal = null;
-            showMessage(`Se han subido exitosamente ${list.length} agentes`, "success"); renderView('importar_personal', 'PERSONAL');
+            const list = window.pendingPersonal;
+            const total = list.length;
+            let current = 0;
+            
+            setUploadProgress(true, 0, total);
+            const chunks = []; for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
+            
+            for (const chunk of chunks) {
+                const batch = fbWriteBatch(window.fbDbPersonal);
+                chunk.forEach(p => { 
+                    const id = String(p.id).trim().toUpperCase(); 
+                    batch.set(fbDoc(window.fbDbPersonal, 'artifacts', 'ucp-personal', 'public', 'data', 'personal', id), p, { merge: true }); 
+                });
+                await batch.commit();
+                current += chunk.length;
+                setUploadProgress(true, current, total);
+            }
+
+            window.importStats.personal = { date: new Date().toLocaleString(), count: window.PERSONAL_DB.length };
+            localStorage.setItem('ucp_import_stats', JSON.stringify(window.importStats));
+            window.pendingPersonal = null;
+            setTimeout(() => setUploadProgress(false), 500);
+            showMessage(`Se han subido exitosamente ${total} agentes`, "success");
+            renderView('importar_personal', 'PERSONAL');
         };
 
         window.uploadBody = async () => {
             if (!window.pendingBody || !window.pendingBody.length) return;
-            const list = window.pendingBody; showMessage(`Subiendo ${list.length} pases nuevos...`, "info");
+            const list = window.pendingBody;
+            const total = list.length;
+            let current = 0;
+
+            setUploadProgress(true, 0, total);
             const chunks = []; for (let i = 0; i < list.length; i += 400) chunks.push(list.slice(i, i + 400));
-            for (const chunk of chunks) { const batch = fbWriteBatch(window.fbDbBody); chunk.forEach(p => { batch.set(fbDoc(fbCollection(window.fbDbBody, 'artifacts', 'ucp-body', 'public', 'data', 'pases_body')), p); }); await batch.commit(); }
-            window.importStats.body = { date: new Date().toLocaleString(), count: window.pasesBodyData.length + list.length };
-            localStorage.setItem('ucp_import_stats', JSON.stringify(window.importStats)); window.pendingBody = null;
-            showMessage(`Proceso completo: ${list.length} registros añadidos`, "success"); renderView('importar_body', 'BODY SCAN');
+            
+            for (const chunk of chunks) {
+                const batch = fbWriteBatch(window.fbDbBody);
+                chunk.forEach(p => { 
+                    batch.set(fbDoc(fbCollection(window.fbDbBody, 'artifacts', 'ucp-body', 'public', 'data', 'pases_body')), p); 
+                });
+                await batch.commit();
+                current += chunk.length;
+                setUploadProgress(true, current, total);
+            }
+
+            window.importStats.body = { date: new Date().toLocaleString(), count: window.pasesBodyData.length };
+            localStorage.setItem('ucp_import_stats', JSON.stringify(window.importStats));
+            window.pendingBody = null;
+            setTimeout(() => setUploadProgress(false), 500);
+            showMessage(`Proceso completo: ${total} registros añadidos`, "success");
+            renderView('importar_body', 'BODY SCAN');
         };
 
         window.setMode = (m) => {
