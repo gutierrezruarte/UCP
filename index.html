@@ -180,7 +180,6 @@
     </div>
 
     <div id="app-container" class="hidden h-full flex overflow-hidden dark:bg-slate-950">
-        <!-- Sidebar Comprimida por Defecto (w-0) -->
         <aside id="sidebar" class="w-0 bg-slate-800 dark:bg-slate-900 text-white flex flex-col shrink-0 transition-all duration-300 overflow-hidden no-print">
             <div class="p-5 flex flex-col h-full w-64 shrink-0">
                 <div class="flex items-center gap-3 mb-8">
@@ -226,13 +225,13 @@
     </div>
 
     <!-- Scanner Modal -->
-    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 no-print text-center text-center">
+    <div id="modal-scanner" class="hidden fixed inset-0 z-[120] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 no-print text-center text-center text-center">
         <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl">
-            <div class="p-5 bg-blue-600 text-white flex justify-between items-center text-center">
-                <span id="scanner-label" class="font-black uppercase text-xs tracking-widest text-left">Escaneo Activo</span>
+            <div class="p-5 bg-blue-600 text-white flex justify-between items-center text-center text-center">
+                <span id="scanner-label" class="font-black uppercase text-xs tracking-widest text-left text-left">Escaneo Activo</span>
                 <button onclick="stopScanner()" class="p-2 bg-white/20 rounded-full">✕</button>
             </div>
-            <div class="p-6 text-center"><div id="reader"></div></div>
+            <div class="p-6 text-center text-center"><div id="reader"></div></div>
         </div>
     </div>
 
@@ -296,16 +295,16 @@
 
         function initUI() {
             document.getElementById('login-box').innerHTML = `
-                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-black text-2xl shadow-xl text-center">SP</div>
-                <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase mb-1 leading-none text-center">Control UCP</h1>
-                <p class="text-[9px] font-bold text-slate-400 uppercase mb-8 tracking-[0.2em] text-center">Acceso Multi-Cloud SPC</p>
+                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white font-black text-2xl shadow-xl text-center text-center">SP</div>
+                <h1 class="text-xl font-black text-slate-800 dark:text-white uppercase mb-1 leading-none text-center text-center">Control UCP</h1>
+                <p class="text-[9px] font-bold text-slate-400 uppercase mb-8 tracking-[0.2em] text-center text-center">Acceso Multi-Cloud SPC</p>
                 <form id="login-form" class="space-y-3 mx-auto max-w-xs" onsubmit="event.preventDefault(); handleLogin();">
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 text-center">
                         <input type="text" id="username" class="flex-1 px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none" placeholder="AFILIADO">
                         <button type="button" onclick="startScanner('LOGIN')" class="p-4 bg-slate-100 dark:bg-slate-700 dark:text-white rounded-xl">📟</button>
                     </div>
                     <input type="password" id="password" class="w-full px-4 py-3.5 rounded-xl border-2 bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-center text-lg outline-none" placeholder="CONTRASEÑA">
-                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest mt-4 hover:opacity-90 transition-all text-center">Entrar al Sistema</button>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest mt-4 hover:opacity-90 transition-all text-center text-center">Entrar al Sistema</button>
                 </form>
             `;
         }
@@ -357,7 +356,7 @@
             nav.innerHTML = items.map(item => `
                 <button onclick="renderView('${item.id}', '${item.label}')" class="w-full flex items-center gap-3 px-3 py-3 text-[10px] font-black rounded-xl hover:bg-slate-700 transition-all uppercase text-left group">
                     <span class="text-base group-hover:scale-110 transition-transform">${item.icon}</span> 
-                    <span class="whitespace-nowrap">${item.label}</span>
+                    <span class="whitespace-nowrap text-left">${item.label}</span>
                 </button>`).join('');
         }
 
@@ -401,33 +400,33 @@
         function renderIngresosView(container) {
             const now = new Date();
             container.innerHTML = `
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print">
-                <div class="xl:col-span-5 text-left text-left">
-                    <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print text-left">
+                <div class="xl:col-span-5 text-left text-left text-left">
+                    <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm text-left">
                         <form id="ingreso-form" class="space-y-4" onsubmit="event.preventDefault(); handleSaveIngreso();">
                             <div class="grid grid-cols-2 gap-3 text-left">
-                                <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none">
-                                <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none">
+                                <input type="date" id="ing-fecha" value="${now.toISOString().split('T')[0]}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left">
+                                <input type="time" id="ing-hora" value="${now.toTimeString().split(' ')[0].substring(0, 5)}" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left">
                             </div>
-                            <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none">
+                            <select id="ing-perfil" onchange="updateDynamicFields(this.value)" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none text-left">
                                 <option value="" disabled selected>PERFIL DE ACCESO</option>
                                 ${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
                             </select>
                             <div id="dyn-fields" class="space-y-4 text-left"></div>
-                            <div class="flex gap-2 text-left">
-                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center text-center">🚶</button>
-                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center text-center">🚗</button>
+                            <div class="flex gap-2 text-left text-left">
+                                <button type="button" onclick="setMode('PEATÓN')" id="btn-p" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center text-center text-center text-center">🚶</button>
+                                <button type="button" onclick="setMode('VEHÍCULO')" id="btn-v" class="flex-1 py-3 border-2 dark:border-slate-700 rounded-xl text-xl bg-white dark:bg-slate-800 transition-colors text-center text-center text-center text-center">🚗</button>
                             </div>
                             <div id="vehicle-fields" class="hidden text-left"><input type="text" id="ing-dominio" class="w-full px-4 py-3 bg-blue-50 dark:bg-blue-900/20 dark:text-white border-2 border-blue-200 dark:border-blue-900/50 rounded-xl text-center text-lg font-black outline-none" placeholder="PATENTE"></div>
                             <input type="hidden" id="ing-modo" value="">
-                            <textarea id="ing-obs" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="OBSERVACIONES / DESTINO"></textarea>
-                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest transition-all hover:opacity-90 text-center text-center">Registrar Movimiento</button>
+                            <textarea id="ing-obs" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="OBSERVACIONES / DESTINO"></textarea>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest transition-all hover:opacity-90 text-center text-center text-center">Registrar Movimiento</button>
                         </form>
                     </div>
                 </div>
-                <div class="xl:col-span-7 bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden text-left backdrop-blur-sm">
-                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400">Panel Reciente</div>
-                    <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-[11px] text-left text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                <div class="xl:col-span-7 bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden text-left backdrop-blur-sm text-left">
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left">Panel Reciente</div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-[11px] text-left text-left text-left"><tbody id="ingresos-table" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
                 </div>
             </div>`;
             window.updateIngresosTable();
@@ -436,47 +435,47 @@
         function renderReportesView(container) {
             const canDelete = activeRole === ROLES.DIP || activeRole === ROLES.ADMIN;
             container.innerHTML = `
-            <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col text-left backdrop-blur-sm text-left text-left text-left text-left">
+            <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col text-left backdrop-blur-sm text-left text-left text-left text-left text-left">
                 <div class="flex flex-wrap justify-between items-center gap-4 mb-6 no-print text-left">
-                    <div class="flex items-center gap-4">
-                        <h3 class="font-black uppercase italic text-sm dark:text-white text-left">Auditoría Inteligente</h3>
-                        ${canDelete ? `<button onclick="handleDeleteByDay()" class="bg-red-600/10 text-red-600 border border-red-600 px-4 py-2 rounded-xl font-black text-[8px] uppercase hover:bg-red-600 hover:text-white transition-all text-center">Eliminar Día Seleccionado</button>` : ''}
+                    <div class="flex items-center gap-4 text-left">
+                        <h3 class="font-black uppercase italic text-sm dark:text-white text-left text-left">Auditoría Inteligente</h3>
+                        ${canDelete ? `<button onclick="handleDeleteByDay()" class="bg-red-600/10 text-red-600 border border-red-600 px-4 py-2 rounded-xl font-black text-[8px] uppercase hover:bg-red-600 hover:text-white transition-all text-center text-center">Eliminar Día Seleccionado</button>` : ''}
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">Excel</button>
-                        <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center">Generar PDF</button>
+                    <div class="flex gap-2 text-left">
+                        <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center text-center">Excel</button>
+                        <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase text-center text-center">Generar PDF</button>
                     </div>
                 </div>
                 
-                <div id="report-header-print" class="hidden print-header-info text-left">
-                    <h1 class="text-xl font-black uppercase mb-1">UNIDAD DE CONTROL PENITENCIARIO</h1>
-                    <p class="text-[10px] font-black uppercase text-slate-600" id="report-filter-summary">REPORTE DE INGRESOS</p>
-                    <p class="text-[8px] font-bold text-slate-400">GENERADO: ${new Date().toLocaleString()}</p>
+                <div id="report-header-print" class="hidden print-header-info text-left text-left">
+                    <h1 class="text-xl font-black uppercase mb-1 text-left">UNIDAD DE CONTROL PENITENCIARIO</h1>
+                    <p class="text-[10px] font-black uppercase text-slate-600 text-left" id="report-filter-summary">REPORTE DE INGRESOS</p>
+                    <p class="text-[8px] font-bold text-slate-400 text-left">GENERADO: ${new Date().toLocaleString()}</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-5 bg-slate-50 dark:bg-slate-800/80 rounded-3xl mb-6 no-print">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-5 bg-slate-50 dark:bg-slate-800/80 rounded-3xl mb-6 no-print text-left">
                     <input type="text" id="filter-search" oninput="updateFullReport()" placeholder="BUSQUEDA..." class="md:col-span-2 px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left">
-                    <input type="date" id="filter-start" onchange="updateFullReport()" class="px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left">
-                    <input type="date" id="filter-end" onchange="updateFullReport()" class="px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left">
-                    <select id="filter-profile" onchange="updateFullReport()" class="md:col-span-4 px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] uppercase outline-none text-left">
+                    <input type="date" id="filter-start" onchange="updateFullReport()" class="px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left text-left">
+                    <input type="date" id="filter-end" onchange="updateFullReport()" class="px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] outline-none text-left text-left">
+                    <select id="filter-profile" onchange="updateFullReport()" class="md:col-span-4 px-4 py-2 rounded-xl border-2 dark:bg-slate-900 dark:text-white dark:border-slate-700 font-black text-[10px] uppercase outline-none text-left text-left">
                         <option value="">TODOS LOS PERFILES</option>
                         ${PROFILES.map(p => `<option value="${p}">${p}</option>`).join('')}
                     </select>
                 </div>
-                <div class="flex-1 overflow-auto no-scrollbar rounded-3xl border border-slate-200 dark:border-slate-800">
-                    <table class="w-full text-[10px] text-left print-table">
-                        <thead class="bg-slate-50 dark:bg-slate-800 font-black uppercase text-[8px] sticky top-0 dark:text-slate-400">
+                <div class="flex-1 overflow-auto no-scrollbar rounded-3xl border border-slate-200 dark:border-slate-800 text-left">
+                    <table class="w-full text-[10px] text-left print-table text-left">
+                        <thead class="bg-slate-50 dark:bg-slate-800 font-black uppercase text-[8px] sticky top-0 dark:text-slate-400 text-left">
                             <tr>
-                                <th class="p-3 text-left">FECHA/HORA</th>
-                                <th class="p-3 text-left">IDENTIFICACIÓN Y SUJETO</th>
-                                <th class="p-3 text-left">PERFIL</th>
-                                <th class="p-3 text-left">MODO</th>
-                                <th class="p-3 text-left">OBSERVACIÓN</th>
-                                <th class="p-3 text-right">OP.</th>
-                                ${canDelete ? `<th class="p-3 text-center no-print text-center">ACCION</th>` : ''}
+                                <th class="p-3 text-left text-left">FECHA/HORA</th>
+                                <th class="p-3 text-left text-left">IDENTIFICACIÓN Y SUJETO</th>
+                                <th class="p-3 text-left text-left">PERFIL</th>
+                                <th class="p-3 text-left text-left">MODO</th>
+                                <th class="p-3 text-left text-left">OBSERVACIÓN</th>
+                                <th class="p-3 text-right text-right">OP.</th>
+                                ${canDelete ? `<th class="p-3 text-center no-print text-center text-center text-center">ACCION</th>` : ''}
                             </tr>
                         </thead>
-                        <tbody id="full-report-table" class="divide-y dark:divide-slate-800 font-medium text-left"></tbody>
+                        <tbody id="full-report-table" class="divide-y dark:divide-slate-800 font-medium text-left text-left"></tbody>
                     </table>
                 </div>
             </div>`;
@@ -517,21 +516,21 @@
                     displaySubject = `DNI ${i.sujeto}, ${i.nomSujeto}`;
                 }
 
-                const vehicleInfo = i.dominio ? `<div class="text-[7pt] text-slate-400 dark:text-slate-500 font-black italic mt-0.5 text-left text-left">DOMINIO: ${i.dominio}</div>` : "";
+                const vehicleInfo = i.dominio ? `<div class="text-[7pt] text-slate-400 dark:text-slate-500 font-black italic mt-0.5 text-left text-left text-left">DOMINIO: ${i.dominio}</div>` : "";
 
                 return `
                 <tr class="font-bold text-slate-600 dark:text-slate-400 text-left">
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 leading-tight text-left">${i.fecha}<br><span class="text-blue-500 text-[8px]">${i.hora}</span></td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase dark:text-slate-300 text-left">
-                        <div class="leading-tight text-left">${displaySubject}</div>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 leading-tight text-left text-left">${i.fecha}<br><span class="text-blue-500 text-[8px]">${i.hora}</span></td>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase dark:text-slate-300 text-left text-left">
+                        <div class="leading-tight text-left text-left text-left">${displaySubject}</div>
                         ${vehicleInfo}
                     </td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-blue-500 uppercase text-left">${i.perfil}</td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase text-left">${i.modo}</td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] uppercase italic leading-tight text-left">${i.obs || '-'}</td>
-                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] font-black text-right text-right">${window.getOpCode(i.operador)}</td>
-                    ${canDelete ? `<td class="p-2 border-b border-slate-200 dark:border-slate-800 text-center no-print text-center text-center">
-                        <button onclick="handleDeleteIngreso('${i.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">🗑️</button>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-blue-500 uppercase text-left text-left">${i.perfil}</td>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 uppercase text-left text-left">${i.modo}</td>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] uppercase italic leading-tight text-left text-left">${i.obs || '-'}</td>
+                    <td class="p-2 border-b border-slate-200 dark:border-slate-800 text-[8px] font-black text-right text-right text-right">${window.getOpCode(i.operador)}</td>
+                    ${canDelete ? `<td class="p-2 border-b border-slate-200 dark:border-slate-800 text-center no-print text-center text-center text-center text-center">
+                        <button onclick="handleDeleteIngreso('${i.id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-center text-center">🗑️</button>
                     </td>` : ''}
                 </tr>`;
             }).join('');
@@ -563,54 +562,54 @@
 
         function renderUsersAdminView(container) {
             container.innerHTML = `
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print">
-                <div class="xl:col-span-4 text-left">
-                    <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm text-left text-left">
-                        <h3 class="text-xs font-black uppercase italic mb-6 dark:text-white text-center">Alta de Operador</h3>
-                        <form id="user-form" class="space-y-4 mx-auto" onsubmit="event.preventDefault(); handleSaveUser();">
-                            <input type="text" id="user-id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA / DNI">
-                            <input type="text" id="user-name" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">
-                            <input type="password" id="user-pass" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="CONTRASEÑA">
-                            <select id="user-role" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none text-left">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fade-in text-left no-print text-left">
+                <div class="xl:col-span-4 text-left text-left">
+                    <div class="bg-white dark:bg-slate-900/50 p-8 rounded-[3rem] shadow-xl border border-slate-200 dark:border-slate-800 text-left backdrop-blur-sm text-left text-left text-left">
+                        <h3 class="text-xs font-black uppercase italic mb-6 dark:text-white text-center text-center">Alta de Operador</h3>
+                        <form id="user-form" class="space-y-4 mx-auto text-center" onsubmit="event.preventDefault(); handleSaveUser();">
+                            <input type="text" id="user-id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="MATRÍCULA / DNI">
+                            <input type="text" id="user-name" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="APELLIDO Y NOMBRE">
+                            <input type="password" id="user-pass" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="CONTRASEÑA">
+                            <select id="user-role" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs uppercase outline-none text-left text-left text-left">
                                 <option value="${ROLES.UCP}">${ROLES.UCP}</option>
                                 ${activeRole !== ROLES.UCP ? `<option value="${ROLES.DIP}">${ROLES.DIP}</option>` : ''}
                                 ${activeRole === ROLES.ADMIN ? `<option value="${ROLES.ADMIN}">${ROLES.ADMIN}</option>` : ''}
                             </select>
-                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] transition-all hover:opacity-90 text-center">Crear Operador</button>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] transition-all hover:opacity-90 text-center text-center">Crear Operador</button>
                         </form>
                     </div>
                 </div>
-                <div class="xl:col-span-8 bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col text-left backdrop-blur-sm text-left text-left text-left">
-                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left">Listado de Personal</div>
-                    <div class="flex-1 overflow-auto no-scrollbar"><table class="w-full text-left text-[11px] text-left"><tbody id="users-table-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
+                <div class="xl:col-span-8 bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col text-left backdrop-blur-sm text-left text-left text-left text-left">
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/80 font-black text-[9px] uppercase italic text-slate-400 text-left text-left">Listado de Personal</div>
+                    <div class="flex-1 overflow-auto no-scrollbar text-left"><table class="w-full text-left text-[11px] text-left text-left text-left"><tbody id="users-table-body" class="divide-y dark:divide-slate-800 text-left"></tbody></table></div>
                 </div>
             </div>`; window.refreshUsersList();
         }
 
         function renderImportModule(name, title, fileId, changeFn, labelStat, valStat, count, uploadFn) {
             return `
-            <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm text-left">
-                <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-inner text-center">📥</div>
-                <h2 class="text-xl font-black uppercase mb-1 italic dark:text-white text-center">${name}</h2>
-                <div class="grid grid-cols-2 gap-3 my-8 text-left text-left text-left">
-                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase leading-none mb-1 text-center">${labelStat}</p>
-                        <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 text-center">${valStat}</p>
+            <div class="max-w-xl mx-auto bg-white dark:bg-slate-900/50 p-10 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in no-print text-left backdrop-blur-sm text-left text-left">
+                <div class="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-inner text-center text-center">📥</div>
+                <h2 class="text-xl font-black uppercase mb-1 italic dark:text-white text-center text-center text-center">${name}</h2>
+                <div class="grid grid-cols-2 gap-3 my-8 text-left text-left text-left text-left">
+                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase leading-none mb-1 text-center text-center text-center">${labelStat}</p>
+                        <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 text-center text-center text-center">${valStat}</p>
                     </div>
-                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase leading-none mb-1 text-center text-center">Total Registros</p>
-                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center text-center">${count}</p>
+                    <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase leading-none mb-1 text-center text-center text-center text-center">Total Registros</p>
+                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center text-center text-center text-center">${count}</p>
                     </div>
                 </div>
-                <div class="space-y-4 text-left text-left">
-                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-800 text-center text-center">
+                <div class="space-y-4 text-left text-left text-left">
+                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 bg-slate-50 dark:bg-slate-800 text-center text-center text-center text-center">
                         <input type="file" id="${fileId}" class="hidden" onchange="${changeFn}">
-                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest text-center text-center">Planilla Excel (.xlsx)</p>
-                        <button onclick="document.getElementById('${fileId}').click()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 font-black px-6 py-3 rounded-xl uppercase text-[9px] tracking-widest hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-center">
+                        <p id="file-label-${fileId}" class="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-widest text-center text-center text-center">Planilla Excel (.xlsx)</p>
+                        <button onclick="document.getElementById('${fileId}').click()" class="bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-800 font-black px-6 py-3 rounded-xl uppercase text-[9px] tracking-widest hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-center text-center">
                             1. Elegir Planilla
                         </button>
                     </div>
-                    <button id="btn-upload-${fileId}" onclick="${uploadFn}" disabled class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest opacity-30 cursor-not-allowed transition-all text-center">
+                    <button id="btn-upload-${fileId}" onclick="${uploadFn}" disabled class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-[10px] tracking-widest opacity-30 cursor-not-allowed transition-all text-center text-center">
                         2. Sincronizar Cambios
                     </button>
                 </div>
@@ -636,14 +635,14 @@
             if(activeRole === ROLES.DIP) visibleUsers = window.SYSTEM_USERS.filter(u => u.role === ROLES.DIP || u.role === ROLES.UCP);
             else if(activeRole === ROLES.UCP) visibleUsers = window.SYSTEM_USERS.filter(u => u.id === currentUser.username);
             body.innerHTML = visibleUsers.map(u => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left text-left text-left text-left text-left">
-                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-left text-left">
-                        <div class="font-black uppercase text-[10px] dark:text-white text-left text-left">${u.fullName}</div>
-                        <div class="text-[8px] text-slate-400 font-bold uppercase text-left text-left">${u.role} | ID: ${u.id}</div>
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left text-left text-left text-left text-left text-left">
+                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-left text-left text-left">
+                        <div class="font-black uppercase text-[10px] dark:text-white text-left text-left text-left text-left text-left">${u.fullName}</div>
+                        <div class="text-[8px] text-slate-400 font-bold uppercase text-left text-left text-left text-left text-left">${u.role} | ID: ${u.id}</div>
                     </td>
-                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-right text-right">
-                        <button onclick="resetPass('${u.id}')" title="Reset Clave" class="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg">🔑</button>
-                        ${(activeRole === ROLES.ADMIN || (activeRole === ROLES.DIP && u.role !== ROLES.ADMIN)) ? `<button onclick="deleteUser('${u.id}')" class="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg">🗑️</button>` : ''}
+                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 text-right text-right text-right">
+                        <button onclick="resetPass('${u.id}')" title="Reset Clave" class="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg text-center text-center">🔑</button>
+                        ${(activeRole === ROLES.ADMIN || (activeRole === ROLES.DIP && u.role !== ROLES.ADMIN)) ? `<button onclick="deleteUser('${u.id}')" class="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg text-center text-center text-center">🗑️</button>` : ''}
                     </td>
                 </tr>`).join('');
         };
@@ -670,7 +669,7 @@
                     stopScanner(); const container = document.getElementById('dyn-fields');
                     if(container) {
                         const alertBox = document.createElement('div');
-                        alertBox.className = "w-full p-4 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase text-center mb-4 italic animate-pulse";
+                        alertBox.className = "w-full p-4 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase text-center mb-4 italic animate-pulse text-center";
                         alertBox.innerText = "EJEMPLAR DE DNI DESACTUALIZADO. CARGAR DE FORMA MANUAL Y ADVERTIR AL INGRESANTE ACTUALIZAR EL MISMO";
                         container.prepend(alertBox); setTimeout(() => alertBox.remove(), 10000);
                     } return;
@@ -692,36 +691,36 @@
 
         window.updateDynamicFields = (perfil) => {
             const container = document.getElementById('dyn-fields'); if(!container) return;
-            // Aseguramos que los contenedores usen flex-1 y w-full para alinearse a los bordes
             if (perfil === 'PERSONAL' || perfil === 'MOVIL') {
                 container.innerHTML = `
                 <div class="flex gap-2 w-full text-left">
-                    <input type="text" id="ing-mat" oninput="window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA / AFILIADO">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📟</button>
+                    <input type="text" id="ing-mat" oninput="window.searchPersonalInDB(this.value)" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left" placeholder="MATRÍCULA / AFILIADO">
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0 text-center">📟</button>
                 </div>
                 <div id="crossover-preview" class="hidden w-full p-5 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-900/30 rounded-[2rem] animate-fade-in text-left">
-                    <p id="prev-name" class="font-black text-blue-800 dark:text-blue-300 uppercase text-xs mb-1 text-left"></p>
-                    <p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3 text-left"></p>
-                    <div class="flex justify-between items-center bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-blue-900/30">
-                        <span class="text-[9px] font-black uppercase text-slate-400">Pases Body Scan (60d)</span>
-                        <span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs text-center">0</span>
+                    <p id="prev-name" class="font-black text-blue-800 dark:text-blue-300 uppercase text-xs mb-1 text-left text-left"></p>
+                    <p id="prev-cargo" class="font-bold text-slate-500 dark:text-slate-400 uppercase text-[9px] mb-3 text-left text-left"></p>
+                    <div class="flex justify-between items-center bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-blue-900/30 mb-3 text-left">
+                        <span class="text-[9px] font-black uppercase text-slate-400 text-left">Pases Body Scan (60d)</span>
+                        <span id="prev-body-count" class="bg-blue-600 text-white px-3 py-1 rounded-lg font-black text-xs text-center text-center">0</span>
                     </div>
+                    <div id="prev-body-history" class="max-h-40 overflow-y-auto no-scrollbar space-y-1 text-left"></div>
                 </div>`;
             } else if (perfil === 'ABOGADO') {
                 container.innerHTML = `
-                <div class="flex gap-2 w-full text-left">
-                    <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="DNI">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0">📸</button>
+                <div class="flex gap-2 w-full text-left text-left">
+                    <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="DNI">
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0 text-center text-center">📸</button>
                 </div>
-                <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">
-                <input type="text" id="ing-mat-prof" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="MATRÍCULA PROFESIONAL">`;
+                <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="APELLIDO Y NOMBRE">
+                <input type="text" id="ing-mat-prof" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="MATRÍCULA PROFESIONAL">`;
             } else {
                 container.innerHTML = `
-                <div class="flex gap-2 w-full text-left">
-                    <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="DNI">
-                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0 text-center">📸</button>
+                <div class="flex gap-2 w-full text-left text-left">
+                    <input type="text" id="ing-dni" class="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left text-left" placeholder="DNI">
+                    <button type="button" onclick="startScanner('SUJETO')" class="p-3 bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-blue-600 transition-colors text-slate-800 dark:text-white text-center shrink-0 text-center text-center text-center">📸</button>
                 </div>
-                <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none" placeholder="APELLIDO Y NOMBRE">`;
+                <input type="text" id="ing-nom" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:text-white border-2 dark:border-slate-700 rounded-xl font-black text-xs outline-none text-left text-left" placeholder="APELLIDO Y NOMBRE">`;
             }
         };
 
@@ -729,10 +728,32 @@
             const id = val.trim().toUpperCase(); const preview = document.getElementById('crossover-preview'); if(!id || !preview) { if(preview) preview.classList.add('hidden'); return; }
             const agent = window.PERSONAL_DB.find(p => String(p.id).toUpperCase() === id);
             const sixtyDaysAgo = Date.now() - (60 * 24 * 60 * 60 * 1000);
+            
+            // Filtrar pases por matrícula y antigüedad de 60 días
             const pases = window.pasesBodyData.filter(b => String(b.matricula).toUpperCase() === id && (b.timestamp || 0) > sixtyDaysAgo);
+            
             if (agent || pases.length > 0) {
-                preview.classList.remove('hidden'); document.getElementById('prev-name').innerText = agent ? `${agent.apellidoNombre}` : 'AGENTE SIN FICHA';
-                document.getElementById('prev-cargo').innerText = agent ? agent.jerarquia : 'MATRICULA DETECTADA'; document.getElementById('prev-body-count').innerText = pases.length;
+                preview.classList.remove('hidden'); 
+                document.getElementById('prev-name').innerText = agent ? `${agent.apellidoNombre}` : 'AGENTE SIN FICHA';
+                document.getElementById('prev-cargo').innerText = agent ? agent.jerarquia : 'MATRICULA DETECTADA'; 
+                document.getElementById('prev-body-count').innerText = pases.length;
+                
+                // Mostrar historial detallado (Fecha y Sector)
+                const historyCont = document.getElementById('prev-body-history');
+                if(historyCont) {
+                    if(pases.length > 0) {
+                        // Ordenar pases del más reciente al más antiguo para la lista
+                        const sortedPases = [...pases].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                        historyCont.innerHTML = sortedPases.map(p => `
+                            <div class="flex justify-between items-center p-2 bg-white/40 dark:bg-slate-900/40 rounded-lg text-[8px] border border-blue-200/50 dark:border-blue-900/20 text-left">
+                                <span class="font-black text-blue-700 dark:text-blue-300 uppercase text-left text-left">${p.fechaHora}</span>
+                                <span class="font-bold text-slate-500 dark:text-slate-400 uppercase text-right text-right">${p.sector || 'S/D'}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        historyCont.innerHTML = `<p class="text-[8px] text-slate-400 font-bold uppercase italic text-center py-2">Sin pases en los últimos 60 días</p>`;
+                    }
+                }
             } else { preview.classList.add('hidden'); }
         };
 
@@ -746,9 +767,9 @@
         window.updateIngresosTable = () => {
             const b = document.getElementById('ingresos-table'); if(!b) return;
             b.innerHTML = window.ingresosRecientes.slice(0, 15).map(i => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors text-left text-left text-left text-left text-left">
-                    <td class="p-4 font-black text-blue-500 dark:text-blue-400 border-b border-slate-200 dark:border-slate-800 text-left text-left text-left">${i.hora}</td>
-                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 font-black uppercase text-[10px] dark:text-slate-300 text-left text-left text-left">${i.nomSujeto || i.sujeto}</td>
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors text-left text-left text-left text-left text-left text-left">
+                    <td class="p-4 font-black text-blue-500 dark:text-blue-400 border-b border-slate-200 dark:border-slate-800 text-left text-left text-left text-left text-left text-left">${i.hora}</td>
+                    <td class="p-4 border-b border-slate-200 dark:border-slate-800 font-black uppercase text-[10px] dark:text-slate-300 text-left text-left text-left text-left text-left text-left">${i.nomSujeto || i.sujeto}</td>
                 </tr>`).join('');
         };
 
@@ -806,8 +827,8 @@
 
         window.setMode = (m) => {
             document.getElementById('ing-modo').value = m;
-            document.getElementById('btn-p').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center text-center text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center text-center text-center'}`;
-            document.getElementById('btn-v').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center text-center text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center text-center text-center'}`;
+            document.getElementById('btn-p').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='PEATÓN'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center text-center text-center text-center text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center text-center text-center text-center text-center'}`;
+            document.getElementById('btn-v').className = `flex-1 py-3 border-2 rounded-xl text-xl ${m==='VEHÍCULO'?'bg-blue-600 text-white border-blue-600 shadow-inner text-center text-center text-center text-center text-center':'bg-white dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 text-center text-center text-center text-center text-center'}`;
             if(m==='VEHÍCULO') document.getElementById('vehicle-fields').classList.remove('hidden'); else document.getElementById('vehicle-fields').classList.add('hidden');
         };
 
